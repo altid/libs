@@ -7,6 +7,8 @@ import (
 	"github.com/mischief/ndb"
 )
 
+GetLogDir returns a canonical directory for a user log, searching first ubqt.cfg
+If no entry is found or the file is missing, it will return a default path depending on the current operating system. Refer to UserShareDir documentation for what that is for your system
 func GetLogDir(service string) string {
 	confdir, err := UserConfDir()
 	if err != nil {
@@ -15,12 +17,16 @@ func GetLogDir(service string) string {
 	filePath := path.Join(confdir, "ubqt.cfg")
 	conf, err := ndb.Open(filePath)
 	if err != nil {
-		log.Fatal(err)
+		return logDir(service)
 	}
 	logdir := conf.Search("service", service).Search("log")
 	if logdir != "" {
 		return path.Join(logdir, service)
 	}
+	return logDir(service)
+}
+
+func logDir(service string) string {
 	userdir, err := UserShareDir()
 	if err != nil {
 		log.Fatal(err)
