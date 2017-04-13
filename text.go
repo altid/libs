@@ -25,7 +25,7 @@ func CleanBytes(b []byte) []byte {
 		}
 		result[i+offset] = c
 	}
-	return result
+	return result[:len(b)+offset]
 }
 
 // CleanString - Escape all elements in string so they will be rendered properly in markdown
