@@ -48,5 +48,5 @@ func CleanString(s string) string {
 		}
 		result[i+offset] = c
 	}
-	return string(result)
+	return string(result[:len(s)+offset])
 }
