@@ -8,7 +8,7 @@ import (
 // CleanBytes - Escape all elements in byte array so that they will be rendered properly in markdown
 func CleanBytes(b []byte) []byte {
 	// Quick escape if no work needed
-	if !bytes.ContainsAny(b, "*#_/\\()~`[]!?") {
+	if !bytes.ContainsAny(b, "*#_/\\()~`[]!?{}") {
 		return b
 	}
 
@@ -19,7 +19,7 @@ func CleanBytes(b []byte) []byte {
 
 	for i, c := range b {
 		switch c {
-		case '*', '#', '_', '\\', '/', '(', ')', '`', '~', '[', ']', '!', '?':
+		case '*', '#', '_', '\\', '/', '(', ')', '`', '~', '[', ']', '!', '?', '}', '{':
 			result[i+offset] = '\\'
 			offset++
 		}
@@ -31,7 +31,7 @@ func CleanBytes(b []byte) []byte {
 // CleanString - Escape all elements in string so they will be rendered properly in markdown
 func CleanString(s string) string {
 	// Quick escape if no work needed
-	if !strings.ContainsAny(s, "*#_/\\()~`[]!?") {
+	if !strings.ContainsAny(s, "*#_/\\()~`[]!?{}") {
 		return s
 	}
 
@@ -42,7 +42,7 @@ func CleanString(s string) string {
 
 	for i, c := range s {
 		switch c {
-		case '*', '#', '_', '\\', '/', '(', ')', '`', '~', '[', ']', '!', '?':
+		case '*', '#', '_', '\\', '/', '(', ')', '`', '~', '[', ']', '!', '?', '{', '}':
 			result[i+offset] = '\\'
 			offset++
 		}
