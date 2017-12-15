@@ -1,6 +1,7 @@
 # cleanmark
 
 Library to translate text or html input to markdown
+Small binary leveraging the library
 
 ## html2md
 
