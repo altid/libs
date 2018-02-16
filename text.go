@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 )
-
+// TODO: define Ragel grammar, utilizing this for escaping each element.
 // CleanBytes - Escape all elements in byte array so that they will be rendered properly in markdown
 func CleanBytes(b []byte) []byte {
 	// Quick escape if no work needed
