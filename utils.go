@@ -1,4 +1,4 @@
-package fs
+package fslib
 
 import (
 	"errors"
@@ -98,6 +98,7 @@ func event(c *Control, eventmsg string) error {
 
 func symlink(logname, feedname string) error {
 	if _, err := os.Stat(logname); os.IsNotExist(err) {
+		os.MkdirAll(path.Base(logname), 0755)
 		fp, err := os.Create(logname)
 		defer fp.Close()
 		if err != nil {

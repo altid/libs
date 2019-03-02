@@ -1,3 +1,9 @@
-# fs - small library to help with writing file servers in Golang
+# fs
 
-This may change without notice, as the library and interfaces it targets solidify.
+A.k.a fslib, this library eases the creation of ubqt-style file servers in Golang.
+
+## Features
+
+## Installation
+
+## Bugs
