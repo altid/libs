@@ -2,6 +2,7 @@ package cleanmark
 
 import (
 	"io"
+	"fmt"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -24,35 +25,78 @@ func NewHTMLCleaner(w io.WriteCloser) *HTMLCleaner {
 // This returns any errors that it encounters, or EOF once it's exhausted the reader.
 // TODO: This parse is somewhat naive in how it handles a and img tags
 func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
-
-	//var url, img, imgAlttext []byte
-	flags := make(map[atom.Atom]struct{})
 	z := html.NewTokenizer(r)
 	for {
-		ttype := z.Next()
-		token := z.Token()
-
-		// We'll handle images and links seperately, as they require special attention
-		switch token.DataAtom {
-		case atom.A:	
-			continue
-		case atom.Img:
-			continue
+		if z.Next() == html.ErrorToken {
+			return z.Err()
 		}
-
-		// All other types simply augment the writer state
-		switch ttype {
-		case html.ErrorToken:
-			return z.Err()	
-		case html.StartTagToken:
-			flags[token.DataAtom] = empty
-		case html.EndTagToken:
-			delete(flags, z.Token().DataAtom)
-		case html.SelfClosingTagToken:
-			// TODO: so far we care about img, br, col,
-			// see what else we need to handle
-		case html.TextToken: // This is where the meat happens
-			c.w.Write(z.Text())
+		token := z.Token()
+		// TODO: we will add a few more types here
+		switch token.DataAtom {
+		case atom.A:
+			url, msg := parseUrl(z, token)	
+			fmt.Fprintf(c.w, "[%s](%s)", msg, url)
+		case atom.B:
+			fmt.Fprintf(c.w, "%c", '*')
+		case atom.Br:
+			fmt.Fprintf(c.w, "\n")
+		case atom.Img:
+			image, msg := parseImage(token)
+			fmt.Fprintf(c.w, "![%s](%s)", msg, image)
+		case atom.H1:
+			switch token.Type {
+			case html.StartTagToken:
+				fmt.Fprintf(c.w, "%c", '#')
+			case html.EndTagToken:
+				fmt.Fprintf(c.w, "%c", '\n')
+			}
+		case atom.H2:
+			switch token.Type {
+			case html.StartTagToken:
+				fmt.Fprintf(c.w, "%s", "##")
+			case html.EndTagToken:
+				fmt.Fprintf(c.w, "%c", '\n')
+			}
+		case atom.H3:
+			switch token.Type {
+			case html.StartTagToken:
+				fmt.Fprintf(c.w, "%s", "###")
+			case html.EndTagToken:
+				fmt.Fprintf(c.w, "%c", '\n')
+			}
+		case atom.H4:
+			switch token.Type {
+			case html.StartTagToken:
+				fmt.Fprintf(c.w, "%s", "####")
+			case html.EndTagToken:
+				fmt.Fprintf(c.w, "%c", '\n')
+			}
+		case atom.H5:
+			switch token.Type {
+			case html.StartTagToken:
+				fmt.Fprintf(c.w, "%s", "#####")
+			case html.EndTagToken:
+				fmt.Fprintf(c.w, "%c", '\n')
+			}
+		case atom.H6:
+			switch token.Type {
+			case html.StartTagToken:
+				fmt.Fprintf(c.w, "%s", "######")
+			case html.EndTagToken:
+				fmt.Fprintf(c.w, "%c", '\n')
+			}
+		//case atom.Ul
+		case atom.P:
+			if token.Type == html.StartTagToken {
+				fmt.Fprintf(c.w, "\n	")
+			}
+		case atom.S:
+			fmt.Fprintf(c.w, "-")
+		case atom.U:
+			fmt.Fprintf(c.w, "%c", '_')
+		}
+		if token.Type == html.TextToken {
+			fmt.Fprintf(c.w, "%s", escapeString(token.Data))
 		}
 	}
 }
@@ -68,4 +112,37 @@ func (c *HTMLCleaner) WriteString(msg string) (n int, err error) {
 
 func (c *HTMLCleaner) Close() {
 	c.w.Close()
+}
+
+func parseUrl(z *html.Tokenizer, token html.Token) (link, url string) {
+	for _, attr := range token.Attr {
+		if attr.Key == "href" {
+			url = attr.Val
+		}
+	}
+	for {
+		tt := z.Next()
+		switch tt {
+		case html.TextToken:
+			link = string(z.Text())
+		case html.EndTagToken:
+			z.Next()
+			return
+		case html.ErrorToken:
+			return
+		}
+	}
+	return 
+}
+
+func parseImage(token html.Token) (image, alt string) {
+	for _, attr := range token.Attr {
+		switch attr.Key {
+		case "src":
+			image = attr.Val
+		case "alt":
+			alt = attr.Val
+		}
+	}
+	return
 }
