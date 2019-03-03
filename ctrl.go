@@ -144,11 +144,38 @@ func (c *Control) Listen() error {
 		line := scanner.Text()
 		if line == "quit" {
 			close(c.done)
-	 		break
+		 	break
 		}
 		c.req <- line
 	}
 	close(c.req)
+	return nil
+}
+
+// Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctrl file is instantiated. It is safe to use this ctrl file once Start() returns
+func (c *Control) Start() error {
+	err := os.MkdirAll(c.rundir, 0755)
+	if err != nil {
+		return err
+	}
+	go sigwatch(c)
+	go dispatch(c)
+	r, err := newReader(path.Join(c.rundir, "ctrl"))
+	if err != nil {
+		return err
+	}
+	scanner := bufio.NewScanner(r)
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
+			if line == "quit" {
+				close(c.done)
+	 			break
+			}
+			c.req <- line
+		}
+		close(c.req)
+	}()
 	return nil
 }
 
