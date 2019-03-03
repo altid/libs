@@ -93,7 +93,9 @@ func (c *Control) Cleanup() {
 	os.RemoveAll(c.rundir)
 }
 
-// CreateBuffer - Helper function that creates a buffer of given name
+// CreateBuffer creates a buffer of given name, as well as symlinking your file as follows:
+`os.Symlink(path.Join(logdir, name), path.Join(rundir, name, doctype))`
+This logged file will persist across reboots
 func (c *Control) CreateBuffer(name, doctype string) error {
 	d := path.Join(c.rundir, name, doctype)
 	if _, err := os.Stat(path.Join(c.rundir, name)); os.IsNotExist(err) {
@@ -111,7 +113,7 @@ func (c *Control) CreateBuffer(name, doctype string) error {
 	return symlink(logfile, d)
 }
 
-// DeleteBuffer - Helper function that unlinks a document/buffer, and cleanly removes the directory
+// DeleteBuffer unlinks a document/buffer, and cleanly removes the directory
 // Will return an error if it's unable to unlink on plan9, or if the remove fails.
 func (c *Control) DeleteBuffer(name, doctype string) error {
 	d := path.Join(c.rundir, name, doctype)
