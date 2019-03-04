@@ -1,19 +1,21 @@
 package cleanmark
 
 import (
-	"io"
 	"fmt"
+	"io"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
 
-var empty struct {}
+var empty struct{}
+
+// HTMLCleaner wraps the underlying WriteCloser, and handles parsing HTML into ubqt-flavoured markdown, to the underlying writer.
 type HTMLCleaner struct {
 	w io.WriteCloser
 }
 
-// Return a cleaner ready to go for HTML	
+// Return a cleaner ready to go for HTML
 func NewHTMLCleaner(w io.WriteCloser) *HTMLCleaner {
 	return &HTMLCleaner{
 		w: w,
@@ -23,7 +25,7 @@ func NewHTMLCleaner(w io.WriteCloser) *HTMLCleaner {
 // Parse - This assumes properly formatted html
 // This will write properly formatted ubqt markup to the underlying writer
 // This returns any errors that it encounters, or EOF once it's exhausted the reader.
-// TODO: This parse is somewhat naive in how it handles a and img tags
+// TODO: This parse is somewhat naive in how it handles certain elements, and may miss important imformation from a and img tags.
 func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 	z := html.NewTokenizer(r)
 	for {
@@ -34,7 +36,7 @@ func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 		// TODO: we will add a few more types here
 		switch token.DataAtom {
 		case atom.A:
-			url, msg := parseUrl(z, token)	
+			url, msg := parseUrl(z, token)
 			fmt.Fprintf(c.w, "[%s](%s)", msg, url)
 		case atom.B:
 			fmt.Fprintf(c.w, "%c", '*')
@@ -101,15 +103,17 @@ func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 	}
 }
 
-// Write - Write normal strings to the underlying stream, unmodified
+// Write interface, simply writes the bytes to the underlying WriteCloser unmodified.
 func (c *HTMLCleaner) Write(msg []byte) (n int, err error) {
 	return c.w.Write(msg)
 }
 
+// This is the same as Write, except it accepts a string
 func (c *HTMLCleaner) WriteString(msg string) (n int, err error) {
 	return io.WriteString(c.w, msg)
 }
 
+// Close interface for the WriteCloser, this closes the underlying WriteCloser
 func (c *HTMLCleaner) Close() {
 	c.w.Close()
 }
@@ -132,7 +136,7 @@ func parseUrl(z *html.Tokenizer, token html.Token) (link, url string) {
 			return
 		}
 	}
-	return 
+	return
 }
 
 func parseImage(token html.Token) (image, alt string) {
