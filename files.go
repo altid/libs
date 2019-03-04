@@ -2,13 +2,13 @@ package fslib
 
 import (
 	"log"
-	"path"
 	"os"
+	"path"
 )
 
 type WriteCloser struct {
-	c *Control
-	fp *os.File
+	c      *Control
+	fp     *os.File
 	buffer string
 }
 
@@ -67,8 +67,8 @@ func newWriteCloser(c *Control, buffer, doctype string) *WriteCloser {
 			return nil
 		}
 		return &WriteCloser{
-			fp: fp,
-			c: c,
+			fp:     fp,
+			c:      c,
 			buffer: doc,
 		}
 	}
@@ -79,8 +79,8 @@ func newWriteCloser(c *Control, buffer, doctype string) *WriteCloser {
 		return nil
 	}
 	return &WriteCloser{
-		fp: fp,
-		c: c,
+		fp:     fp,
+		c:      c,
 		buffer: doc,
 	}
 }

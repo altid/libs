@@ -92,7 +92,7 @@ func event(c *Control, eventmsg string) error {
 	if err != nil {
 		return err
 	}
-	f.WriteString(eventmsg + "\n") 
+	f.WriteString(eventmsg + "\n")
 	return nil
 }
 
@@ -114,7 +114,7 @@ func symlink(logname, feedname string) error {
 }
 
 func unlink(feedname string) error {
-	if runtime.GOOS == "plan9" { 
+	if runtime.GOOS == "plan9" {
 		command := exec.Command("/bin/unmount", feedname)
 		return command.Run()
 	}
@@ -127,4 +127,3 @@ func validateString(test string) error {
 	}
 	return nil
 }
-

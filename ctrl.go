@@ -17,7 +17,7 @@ import (
 
 var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 
-// Ctrl - Interface must be fully satisfied by a file server. 
+// Ctrl - Interface must be fully satisfied by a file server.
 // Open is called when a control message starting with 'open' or 'join' is written to the ctrl file
 // Close is called when a control message starting with 'close or 'part' is written to the ctrl file
 // Default is called when any other control message is written to the ctrl file.
@@ -31,13 +31,13 @@ type Ctrl interface {
 }
 
 type Control struct {
-	rundir string
-	logdir string
+	rundir  string
+	logdir  string
 	doctype string
-	tabs []string
-	req chan string
-	done chan struct{}
-	ctrl Ctrl
+	tabs    []string
+	req     chan string
+	done    chan struct{}
+	ctrl    Ctrl
 }
 
 // CreateCtrlFile sets up a ready-to-listen ctrl file
@@ -56,13 +56,13 @@ func CreateCtrlFile(ctrl Ctrl, logdir, mtpt, service, doctype string) (*Control,
 		req := make(chan string)
 		done := make(chan struct{})
 		control := &Control{
-			rundir: rundir,
-			logdir: logdir,
+			rundir:  rundir,
+			logdir:  logdir,
 			doctype: doctype,
-			tabs: tab,
-			req: req,
-			done: done,
-			ctrl: ctrl,
+			tabs:    tab,
+			req:     req,
+			done:    done,
+			ctrl:    ctrl,
 		}
 		return control, nil
 	}
@@ -80,22 +80,22 @@ func (c *Control) Event(eventmsg string) error {
 // On plan9, it unbinds any file named 	"document" or "feed", prior to removing the directory itself.
 func (c *Control) Cleanup() {
 	if runtime.GOOS == "plan9" {
-		glob := path.Join(c.rundir, "*", c.doctype)		
+		glob := path.Join(c.rundir, "*", c.doctype)
 		files, err := filepath.Glob(glob)
 		if err != nil {
 			log.Print(err)
 		}
 		for _, f := range files {
 			command := exec.Command("/bin/unmount", f)
-			command.Run()	
+			command.Run()
 		}
 	}
 	os.RemoveAll(c.rundir)
 }
 
 // CreateBuffer creates a buffer of given name, as well as symlinking your file as follows:
-`os.Symlink(path.Join(logdir, name), path.Join(rundir, name, doctype))`
-This logged file will persist across reboots
+// `os.Symlink(path.Join(logdir, name), path.Join(rundir, name, doctype))`
+// This logged file will persist across reboots
 func (c *Control) CreateBuffer(name, doctype string) error {
 	d := path.Join(c.rundir, name, doctype)
 	if _, err := os.Stat(path.Join(c.rundir, name)); os.IsNotExist(err) {
@@ -106,7 +106,7 @@ func (c *Control) CreateBuffer(name, doctype string) error {
 	}
 	dfile, err := os.Create(d)
 	defer dfile.Close()
-	if err != nil { 
+	if err != nil {
 		return err
 	}
 	logfile := path.Join(c.logdir, name)
@@ -144,7 +144,7 @@ func (c *Control) Listen() error {
 		line := scanner.Text()
 		if line == "quit" {
 			close(c.done)
-		 	break
+			break
 		}
 		c.req <- line
 	}
@@ -152,7 +152,8 @@ func (c *Control) Listen() error {
 	return nil
 }
 
-// Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctrl file is instantiated. It is safe to use this ctrl file once Start() returns
+// Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctrl file is instantiated.
+// It is safe to use this ctrl file once Start() returns
 func (c *Control) Start() error {
 	err := os.MkdirAll(c.rundir, 0755)
 	if err != nil {
@@ -170,7 +171,7 @@ func (c *Control) Start() error {
 			line := scanner.Text()
 			if line == "quit" {
 				close(c.done)
-	 			break
+				break
 			}
 			c.req <- line
 		}
@@ -212,14 +213,14 @@ func sigwatch(c *Control) {
 		switch sig {
 		case syscall.SIGKILL, syscall.SIGINT:
 			c.Cleanup()
-		//case syscall.SIGUSR
+			//case syscall.SIGUSR
 		}
 	}
 }
 
 func tabs(c *Control) {
 	// Create truncates and opens file in a single step, utilize this.
-	file := path.Join(c.rundir, "tabs")	
+	file := path.Join(c.rundir, "tabs")
 	f, err := os.Create(file)
 	defer f.Close()
 	if err != nil {
@@ -236,7 +237,7 @@ func dispatch(c *Control) {
 	// If open is requested on file which already exists, no-op
 	for {
 		select {
-		case line := <- c.req:
+		case line := <-c.req:
 			token := strings.Fields(line)
 			if len(token) < 1 {
 				continue
@@ -277,9 +278,8 @@ func dispatch(c *Control) {
 					continue
 				}
 			}
-		case <- c.done:
+		case <-c.done:
 			return
 		}
 	}
 }
-
