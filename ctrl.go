@@ -2,6 +2,7 @@ package fslib
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -17,14 +18,14 @@ import (
 
 var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 
-// Ctrl - Interface must be fully satisfied by a file server.
+// Controller
 // Open is called when a control message starting with 'open' or 'join' is written to the ctrl file
 // Close is called when a control message starting with 'close or 'part' is written to the ctrl file
 // Default is called when any other control message is written to the ctrl file.
 // When Open is called, a file will be created with a path of `mountpoint/msg/document (or feed)`, containing initially a file named what you've set doctype to.. Calls to open are expected to populate that file, as well as create any supplementary files needed, such as title, sidebar, status, input, etc
 // The main document or feed file is also symlinked into the given log directory, under service/msgs, so for example, an expensive parse would only have to be completed once for a given request, even across seperate runs; or a chat log could have history from previous sessions accessible.
 // The message provided to all three functions is all of the message, less 'open', 'join', 'close', or 'part'.
-type Ctrl interface {
+type Controller interface {
 	Open(c *Control, msg string) error
 	Close(c *Control, msg string) error
 	Default(c *Control, msg string) error
@@ -37,7 +38,7 @@ type Control struct {
 	tabs    []string
 	req     chan string
 	done    chan struct{}
-	ctrl    Ctrl
+	ctrl    Controller
 }
 
 // CreateCtrlFile sets up a ready-to-listen ctrl file
@@ -45,7 +46,7 @@ type Control struct {
 // mtpt is the directory to create the file system in
 // service is the subdirectory inside mtpt for the runtime fs
 // This will return an error if a ctrl file exists at the given directory, or if doctype is invalid.
-func CreateCtrlFile(ctrl Ctrl, logdir, mtpt, service, doctype string) (*Control, error) {
+func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Control, error) {
 	if doctype != "document" && doctype != "feed" {
 		return nil, fmt.Errorf("Unknown doctype: %s", doctype)
 	}
@@ -55,7 +56,7 @@ func CreateCtrlFile(ctrl Ctrl, logdir, mtpt, service, doctype string) (*Control,
 		var tab []string
 		req := make(chan string)
 		done := make(chan struct{})
-		control := &Control{
+		c := &Control{
 			rundir:  rundir,
 			logdir:  logdir,
 			doctype: doctype,
@@ -64,7 +65,7 @@ func CreateCtrlFile(ctrl Ctrl, logdir, mtpt, service, doctype string) (*Control,
 			done:    done,
 			ctrl:    ctrl,
 		}
-		return control, nil
+		return c, nil
 	}
 	return nil, fmt.Errorf("Control file already exist at %s", rundir)
 }
@@ -153,31 +154,33 @@ func (c *Control) Listen() error {
 }
 
 // Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctrl file is instantiated.
-// It is safe to use this ctrl file once Start() returns
-func (c *Control) Start() error {
+// This provides a context.Context that can be used for cancellations
+func (c *Control) Start() (context.Context, error) {
 	err := os.MkdirAll(c.rundir, 0755)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	go sigwatch(c)
 	go dispatch(c)
 	r, err := newReader(path.Join(c.rundir, "ctrl"))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	scanner := bufio.NewScanner(r)
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
+		defer close(c.req)
+		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			line := scanner.Text()
 			if line == "quit" {
+				cancel()
 				close(c.done)
 				break
 			}
 			c.req <- line
 		}
-		close(c.req)
 	}()
-	return nil
+	return ctx, nil
 }
 
 func (c *Control) pushTab(tabname string) error {
