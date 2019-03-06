@@ -12,8 +12,8 @@ type Handler interface {
 }
 
 type Input struct {
-	h Handler
-	r *reader
+	h     Handler
+	r     *reader
 	fname string
 }
 
@@ -31,8 +31,8 @@ func NewInput(h Handler, dir, buffer string) (*Input, error) {
 		return nil, err
 	}
 	i := &Input{
-		h: h,
-		r: r,
+		h:     h,
+		r:     r,
 		fname: inpath,
 	}
 	return i, nil

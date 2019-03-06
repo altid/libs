@@ -110,6 +110,9 @@ func (c *Control) CreateBuffer(name, doctype string) error {
 	if err != nil {
 		return err
 	}
+	if c.logdir == "none" {
+		return nil
+	}
 	logfile := path.Join(c.logdir, name)
 	return symlink(logfile, d)
 }
@@ -118,9 +121,11 @@ func (c *Control) CreateBuffer(name, doctype string) error {
 // Will return an error if it's unable to unlink on plan9, or if the remove fails.
 func (c *Control) DeleteBuffer(name, doctype string) error {
 	d := path.Join(c.rundir, name, doctype)
-	err := unlink(d)
-	if err != nil {
-		return err
+	if c.logdir != "none" {
+		err := unlink(d)
+		if err != nil {
+			return err
+		}
 	}
 	return os.RemoveAll(path.Join(c.rundir, name))
 }
