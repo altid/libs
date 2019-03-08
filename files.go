@@ -21,32 +21,27 @@ func (w *WriteCloser) Close() error {
 	return w.fp.Close()
 }
 
-// WriteStatus - Helper function to set the contents of a given buffers' status file, which will as well send the correct event to the events file
+// StatusWriter returns a WriterCloser attached to a buffers status file, which will as well send the correct event to the events file
 func (c *Control) StatusWriter(buffer string) *WriteCloser {
 	return newWriteCloser(c, buffer, "status")
 }
 
-// WriteSidebar - Helper function to set the contents of a given buffers' sidebar file, which will as well send the correct event to the events file
+// SideWriter returns a WriteCloser attached to a buffers sidebar file, which will as well send the correct event to the events file
 func (c *Control) SideWriter(buffer string) *WriteCloser {
 	return newWriteCloser(c, buffer, "sidebar")
 }
 
-// WriteTitle - Helper function to set the contents of a given buffers' title file, which will as well send the correct event to the events file
+// TitleWriter returns a WriteCloser attached to a buffers title file, which will as well send the correct event to the events file
 func (c *Control) TitleWriter(buffer string) *WriteCloser {
 	return newWriteCloser(c, buffer, "title")
 }
 
-// WriteMain - Helper function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file
-// In contrast to MainWriter, this replaces the contents outright of the given file
+// MainWriter returns a WriteCloser attached to a buffers feed/document function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file
 func (c *Control) MainWriter(buffer, doctype string) *WriteCloser {
-	doc := path.Join(c.rundir, buffer, doctype)
-	if _, err := os.Stat(doc); os.IsNotExist(err) {
-		return nil
-	}
 	return newWriteCloser(c, buffer, doctype)
 }
 
-// Remove - Helper function to remove files in a given buffer by name. If the file doesn't exist, this is a no-op
+// Remove removes a buffer from the runtime dir. If the buffer doesn't exist, this is a no-op
 func (c *Control) Remove(buffer, filename string) error {
 	doc := path.Join(c.rundir, buffer, filename)
 	// Don't try to delete that which isn't there
@@ -57,7 +52,6 @@ func (c *Control) Remove(buffer, filename string) error {
 	return os.Remove(doc)
 }
 
-// TODO: Wrap Write/Close methods on our own type, return that instead.
 func newWriteCloser(c *Control, buffer, doctype string) *WriteCloser {
 	doc := path.Join(c.rundir, buffer, doctype)
 	if doctype == "feed" {

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -101,24 +102,18 @@ func (c *Control) Cleanup() {
 func (c *Control) CreateBuffer(name, doctype string) error {
 	d := path.Join(c.rundir, name, doctype)
 	_, err := os.Stat(path.Join(c.rundir, name))
+	if os.IsNotExist(err) {
+		os.MkdirAll(path.Join(c.rundir, name), 0755)	
+	}
 	if err == nil {
 		return nil
 	}
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(path.Join(c.rundir, name), 0755)
-		if err != nil {
-			return err
-		}	
-	}
-	dfile, err := os.Create(d)
-	defer dfile.Close()
-	if err != nil {
-		return err
-	}
+	ioutil.WriteFile(d, []byte("Welcome!\n"), 0644)
 	if c.logdir == "none" {
 		return nil
 	}
 	logfile := path.Join(c.logdir, name)
+	c.pushTab(name)
 	return symlink(logfile, d)
 }
 
