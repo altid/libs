@@ -98,7 +98,7 @@ func event(c *Control, eventmsg string) error {
 
 func symlink(logname, feedname string) error {
 	if _, err := os.Stat(logname); os.IsNotExist(err) {
-		os.MkdirAll(path.Base(logname), 0755)
+		os.MkdirAll(path.Dir(logname), 0755)
 		fp, err := os.Create(logname)
 		defer fp.Close()
 		if err != nil {
@@ -106,7 +106,6 @@ func symlink(logname, feedname string) error {
 		}
 	}
 	if runtime.GOOS == "plan9" {
-		// TODO: Track each linked file so we can unbind on Cleanup()?
 		command := exec.Command("/bin/bind", logname, feedname)
 		return command.Run()
 	}

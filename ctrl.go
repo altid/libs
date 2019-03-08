@@ -97,13 +97,18 @@ func (c *Control) Cleanup() {
 // CreateBuffer creates a buffer of given name, as well as symlinking your file as follows:
 // `os.Symlink(path.Join(logdir, name), path.Join(rundir, name, doctype))`
 // This logged file will persist across reboots
+// Calling CreateBuffer on a directory that already exists will return nil
 func (c *Control) CreateBuffer(name, doctype string) error {
 	d := path.Join(c.rundir, name, doctype)
-	if _, err := os.Stat(path.Join(c.rundir, name)); os.IsNotExist(err) {
+	_, err := os.Stat(path.Join(c.rundir, name))
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
 		err = os.MkdirAll(path.Join(c.rundir, name), 0755)
 		if err != nil {
 			return err
-		}
+		}	
 	}
 	dfile, err := os.Create(d)
 	defer dfile.Close()

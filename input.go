@@ -19,6 +19,7 @@ type Input struct {
 
 // NewInput takes a Handler and the name of a buffer.
 // This function returns an Input, or nil as well as any errors encountered
+// NewInput does _not_ send an event at this time. This is to allow someone to use either Input or Ctrl, without requiring the other.
 func NewInput(h Handler, dir, buffer string) (*Input, error) {
 	// make directory for input on path
 	err := os.MkdirAll(dir, 0755)
