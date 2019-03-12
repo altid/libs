@@ -2,4 +2,4 @@
 
 `go get github.com/ubqt-systems/cleanmark`
 
-[godocs](https://godoc.org/ubqt-systems/cleanmark)
+https://godoc.org/ubqt-systems/cleanmark
