@@ -5,6 +5,28 @@ import (
 	"io"
 	"strings"
 )
+// Color represents a color markdown element
+type Color struct {
+	code []byte
+	msg []byte
+}
+
+// NewColor returns a Color
+// Returns error if color code is invalid
+func NewColor(code, msg []byte) (*Color, error) {
+	if err := validateColorCode(code); err != nil {
+		return nil, err
+	}
+	color := &Color{
+		code: code,
+		msg:  msg,
+	}
+	return color, nil
+}
+
+func (c *Color) String {
+	return fmt.Sprintf("[%s](\%%s)", c.msg, c.code)
+}
 
 // Url represents a link markdown element
 type Url struct {
@@ -28,8 +50,6 @@ func NewUrl(link, msg []byte) (*Url, error) {
 	return url, nil
 }
 
-// Implements Stringer interface
-// Calling string will return the correctly markdown-formatted URL element
 // The form will be "[msg](link)"
 func (u *Url) String() string {
 	return fmt.Sprintf("[%s](%s)", u.msg, u.link)
@@ -67,9 +87,6 @@ func NewImage(path, msg, alt []byte) (*Image, error) {
 	return img, nil
 }
 
-// Implements Stringer interface
-// Calling string will return the correctly markdown-formatted image element
-// `![alt](path "msg")`
 func (i *Image) String() string {
 	return fmt.Sprintf("![%s](%s \"%s\")", i.alt, i.path, i.msg)
 }
@@ -181,4 +198,8 @@ func escape(msg []byte) []byte {
 func escapeString(msg string) string {
 	escaped := escape([]byte(msg))
 	return string(escaped)
+}
+
+func validateColorCode(code []byte) bool {
+	return true
 }
