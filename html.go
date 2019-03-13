@@ -15,17 +15,14 @@ type HTMLCleaner struct {
 	w io.WriteCloser
 }
 
-// Return a cleaner ready to go for HTML
 func NewHTMLCleaner(w io.WriteCloser) *HTMLCleaner {
 	return &HTMLCleaner{
 		w: w,
 	}
 }
 
-// Parse - This assumes properly formatted html
-// This will write properly formatted ubqt markup to the underlying writer
-// This returns any errors that it encounters, or EOF once it's exhausted the reader.
-// TODO: This parse is somewhat naive in how it handles certain elements, and may miss important imformation from a and img tags.
+// Parse - This assumes properly formatted html, and will return an error from the underlying html tokenizer if encountered
+// Parse writes properly formatted ubqt markup to the underlying writer, translating many elements into their markdown form. This will be considered lossy, as the token metadata is ignored in all cases.
 func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 	z := html.NewTokenizer(r)
 	for {
@@ -103,17 +100,17 @@ func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 	}
 }
 
-// Write interface, simply writes the bytes to the underlying WriteCloser unmodified.
+// Write calls the underlying WriteCloser's Write method. It does not modify the contents of `msg`
 func (c *HTMLCleaner) Write(msg []byte) (n int, err error) {
 	return c.w.Write(msg)
 }
 
-// This is the same as Write, except it accepts a string
+// WriteString is the same as Write, except it accepts a string instead of bytes.
 func (c *HTMLCleaner) WriteString(msg string) (n int, err error) {
 	return io.WriteString(c.w, msg)
 }
 
-// Close interface for the WriteCloser, this closes the underlying WriteCloser
+// Close calls the underlying WriteCloser's Close method.
 func (c *HTMLCleaner) Close() {
 	c.w.Close()
 }
