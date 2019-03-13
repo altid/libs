@@ -3,8 +3,16 @@ package cleanmark
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 )
+
+var (
+	hex3 = regexp.MustCompile("#[A-F]{3}")
+	hex6 = regexp.MustCompile("#[A-F]{6}")
+	code = regexp.MustCompile("red|orange|yellow|green|blue|purple|white|black")
+)
+
 // Color represents a color markdown element
 type Color struct {
 	code []byte
@@ -14,8 +22,8 @@ type Color struct {
 // NewColor returns a Color
 // Returns error if color code is invalid
 func NewColor(code, msg []byte) (*Color, error) {
-	if err := validateColorCode(code); err != nil {
-		return nil, err
+	if ! validateColorCode(code) {
+		return nil, fmt.Errorf("Invalid color code %s\n", code)
 	}
 	color := &Color{
 		code: code,
@@ -24,14 +32,15 @@ func NewColor(code, msg []byte) (*Color, error) {
 	return color, nil
 }
 
-func (c *Color) String {
-	return fmt.Sprintf("[%s](\%%s)", c.msg, c.code)
+func (c *Color) String() string {
+	return fmt.Sprintf("[%s](%%%s)", c.msg, c.code)
 }
 
 // Url represents a link markdown element
 type Url struct {
 	link []byte
 	msg  []byte
+}
 
 // NewUrl returns a Url
 // If `msg` is empty, the contents of `link` will be used
@@ -67,16 +76,16 @@ type Image struct {
 // If both `img` and `alt` are empty, an error will be returned
 // If either `img` or `alt` are empty, one will be substituted for the other
 func NewImage(path, msg, alt []byte) (*Image, error) {
-	if len(alt) == 0 && if len(msg) == 0 {
+	if len(alt) == 0 && len(msg) == 0 {
 		return nil, fmt.Errorf("No img or alt provided for path %s\n", path)
 	}
 	if len(path) == 0 {
 		return nil, fmt.Errorf("No path provided for image")
 	}
-	if len(alt == 0 {
+	if len(alt) == 0 {
 		alt = msg
 	}
-	if len(msg == 0 {
+	if len(msg) == 0 {
 		msg = alt
 	}
 	img := &Image{
@@ -200,6 +209,14 @@ func escapeString(msg string) string {
 	return string(escaped)
 }
 
-func validateColorCode(code []byte) bool {
-	return true
+func validateColorCode(b []byte) bool {
+	switch {
+	case code.Match(b):
+		return true
+	case hex3.Match(b):
+		return true
+	case hex6.Match(b):
+		return true
+	}
+	return false
 }

@@ -15,7 +15,11 @@ HTMLCleaner wraps a WriteCloser, and is used to parse html streams into their re
 
 Markdown
 
-Ubqt markdown is a variant of github's markdown, with an additional element used to define colors: [text](%colorcode)`. For more information about github's markdown, visit https://github.github.com/gfm
+Ubqt markdown is a variant of github's markdown, with an additional element used to define colors: 
+
+	[text](%colorcode)
+
+For more information about github's markdown, visit https://github.github.com/gfm
 
 */
 // A valid colorcode is anything from the following list:
