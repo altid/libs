@@ -193,6 +193,30 @@ func (c *Cleaner) Close() {
 	c.w.Close()
 }
 
+// Notifier is a type provided for use with fslib's Notification function
+type Notifier struct {
+	buff string
+	from string
+	msg string
+}
+
+// NewNotifier returns a notifier ready for parsing
+func NewNotifier(path, from, msg string) *Notifier {
+	return &Notifier{
+		buff: path,
+		from: from,
+		msg: msg,
+	}
+}
+
+// Parse will properly clean the markdown for the `from` and `msg` elements
+// As well as format the lines to fit the notification idioms expected by clients
+func (n *Notifier) Parse() (string, string, string) {
+	from := "# " + escapeString(n.from)
+ 	msg := escapeString(n.msg)
+	return n.buff, from, msg
+}
+
 func doWritef(w io.WriteCloser, format string, args ...interface{}) (n int, err error) {
 	for n := range args {
 		switch f := args[n].(type) {
