@@ -7,22 +7,37 @@ import (
 	"strings"
 )
 
+const (
+	Red    = "red"
+	Orange = "orange"
+	Yellow = "yellow"
+	Green  = "green"
+	Blue   = "blue"
+	Purple = "purple"
+	White  = "white"
+	Black  = "black"
+	Brown  = "brown"
+	Grey   = "grey"
+)
+
 var (
 	hex3 = regexp.MustCompile("#[A-F]{3}")
 	hex6 = regexp.MustCompile("#[A-F]{6}")
-	code = regexp.MustCompile("red|orange|yellow|green|blue|purple|white|black")
+	code = regexp.MustCompile("red|orange|yellow|green|blue|purple|white|black|brown|grey")
 )
 
 // Color represents a color markdown element
+// Valid values for code are any [cleanmark constants], or color strings in hexidecimal form.
+// #000000 to #FFFFFF, as well as #000 to #FFF. No alpha channel support currently exists.
 type Color struct {
-	code []byte
-	msg []byte
+	code string
+	msg  []byte
 }
 
 // NewColor returns a Color
 // Returns error if color code is invalid
-func NewColor(code, msg []byte) (*Color, error) {
-	if ! validateColorCode(code) {
+func NewColor(code string, msg []byte) (*Color, error) {
+	if !validateColorCode(code) {
 		return nil, fmt.Errorf("Invalid color code %s\n", code)
 	}
 	color := &Color{
@@ -33,7 +48,7 @@ func NewColor(code, msg []byte) (*Color, error) {
 }
 
 func (c *Color) String() string {
-	return fmt.Sprintf("[%s](%%%s)", c.msg, c.code)
+	return fmt.Sprintf("%%[%s](%s)", c.msg, c.code)
 }
 
 // Url represents a link markdown element
@@ -209,13 +224,13 @@ func escapeString(msg string) string {
 	return string(escaped)
 }
 
-func validateColorCode(b []byte) bool {
+func validateColorCode(s string) bool {
 	switch {
-	case code.Match(b):
+	case code.MatchString(s):
 		return true
-	case hex3.Match(b):
+	case hex3.MatchString(s):
 		return true
-	case hex6.Match(b):
+	case hex6.MatchString(s):
 		return true
 	}
 	return false

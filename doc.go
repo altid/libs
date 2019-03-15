@@ -15,13 +15,10 @@ HTMLCleaner wraps a WriteCloser, and is used to parse html streams into their re
 
 Markdown
 
-Ubqt-flavored markdown is described in more detail in the official document https://ubqt-systems.github.io/markdown.html 
+Ubqt-flavored markdown is described in more detail in the official document https://ubqt-systems.github.io/markdown.html
 
 Common markdown elements are generally easier to insert by hand,but several helper types are provided for more complex elements: color, url, and image; which are described in greater detail in greater detail below.
 
 */
 
 package cleanmark
-
-
-
