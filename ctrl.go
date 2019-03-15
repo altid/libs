@@ -194,7 +194,15 @@ func (c *Control) Start() (context.Context, error) {
 
 // Notification appends the content of msg to a buffers notification file
 // Any errors encountered during file opening/creation will be returned
-func (c *Control) Notification(buff, msg string) error {
+// The canonical form of notification can be found in cleanmark's Notification type,
+// And the output of the Parse() method can be used directly here
+// For example
+//     ntfy, err := cleanmark.NewNotifier(buff, from, msg)
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+//     fslib.Notification(ntfy.Parse())
+func (c *Control) Notification(buff, from, msg string) error {
 	nfile := path.Join(c.rundir, buff, "notification")
 	if _, err := os.Stat(path.Dir(nfile)); os.IsNotExist(err) {
 		os.MkdirAll(path.Dir(nfile), 0755)
@@ -204,7 +212,7 @@ func (c *Control) Notification(buff, msg string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(f, "%s\n", msg)
+	fmt.Fprintf(f, "%s\n%s\n", from, msg)
 	return nil
 }
 
