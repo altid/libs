@@ -15,28 +15,10 @@ HTMLCleaner wraps a WriteCloser, and is used to parse html streams into their re
 
 Markdown
 
-Ubqt markdown is a variant of github's markdown, with an additional element used to define colors: 
+Ubqt-flavored markdown is described in more detail in the official document https://ubqt-systems.github.io/markdown.html 
 
-	%[text](colorcode)
+Common markdown elements are generally easier to insert by hand,but several helper types are provided for more complex elements: color, url, and image; which are described in greater detail in greater detail below.
 
-For more information about github's markdown, visit https://github.github.com/gfm
-
-*/
-// A valid colorcode is anything from the following list:
-// 6-digit hex code (no alpha chan support currently)
-/*
-	Example:
-	#123456
-	#228822
-
-*/
-// 3-digit hex code
-/*
-	Example:
-	#123
-	#282
-
-Additionally, cleanmark defines a set of constants for common colors, which can be used.
 */
 
 package cleanmark
