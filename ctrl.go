@@ -139,12 +139,14 @@ func (c *Control) Listen() error {
 	if err != nil {
 		return err
 	}
+	cfile := path.Join(c.rundir, "ctrl")
 	go sigwatch(c)
 	go dispatch(c)
-	r, err := newReader(path.Join(c.rundir, "ctrl"))
+	r, err := newReader(cfile)
 	if err != nil {
 		return err
 	}
+	event(c, cfile)
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -165,9 +167,11 @@ func (c *Control) Start() (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfile := path.Join(c.rundir, "ctrl")
 	go sigwatch(c)
 	go dispatch(c)
-	r, err := newReader(path.Join(c.rundir, "ctrl"))
+	event(c, cfile)
+	r, err := newReader(cfile)
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +190,22 @@ func (c *Control) Start() (context.Context, error) {
 		}
 	}()
 	return ctx, nil
+}
+
+// Notification appends the content of msg to a buffers notification file
+// Any errors encountered during file opening/creation will be returned
+func (c *Control) Notification(buff, msg string) error {
+	nfile := path.Join(c.rundir, buff, "notification")
+	if _, err := os.Stat(path.Dir(nfile)); os.IsNotExist(err) {
+		os.MkdirAll(path.Dir(nfile), 0755)
+	}
+	f, err := os.OpenFile(nfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(f, "%s\n", msg)
+	return nil
 }
 
 func (c *Control) pushTab(tabname string) error {
