@@ -30,7 +30,7 @@ func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 			return z.Err()
 		}
 		token := z.Token()
-		// TODO: we will add a few more types here
+		// TODO halfwit: Research and handle more html elements
 		switch token.DataAtom {
 		case atom.A:
 			url, msg := parseUrl(z, token)

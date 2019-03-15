@@ -17,24 +17,12 @@ Markdown
 
 Ubqt markdown is a variant of github's markdown, with an additional element used to define colors: 
 
-	[text](%colorcode)
+	%[text](colorcode)
 
 For more information about github's markdown, visit https://github.github.com/gfm
 
 */
 // A valid colorcode is anything from the following list:
-/*
-
-	red
-	orange
-	yellow
-	green
-	blue
-	white
-	black
-	grey
-
-*/
 // 6-digit hex code (no alpha chan support currently)
 /*
 	Example:
@@ -47,7 +35,10 @@ For more information about github's markdown, visit https://github.github.com/gf
 	Example:
 	#123
 	#282
+
+Additionally, cleanmark defines a set of constants for common colors, which can be used.
 */
+
 package cleanmark
 
 
