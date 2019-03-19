@@ -113,7 +113,10 @@ func (c *Control) CreateBuffer(name, doctype string) error {
 		return nil
 	}
 	logfile := path.Join(c.logdir, name)
-	c.pushTab(name)
+	err = c.pushTab(name)
+	if err != nil {
+		return err
+	}
 	return symlink(logfile, d)
 }
 
@@ -127,7 +130,22 @@ func (c *Control) DeleteBuffer(name, doctype string) error {
 			return err
 		}
 	}
-	return os.RemoveAll(path.Join(c.rundir, name))
+	defer os.RemoveAll(path.Join(c.rundir, name))
+	err := c.popTab(name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// HasBuffer returns whether or not a buffer is present in the current control session
+func (c *Control) HasBuffer(name, doctype string) bool {
+	d := path.Join(c.rundir, name, doctype)
+	 _, err := os.Stat(d)
+	if os.IsNotExist(err) {
+		return false	
+	}
+	return true
 }
 
 // Listen creates a file named "ctrl" inside RunDirectory, after making sure the directory exists
@@ -211,7 +229,8 @@ func (c *Control) Notification(buff, from, msg string) error {
 	defer f.Close()
 	if err != nil {
 		return err
-	}
+	}	
+	event(c, nfile)
 	fmt.Fprintf(f, "%s\n%s\n", from, msg)
 	return nil
 }
@@ -223,7 +242,7 @@ func (c *Control) pushTab(tabname string) error {
 	}
 	for n := range c.tabs {
 		if c.tabs[n] == tabname {
-			return fmt.Errorf("entry exists: %s", tabname)
+			return fmt.Errorf("entry already exists: %s", tabname)
 		}
 	}
 	c.tabs = append(c.tabs, tabname)
@@ -288,21 +307,11 @@ func dispatch(c *Control) {
 					log.Print(err)
 					continue
 				}
-				err = c.pushTab(token[1])
-				if err != nil {
-					log.Print(err)
-					continue
-				}
 			case "close":
 				if len(token) < 2 {
 					continue
 				}
 				err := c.ctrl.Close(c, token[1])
-				if err != nil {
-					log.Print(err)
-					continue
-				}
-				err = c.popTab(token[1])
 				if err != nil {
 					log.Print(err)
 					continue
