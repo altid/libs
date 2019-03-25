@@ -133,7 +133,6 @@ func parseUrl(z *html.Tokenizer, token html.Token) (link, url string) {
 			return
 		}
 	}
-	return
 }
 
 func parseImage(token html.Token) (image, alt string) {
