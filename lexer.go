@@ -13,10 +13,9 @@ const (
 	UrlText
 	ImagePath
 	ImageText
+	ImageLink
 	EOF
 )
-
-// TODO: NewLexer(src io.Reader)
 
 type stateFn func(*Lexer) stateFn
 
@@ -39,9 +38,10 @@ func NewLexer(src []byte) *Lexer {
 }
 
 // Item is returned from a call to Next()
+// ItemType will be an ItemType
 type Item struct {
-	ItemType   byte
-	Data   []byte
+	ItemType byte
+	Data     []byte
 }
 
 // Next() returns the next Item from the tokenizer
@@ -86,16 +86,16 @@ func lexText(l *Lexer) stateFn {
 			return lexBack		
 		case '%':
 			return lexMaybeColor
-/*
 		case '[':
 			return lexMaybeUrl
+
 		case '!':
 			return lexMaybeImage
-*/
 		}
 	}
 }
 
+// TODO: We want to hit all markdown tokens that aren't escaped, so this becomes maybeEscaped
 func lexBack(l *Lexer) stateFn {
 	l.ignore()
 	l.accept("\\")
@@ -130,6 +130,9 @@ func lexColorText(l *Lexer) stateFn {
 			l.ignore()
 			return lexColorCode
   		case '\\':
+			l.backup()
+			l.emit(ColorText)
+			l.accept("\\")
 			l.ignore()
 			l.accept("\\")
 		}
@@ -150,13 +153,152 @@ func lexColorCode(l *Lexer) stateFn {
 }
 
 func lexMaybeUrl(l *Lexer) stateFn {
-	l.emit(EOF)
-	return nil
+	l.ignore()
+	switch l.nextChar() {
+	case EOF:
+		l.emit(EOF)
+		return nil
+	case '!':
+		return lexImageLinkText
+	default:
+		return lexUrlText
+	}
+}
+
+func lexUrlText(l *Lexer) stateFn {
+	for {
+		if l.peek() == ']' {
+			l.emit(ImageText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case ']':
+			return lexUrlLink
+		}
+	}
+}
+
+func lexUrlLink(l *Lexer) stateFn {
+	l.acceptRun("](")
+	l.ignore()
+	for {
+		if l.peek() == ')' {
+			l.emit(UrlLink)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case ')':
+			l.accept(")")
+			l.ignore()
+			return lexText
+		}
+	}
+}
+
+// [![alt text](/path/to/image)](link)
+func lexImageLinkText(l *Lexer) stateFn {
+	l.acceptRun("[!")
+	l.ignore()
+	for {
+		if l.peek() == ']' {
+			l.emit(ImageText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case ']':
+			return lexImageLinkPath
+		}
+	}
+}
+
+func lexImageLinkPath(l *Lexer) stateFn {
+	l.acceptRun("](")
+	l.ignore()
+	for {
+		if l.peek() == ')' {
+			l.emit(ImagePath)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case ')':
+			return lexImageLink
+		}
+	}
+}
+
+func lexImageLink(l *Lexer) stateFn {
+	l.acceptRun(")](")
+	l.ignore()
+	for {
+		if  l.peek() == ')' {
+			l.emit(ImageLink)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case ')':
+			l.accept(")")
+			l.ignore()
+			return lexText
+		}
+	}
 }
 
 func lexMaybeImage(l *Lexer) stateFn {
-	l.emit(EOF)
-	return nil
+	switch l.nextChar() {
+	case EOF:
+		l.emit(EOF)
+		return nil
+	case '[':
+		return lexImageText
+	default:
+		return lexText
+	}
+}
+
+func lexImageText(l *Lexer) stateFn {
+	l.accept("[")
+	l.ignore()
+	for {
+		if l.peek() == ']' {
+			l.emit(ImageText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case ']':
+			return lexImagePath
+		}
+	}
+}
+
+func lexImagePath(l *Lexer) stateFn {
+	l.acceptRun("](")
+	l.ignore()
+	for {
+		if l.peek() == ')' {
+			l.emit(ImagePath)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case ')':
+			l.accept(")")
+			l.ignore()
+			return lexText
+		}
+	}
 }
 
 func (l *Lexer) emit(t byte) {
