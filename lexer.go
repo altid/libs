@@ -88,9 +88,16 @@ func lexText(l *Lexer) stateFn {
 			return lexMaybeColor
 		case '[':
 			return lexMaybeUrl
-
 		case '!':
 			return lexMaybeImage
+/*
+		case '*':
+			return lexMaybeBold
+		case '_':
+			return lexMaybeEmphasis
+		case '~':
+			return lexMaybeStrike
+*/
 		}
 	}
 }

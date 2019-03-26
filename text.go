@@ -234,7 +234,7 @@ func escape(msg []byte) []byte {
 	result := make([]byte, len(msg)*2)
 	for i, c := range msg {
 		switch c {
-		case '*', '#', '_', '-', '\\', '/', '(', ')', '`', '[', ']':
+		case '*', '#', '_', '-', '\\', '/', '(', ')', '`', '[', ']', '!':
 			result[i+offset] = '\\'
 			offset++
 		}
