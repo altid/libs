@@ -95,10 +95,9 @@ func lexText(l *Lexer) stateFn {
 	}
 }
 
-// TODO: We want to hit all markdown tokens that aren't escaped, so this becomes maybeEscaped
 func lexBack(l *Lexer) stateFn {
 	l.ignore()
-	l.accept("\\")
+	l.accept("\\([])*_-~`")
 	return lexText
 }
 
