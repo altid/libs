@@ -21,7 +21,7 @@ type stateFn func(*Lexer) stateFn
 
 // Lexer allows tokenizing of ubqt-flavored markdown for client-side parsers
 type Lexer struct {
-	src []byte
+	src   []byte
 	start int
 	width int
 	pos   int
@@ -31,7 +31,7 @@ type Lexer struct {
 
 func NewLexer(src []byte) *Lexer {
 	return &Lexer{
-		src: src,
+		src:   src,
 		items: make(chan Item, 2),
 		state: lexText,
 	}
@@ -83,28 +83,28 @@ func lexText(l *Lexer) stateFn {
 			l.emit(EOF)
 			return nil
 		case '\\':
-			return lexBack		
+			return lexBack
 		case '%':
 			return lexMaybeColor
 		case '[':
 			return lexMaybeUrl
 		case '!':
 			return lexMaybeImage
-/*
-		case '*':
-			return lexMaybeBold
-		case '_':
-			return lexMaybeEmphasis
-		case '~':
-			return lexMaybeStrike
-*/
+			/*
+				case '*':
+					return lexMaybeBold
+				case '_':
+					return lexMaybeEmphasis
+				case '~':
+					return lexMaybeStrike
+			*/
 		}
 	}
 }
 
 func lexBack(l *Lexer) stateFn {
 	l.ignore()
-	l.accept("\\([])*_-~`")
+	l.accept("\\!([])*_-~`")
 	return lexText
 }
 
@@ -135,7 +135,7 @@ func lexColorText(l *Lexer) stateFn {
 			l.accept("]")
 			l.ignore()
 			return lexColorCode
-  		case '\\':
+		case '\\':
 			l.backup()
 			l.emit(ColorText)
 			l.accept("\\")
@@ -244,7 +244,7 @@ func lexImageLink(l *Lexer) stateFn {
 	l.acceptRun(")](")
 	l.ignore()
 	for {
-		if  l.peek() == ')' {
+		if l.peek() == ')' {
 			l.emit(ImageLink)
 		}
 		switch l.nextChar() {

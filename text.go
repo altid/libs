@@ -197,7 +197,7 @@ func (c *Cleaner) Close() {
 type Notifier struct {
 	buff string
 	from string
-	msg string
+	msg  string
 }
 
 // NewNotifier returns a notifier ready for parsing
@@ -205,7 +205,7 @@ func NewNotifier(path, from, msg string) *Notifier {
 	return &Notifier{
 		buff: path,
 		from: from,
-		msg: msg,
+		msg:  msg,
 	}
 }
 
@@ -213,7 +213,7 @@ func NewNotifier(path, from, msg string) *Notifier {
 // As well as format the lines to fit the notification idioms expected by clients
 func (n *Notifier) Parse() (string, string, string) {
 	from := "# " + escapeString(n.from)
- 	msg := escapeString(n.msg)
+	msg := escapeString(n.msg)
 	return n.buff, from, msg
 }
 
