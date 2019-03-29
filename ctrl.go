@@ -23,7 +23,7 @@ var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 // Open is called when a control message starting with 'open' or 'join' is written to the ctrl file
 // Close is called when a control message starting with 'close or 'part' is written to the ctrl file
 // Default is called when any other control message is written to the ctrl file.
-// If a client writes a message to Default without a valid, opened `from` buffer it will return an error
+// Client messages to Default must come in the order, `cmd buffer msg...`, and to that effect any other formats behavior is undefined.
 // When Open is called, a file will be created with a path of `mountpoint/msg/document (or feed)`, containing initially a file named what you've set doctype to.. Calls to open are expected to populate that file, as well as create any supplementary files needed, such as title, sidebar, status, input, etc
 // The main document or feed file is also symlinked into the given log directory, under service/msgs, so for example, an expensive parse would only have to be completed once for a given request, even across seperate runs; or a chat log could have history from previous sessions accessible.
 // The message provided to all three functions is all of the message, less 'open', 'join', 'close', or 'part'.
