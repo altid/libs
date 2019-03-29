@@ -23,13 +23,14 @@ var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 // Open is called when a control message starting with 'open' or 'join' is written to the ctrl file
 // Close is called when a control message starting with 'close or 'part' is written to the ctrl file
 // Default is called when any other control message is written to the ctrl file.
+// If a client writes a message to Default without a valid, opened `from` buffer it will return an error
 // When Open is called, a file will be created with a path of `mountpoint/msg/document (or feed)`, containing initially a file named what you've set doctype to.. Calls to open are expected to populate that file, as well as create any supplementary files needed, such as title, sidebar, status, input, etc
 // The main document or feed file is also symlinked into the given log directory, under service/msgs, so for example, an expensive parse would only have to be completed once for a given request, even across seperate runs; or a chat log could have history from previous sessions accessible.
 // The message provided to all three functions is all of the message, less 'open', 'join', 'close', or 'part'.
 type Controller interface {
 	Open(c *Control, msg string) error
 	Close(c *Control, msg string) error
-	Default(c *Control, msg string) error
+	Default(c *Control, cmd, from, msg string) error
 }
 
 type Control struct {
@@ -305,7 +306,6 @@ func dispatch(c *Control) {
 				err := c.ctrl.Open(c, token[1])
 				if err != nil {
 					log.Print(err)
-					continue
 				}
 			case "close":
 				if len(token) < 2 {
@@ -314,13 +314,16 @@ func dispatch(c *Control) {
 				err := c.ctrl.Close(c, token[1])
 				if err != nil {
 					log.Print(err)
-					continue
 				}
 			default:
-				err := c.ctrl.Default(c, line)
+				if len(token) < 3 {
+					log.Print(fmt.Errorf("No command specified"))
+					continue
+				}
+				msg := strings.Join(token[2:], " ")
+				err := c.ctrl.Default(c, token[0], token[1], msg)
 				if err != nil {
 					log.Print(err)
-					continue
 				}
 			}
 		case <-c.done:
