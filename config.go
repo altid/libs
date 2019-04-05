@@ -7,14 +7,14 @@ import (
 	"github.com/mischief/ndb"
 )
 
-// GetLogDir returns a canonical directory for a user log, searching first ubqt.cfg
+// GetLogDir returns a canonical directory for a user log, searching first altid/config
 // If no entry is found or the file is missing, it will return a default path depending on the current operating system. Refer to UserShareDir documentation for what that is for your system
 func GetLogDir(service string) string {
 	confdir, err := UserConfDir()
 	if err != nil {
 		log.Fatal(err)
 	}
-	filePath := path.Join(confdir, "ubqt.cfg")
+	filePath := path.Join(confdir, "altid", "config")
 	conf, err := ndb.Open(filePath)
 	if err != nil {
 		return logDir(service)
@@ -31,5 +31,5 @@ func logDir(service string) string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return path.Join(userdir, "ubqt", service)
+	return path.Join(userdir, "altid", service)
 }

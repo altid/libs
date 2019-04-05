@@ -22,14 +22,17 @@ var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 // Controller
 // Open is called when a control message starting with 'open' or 'join' is written to the ctrl file
 // Close is called when a control message starting with 'close or 'part' is written to the ctrl file
+// Link is called when a control message starting with 'link' is written to the ctrl file
 // Default is called when any other control message is written to the ctrl file.
 // Client messages to Default must come in the order, `cmd buffer msg...`, and to that effect any other formats behavior is undefined.
 // When Open is called, a file will be created with a path of `mountpoint/msg/document (or feed)`, containing initially a file named what you've set doctype to.. Calls to open are expected to populate that file, as well as create any supplementary files needed, such as title, sidebar, status, input, etc
+// When Link is called, the content of the current buffer is expected to change, and the name of the current tab will be removed, replaced with msg
 // The main document or feed file is also symlinked into the given log directory, under service/msgs, so for example, an expensive parse would only have to be completed once for a given request, even across seperate runs; or a chat log could have history from previous sessions accessible.
 // The message provided to all three functions is all of the message, less 'open', 'join', 'close', or 'part'.
 type Controller interface {
 	Open(c *Control, msg string) error
 	Close(c *Control, msg string) error
+	Link(c *Control, from, msg string) error
 	Default(c *Control, cmd, from, msg string) error
 }
 
@@ -44,7 +47,7 @@ type Control struct {
 }
 
 // CreateCtrlFile sets up a ready-to-listen ctrl file
-// logdir is the directory to store copies of the contents of files created; specifically doctype. Logging any other type of data is left to implementation details, but is considered poor form for ubqt's design.
+// logdir is the directory to store copies of the contents of files created; specifically doctype. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
 // mtpt is the directory to create the file system in
 // service is the subdirectory inside mtpt for the runtime fs
 // This will return an error if a ctrl file exists at the given directory, or if doctype is invalid.
@@ -312,6 +315,14 @@ func dispatch(c *Control) {
 					continue
 				}
 				err := c.ctrl.Close(c, token[1])
+				if err != nil {
+					log.Print(err)
+				}
+			case "link":
+				if len(token) < 2 {
+					continue
+				}
+				err := c.ctrl.Link(c, token[1], token[2])
 				if err != nil {
 					log.Print(err)
 				}
