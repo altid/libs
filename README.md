@@ -1,5 +1,5 @@
-# Cleanmark - Convert text + html to ubqt-flavoured markdown
+# Cleanmark - Convert text + html to altid-flavoured markdown
 
-`go get github.com/ubqt-systems/cleanmark`
+`go get github.com/altid/cleanmark`
 
-https://godoc.org/ubqt-systems/cleanmark
+https://godoc.org/altid/cleanmark

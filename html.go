@@ -10,7 +10,7 @@ import (
 
 var empty struct{}
 
-// HTMLCleaner wraps the underlying WriteCloser, and handles parsing HTML into ubqt-flavoured markdown, to the underlying writer.
+// HTMLCleaner wraps the underlying WriteCloser, and handles parsing HTML into Altid-flavoured markdown, to the underlying writer.
 type HTMLCleaner struct {
 	w io.WriteCloser
 }
@@ -22,7 +22,7 @@ func NewHTMLCleaner(w io.WriteCloser) *HTMLCleaner {
 }
 
 // Parse - This assumes properly formatted html, and will return an error from the underlying html tokenizer if encountered
-// Parse writes properly formatted ubqt markup to the underlying writer, translating many elements into their markdown form. This will be considered lossy, as the token metadata is ignored in all cases.
+// Parse writes properly formatted Altid markup to the underlying writer, translating many elements into their markdown form. This will be considered lossy, as the token metadata is ignored in all cases.
 func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 	z := html.NewTokenizer(r)
 	for {
@@ -135,6 +135,8 @@ func parseUrl(z *html.Tokenizer, token html.Token) (link, url string) {
 	}
 }
 
+// TODO: Image links are a thing
+// < href="linkhere.html"><img src="link/to/image.jpg"/></a>
 func parseImage(token html.Token) (image, alt string) {
 	for _, attr := range token.Attr {
 		switch attr.Key {

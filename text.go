@@ -115,7 +115,7 @@ func (i *Image) String() string {
 	return fmt.Sprintf("![%s](%s \"%s\")", i.alt, i.path, i.msg)
 }
 
-// Cleaner represents a WriteCloser used to escape any ubqt markdown elements from a reader
+// Cleaner represents a WriteCloser used to escape any altid markdown elements from a reader
 type Cleaner struct {
 	w io.WriteCloser
 }

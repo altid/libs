@@ -19,7 +19,7 @@ const (
 
 type stateFn func(*Lexer) stateFn
 
-// Lexer allows tokenizing of ubqt-flavored markdown for client-side parsers
+// Lexer allows tokenizing of altid-flavored markdown for client-side parsers
 type Lexer struct {
 	src   []byte
 	start int
