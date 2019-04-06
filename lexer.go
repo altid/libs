@@ -1,6 +1,7 @@
 package cleanmark
 
 import (
+	"bytes"
 	"strings"
 	"unicode/utf8"
 )
@@ -36,6 +37,38 @@ func NewLexer(src []byte) *Lexer {
 		state: lexText,
 	}
 }
+
+// Bytes wil return a parsed byte array from the input with markdown elements cleaned
+// Any URL will be turned from `[some text](someurl)` to `some text (some url)`
+// IMG will be turned from `![some text](someimage)` to `some text (some image)`
+// color tags will be removed and the raw text will be output
+func (l *Lexer) Bytes() []byte {
+	var dst bytes.Buffer
+	for {
+		i := l.Next()
+		switch i.ItemType {
+		case EOF:
+			return dst.Bytes()
+		case ColorCode, ImagePath:
+			continue
+		case UrlLink, ImageLink:
+			dst.WriteString("( ")
+			dst.Write(i.Data)
+			dst.WriteString(" )")
+		default:
+			dst.Write(i.Data)
+		}
+	}
+	return dst.Bytes()
+}
+
+// String is the same as Bytes, but returns a string
+func (l *Lexer) String() string {
+	b := l.Bytes()
+	return string(b)
+}
+
+
 
 // Item is returned from a call to Next()
 // ItemType will be an ItemType
