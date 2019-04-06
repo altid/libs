@@ -51,6 +51,12 @@ func (i *Input) StartContext(ctx context.Context) error {
 	errorMsg := make(chan error)
 	defer close(inputMsg)
 	go func() {
+		// TODO(halfwit): Handle will be passed a type with access to a tokenizer
+		// It needs a call to String() in case someone wants a pretty printed version of
+		// Markdown input, such as removing %[some text](some color)
+		// or ![Some image](/path/to/image), leaving in `*some text*`
+		// and any particular thing like `_some text_` which are benign text elements
+		// https://github.com/altid/fslib/issues/2
 		for msg := range inputMsg {
 			err := i.h.Handle(i.fname, msg)
 			if err != nil {
