@@ -15,6 +15,9 @@ const (
 	ImagePath
 	ImageText
 	ImageLink
+	BoldText
+	StrikeText
+	EmphasisText
 	EOF
 )
 
@@ -68,8 +71,6 @@ func (l *Lexer) String() string {
 	return string(b)
 }
 
-
-
 // Item is returned from a call to Next()
 // ItemType will be an ItemType
 type Item struct {
@@ -117,19 +118,20 @@ func lexText(l *Lexer) stateFn {
 			return nil
 		case '\\':
 			return lexBack
-		case '%':
-			return lexMaybeColor
-		case '[':
-			return lexMaybeUrl
-		case '!':
-			return lexMaybeImage
-			/*
-				case '*':
-					return lexMaybeBold
-				case '_':
-					return lexMaybeEmphasis
-				case '~':
-					return lexMaybeStrike
+			/*case '*' '_' '~':
+			case '%':
+				return lexMaybeColor
+			case '[':
+				return lexMaybeUrl
+			case '!':
+				return lexMaybeImage
+				/*
+					case '*':
+						return lexMaybeBold
+					case '_':
+						return lexMaybeEmphasis
+					case '~':
+						return lexMaybeStrike
 			*/
 		}
 	}

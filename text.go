@@ -8,22 +8,28 @@ import (
 )
 
 const (
-	Red    = "red"
-	Orange = "orange"
-	Yellow = "yellow"
-	Green  = "green"
-	Blue   = "blue"
-	Purple = "purple"
-	White  = "white"
-	Black  = "black"
-	Brown  = "brown"
-	Grey   = "grey"
+	White      = "white"
+	Black      = "black"
+	Blue       = "blue"
+	Green      = "green"
+	Red        = "red"
+	Brown      = "brown"
+	Purple     = "purple"
+	Orange     = "orange"
+	Yellow     = "yellow"
+	LightGreen = "lightgreen"
+	Cyan       = "cyan"
+	LightCyan  = "lightcyan"
+	LightBlue  = "lightblue"
+	Pink       = "pink"
+	Grey       = "grey"
+	LightGrey  = "lightgrey"
 )
 
 var (
 	hex3 = regexp.MustCompile("#[A-F]{3}")
 	hex6 = regexp.MustCompile("#[A-F]{6}")
-	code = regexp.MustCompile("red|orange|yellow|green|blue|purple|white|black|brown|grey")
+	code = regexp.MustCompile("white|black|blue|green|red|brown|purple|orange|yellow|lightgreen|cyan|lightcyan|lightblue|pink|grey|lightgrey")
 )
 
 // Color represents a color markdown element
