@@ -1,4 +1,4 @@
-package cleanmark
+ package cleanmark
 
 import (
 	"bytes"
@@ -10,6 +10,10 @@ const (
 	NormalText byte = iota
 	ColorCode
 	ColorText
+	ColorTextBold
+	ColorTextUnderline
+	ColorTextStrike
+	ColortextEmphasis
 	UrlLink
 	UrlText
 	ImagePath
@@ -125,10 +129,10 @@ func lexText(l *Lexer) stateFn {
 			return lexMaybeUrl
 		case '!':
 			return lexMaybeImage
-/*
 		case '*':
-			return lexMaybeBold
-		case '/':
+			return lexBold
+/*
+		case '-':
 			return lexMaybeEmphasis
 		case '~':
 			return lexMaybeStrike
@@ -142,6 +146,30 @@ func lexText(l *Lexer) stateFn {
 func lexBack(l *Lexer) stateFn {
 	l.ignore()
 	l.accept("\\!([])*_-~`")
+	return lexText
+}
+
+// NOTE(halfwit): We would want to check for any possible token to switch state here in theory
+// For the time being we'll hope everything is escaped
+func lexBold(l *Lexer) stateFn {
+	l.backup()
+	l.emit(NormalText)
+	l.accept("*")
+	l.ignore()
+	for {
+		if l.peek() == '*' {
+			l.emit(BoldText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case '*':
+			l.accept("*")
+			l.ignore()
+			return lexText
+		}
+	}
 	return lexText
 }
 
@@ -161,7 +189,7 @@ func lexColorText(l *Lexer) stateFn {
 	l.accept("[")
 	l.ignore()
 	for {
-		if strings.IndexByte("]\\", l.peek()) >= 0 {
+		if strings.IndexByte("*]\\", l.peek()) >= 0 {
 			l.emit(ColorText)
 		}
 		switch l.nextChar() {
@@ -172,12 +200,45 @@ func lexColorText(l *Lexer) stateFn {
 			l.accept("]")
 			l.ignore()
 			return lexColorCode
-		case '\\':
-			l.backup()
-			l.emit(ColorText)
+		case '\\': // eat a single slash
 			l.accept("\\")
 			l.ignore()
+			l.accept("\\!([])*_-~`")
+		case '*':
+			l.accept("*")
+			l.ignore()
+			return lexColorBold
+		//case '_':
+		//case '~':
+		//case '/':
+		}
+	}
+}
+
+func lexColorBold(l *Lexer) stateFn {
+	for {
+		switch l.peek() {
+		case '*', '\\':
+			l.emit(ColorTextBold)
+		case ']':
+			l.emit(ColorText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case '\\':
 			l.accept("\\")
+			l.ignore()
+			l.accept("\\!([])*_-~`")
+		case '*':
+			l.accept("*")
+			l.ignore()
+			return lexColorText
+		case ']':
+			l.accept("]")
+			l.ignore()
+			return lexColorCode
 		}
 	}
 }
