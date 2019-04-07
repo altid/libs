@@ -18,6 +18,7 @@ const (
 	BoldText
 	StrikeText
 	EmphasisText
+	UnderlineText
 	EOF
 )
 
@@ -118,21 +119,22 @@ func lexText(l *Lexer) stateFn {
 			return nil
 		case '\\':
 			return lexBack
-			/*case '*' '_' '~':
-			case '%':
-				return lexMaybeColor
-			case '[':
-				return lexMaybeUrl
-			case '!':
-				return lexMaybeImage
-				/*
-					case '*':
-						return lexMaybeBold
-					case '_':
-						return lexMaybeEmphasis
-					case '~':
-						return lexMaybeStrike
-			*/
+		case '%':
+			return lexMaybeColor
+		case '[':
+			return lexMaybeUrl
+		case '!':
+			return lexMaybeImage
+/*
+		case '*':
+			return lexMaybeBold
+		case '/':
+			return lexMaybeEmphasis
+		case '~':
+			return lexMaybeStrike
+		case '_':
+			return lexMaybeUnderline
+*/
 		}
 	}
 }
@@ -186,7 +188,7 @@ func lexColorCode(l *Lexer) stateFn {
 	// Hex code
 	l.acceptRun("#1234567890")
 	// All valid chars from color code const
-	l.acceptRun("abcdeghiklnoprtuwy")
+	l.acceptRun("abcdefghijklmnopqrstuvwxyz")
 	l.emit(ColorCode)
 	l.accept(")")
 	l.ignore()
