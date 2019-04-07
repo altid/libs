@@ -5,10 +5,13 @@ import (
 	"context"
 	"os"
 	"path"
+
+	"github.com/altid/cleanmark"
 )
 
+
 type Handler interface {
-	Handle(path, msg string) error
+	Handle(path string, c *cleanmark.Lexer) error
 }
 
 type Input struct {
@@ -47,18 +50,13 @@ func (i *Input) Start() error {
 
 // StartContext is a variant of Start which takes a context for cancellation
 func (i *Input) StartContext(ctx context.Context) error {
-	inputMsg := make(chan string)
+	inputMsg := make(chan []byte)
 	errorMsg := make(chan error)
 	defer close(inputMsg)
 	go func() {
-		// TODO(halfwit): Handle will be passed a type with access to a tokenizer
-		// It needs a call to String() in case someone wants a pretty printed version of
-		// Markdown input, such as removing %[some text](some color)
-		// or ![Some image](/path/to/image), leaving in `*some text*`
-		// and any particular thing like `_some text_` which are benign text elements
-		// https://github.com/altid/fslib/issues/2
 		for msg := range inputMsg {
-			err := i.h.Handle(i.fname, msg)
+			l := cleanmark.NewLexer(msg)
+			err := i.h.Handle(i.fname, l)
 			if err != nil {
 				errorMsg <- err
 				return
@@ -72,7 +70,7 @@ func (i *Input) StartContext(ctx context.Context) error {
 			return nil
 		case err := <-errorMsg:
 			return err
-		case inputMsg <- scanner.Text():
+		case inputMsg <- scanner.Bytes():
 		}
 	}
 	return nil
