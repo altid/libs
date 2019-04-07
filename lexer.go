@@ -13,7 +13,7 @@ const (
 	ColorTextBold
 	ColorTextUnderline
 	ColorTextStrike
-	ColortextEmphasis
+	ColorTextEmphasis
 	UrlLink
 	UrlText
 	ImagePath
@@ -131,14 +131,12 @@ func lexText(l *Lexer) stateFn {
 			return lexMaybeImage
 		case '*':
 			return lexBold
-/*
 		case '-':
-			return lexMaybeEmphasis
+			return lexEmphasis
 		case '~':
-			return lexMaybeStrike
+			return lexStrike
 		case '_':
-			return lexMaybeUnderline
-*/
+			return lexUnderline
 		}
 	}
 }
@@ -147,6 +145,69 @@ func lexBack(l *Lexer) stateFn {
 	l.ignore()
 	l.accept("\\!([])*_-~`")
 	return lexText
+}
+
+func lexStrike(l *Lexer) stateFn {
+	l.backup()
+	l.emit(NormalText)
+	l.accept("~")
+	l.ignore()
+	for {
+		if l.peek() == '~' {
+			l.emit(StrikeText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case '~':
+			l.accept("~")
+			l.ignore()
+			return lexText
+		}
+	}
+}
+
+func lexUnderline(l *Lexer) stateFn {
+	l.backup()
+	l.emit(NormalText)
+	l.accept("_")
+	l.ignore()
+	for {
+		if l.peek() == '_' {
+			l.emit(UnderlineText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case '_':
+			l.accept("_")
+			l.ignore()
+			return lexText
+		}
+	}
+}
+
+func lexEmphasis(l *Lexer) stateFn {
+	l.backup()
+	l.emit(NormalText)
+	l.accept("-")
+	l.ignore()
+	for {
+		if l.peek() == '-' {
+			l.emit(EmphasisText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case '-':
+			l.accept("-")
+			l.ignore()
+			return lexText
+		}
+	}
 }
 
 // NOTE(halfwit): We would want to check for any possible token to switch state here in theory
@@ -189,7 +250,7 @@ func lexColorText(l *Lexer) stateFn {
 	l.accept("[")
 	l.ignore()
 	for {
-		if strings.IndexByte("*]\\", l.peek()) >= 0 {
+		if strings.IndexByte("*~-_]\\", l.peek()) >= 0 {
 			l.emit(ColorText)
 		}
 		switch l.nextChar() {
@@ -208,9 +269,102 @@ func lexColorText(l *Lexer) stateFn {
 			l.accept("*")
 			l.ignore()
 			return lexColorBold
-		//case '_':
-		//case '~':
-		//case '/':
+		case '_':
+			l.accept("_")
+			l.ignore()
+			return lexColorUnderline
+		case '~':
+			l.accept("~")
+			l.ignore()
+			return lexColorStrikeout
+		case '-':
+			l.accept("-")
+			l.ignore()
+			return lexColorEmphasis
+		}
+	}
+}
+
+func lexColorStrikeout(l *Lexer) stateFn {
+	for {
+		switch l.peek() {
+		case '~', '\\':
+			l.emit(ColorTextStrike)
+		case ']':
+			l.emit(ColorText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case '\\':
+			l.accept("\\")
+			l.ignore()
+			l.accept("\\!([])*_-~`")
+		case '~':
+			l.accept("~")
+			l.ignore()
+			return lexColorText
+		case ']':
+			l.accept("]")
+			l.ignore()
+			return lexColorCode
+		}
+	}
+}
+
+func lexColorEmphasis(l *Lexer) stateFn {
+	for {
+		switch l.peek() {
+		case '-', '\\':
+			l.emit(ColorTextEmphasis)
+		case ']':
+			l.emit(ColorText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case '\\':
+			l.accept("\\")
+			l.ignore()
+			l.accept("\\!([])*_-~`")
+		case '-':
+			l.accept("-")
+			l.ignore()
+			return lexColorText
+		case ']':
+			l.accept("]")
+			l.ignore()
+			return lexColorCode
+		}
+	}
+}
+
+func lexColorUnderline(l *Lexer) stateFn {
+	for {
+		switch l.peek() {
+		case '_', '\\':
+			l.emit(ColorTextUnderline)
+		case ']':
+			l.emit(ColorText)
+		}
+		switch l.nextChar() {
+		case EOF:
+			l.emit(EOF)
+			return nil
+		case '\\':
+			l.accept("\\")
+			l.ignore()
+			l.accept("\\!([])*_-~`")
+		case '_':
+			l.accept("_")
+			l.ignore()
+			return lexColorText
+		case ']':
+			l.accept("]")
+			l.ignore()
+			return lexColorCode
 		}
 	}
 }
@@ -247,9 +401,9 @@ func lexColorCode(l *Lexer) stateFn {
 	l.acceptRun("](")
 	l.ignore()
 	// Hex code
-	l.acceptRun("#1234567890")
-	// All valid chars from color code const
-	l.acceptRun("abcdefghijklmnopqrstuvwxyz")
+	l.acceptRun("#1234567890,")
+	// All valid chars from color code const 
+	l.acceptRun("abcdefghijklmnopqrstuvwxyz,")
 	l.emit(ColorCode)
 	l.accept(")")
 	l.ignore()
