@@ -107,7 +107,7 @@ func (c *Control) CreateBuffer(name, doctype string) error {
 	d := path.Join(c.rundir, name, doctype)
 	_, err := os.Stat(path.Join(c.rundir, name))
 	if os.IsNotExist(err) {
-		os.MkdirAll(path.Join(c.rundir, name), 0755)	
+		os.MkdirAll(path.Join(c.rundir, name), 0755)
 	}
 	if err == nil {
 		return nil
@@ -145,9 +145,9 @@ func (c *Control) DeleteBuffer(name, doctype string) error {
 // HasBuffer returns whether or not a buffer is present in the current control session
 func (c *Control) HasBuffer(name, doctype string) bool {
 	d := path.Join(c.rundir, name, doctype)
-	 _, err := os.Stat(d)
+	_, err := os.Stat(d)
 	if os.IsNotExist(err) {
-		return false	
+		return false
 	}
 	return true
 }
@@ -233,7 +233,7 @@ func (c *Control) Notification(buff, from, msg string) error {
 	defer f.Close()
 	if err != nil {
 		return err
-	}	
+	}
 	event(c, nfile)
 	fmt.Fprintf(f, "%s\n%s\n", from, msg)
 	return nil

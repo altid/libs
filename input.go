@@ -3,12 +3,12 @@ package fslib
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"os"
 	"path"
 
 	"github.com/altid/cleanmark"
 )
-
 
 type Handler interface {
 	Handle(path string, c *cleanmark.Lexer) error
@@ -30,16 +30,20 @@ func NewInput(h Handler, dir, buffer string) (*Input, error) {
 		return nil, err
 	}
 	inpath := path.Join(dir, buffer)
-	r, err := newReader(path.Join(inpath, "input"))
-	if err != nil {
-		return nil, err
+	_, err = os.Stat(path.Join(inpath, "input"))
+	if os.IsNotExist(err) {
+		r, err := newReader(path.Join(inpath, "input"))
+		if err != nil {
+			return nil, err
+		}
+		i := &Input{
+			h:     h,
+			r:     r,
+			fname: inpath,
+		}
+		return i, nil
 	}
-	i := &Input{
-		h:     h,
-		r:     r,
-		fname: inpath,
-	}
-	return i, nil
+	return nil, fmt.Errorf("Input file already exist at %s", inpath)
 }
 
 // Start will watch for reads on Input's path, and send messages to the callers Handle function
