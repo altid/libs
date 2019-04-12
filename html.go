@@ -101,9 +101,9 @@ func (c *HTMLCleaner) Close() {
 func endToken(t atom.Atom) string {
 	// insert any newlines, etc before we finish up
 	switch t {
-	case atom.H1, atom.H2, atom.H3, atom.H4, atom.H5, atom.H6:
+	case atom.H1, atom.H2, atom.H3, atom.H4, atom.H5, atom.H6, atom.P:
 		return "\n\n"
-	case atom.Li, atom.Ul, atom.P:
+	case atom.Li, atom.Ul:
 		return "\n"
 	case atom.B:
 		return "*"
@@ -125,17 +125,17 @@ func parseToken(t html.Token, m map[atom.Atom]bool) string {
 	}
 	switch {
 	case m[atom.H1]:
-		dst.WriteString("\n# ")
+		dst.WriteString("# ")
 	case m[atom.H2]:
-		dst.WriteString("\n## ")
+		dst.WriteString("## ")
 	case m[atom.H3]:
-		dst.WriteString("\n### ")
+		dst.WriteString("### ")
 	case m[atom.H4]:
-		dst.WriteString("\n#### ")
+		dst.WriteString("#### ")
 	case m[atom.H5]:
-		dst.WriteString("\n##### ")
+		dst.WriteString("##### ")
 	case m[atom.H6]:
-		dst.WriteString("\n###### ")
+		dst.WriteString("###### ")
 	case m[atom.Strike]:
 		dst.WriteString("~~")
 	case m[atom.Em]:
@@ -154,10 +154,13 @@ func parseToken(t html.Token, m map[atom.Atom]bool) string {
 	if strings.TrimSpace(d) == "" {
 		return ""
 	}
-	dst.WriteString(d)
+	
+	dst.WriteString(escapeString(d))
 	return dst.String()
 }
 
+// TODO: Give back triple, containing link, url, image
+// Switch on image == ""
 func parseUrl(z *html.Tokenizer, t html.Token) (link, url string) {
 	for _, attr := range t.Attr {
 		if attr.Key == "href" {
@@ -171,8 +174,12 @@ func parseUrl(z *html.Tokenizer, t html.Token) (link, url string) {
 			// We'll have to revisit the interface for occasions such as what follows:
 			// <a href="somesite"></img someimage></a>
 			// ![[somesite](someimage)](linktosite)
+			// Additionally, scrub out any newlines
+			// <a href="http://pressbooks.com>
+			//   <img src="assets/pressbooks-promo.png" alt="pressbooks.com"/>
+			// </a>
 			if z.Token().DataAtom == atom.Img {
-				
+					
 			}
 		case html.SelfClosingTagToken:
 			link = string(z.Text())

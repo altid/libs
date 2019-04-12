@@ -54,7 +54,7 @@ func NewColor(code string, msg []byte) (*Color, error) {
 }
 
 func (c *Color) String() string {
-	return fmt.Sprintf("%%[%s](%s)", c.msg, c.code)
+	return fmt.Sprintf("%%[%s](%s)", escape(c.msg), c.code)
 }
 
 // Url represents a link markdown element
@@ -240,7 +240,7 @@ func escape(msg []byte) []byte {
 	result := make([]byte, len(msg)*2)
 	for i, c := range msg {
 		switch c {
-		case '*', '#', '_', '-', '\\', '/', '(', ')', '`', '[', ']', '!':
+		case '*', '#', '_', '-', '~', '\\', '/', '(', ')', '`', '[', ']', '!':
 			result[i+offset] = '\\'
 			offset++
 		}
