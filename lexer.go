@@ -23,6 +23,7 @@ const (
 	StrikeText
 	EmphasisText
 	UnderlineText
+	ErrorText
 	EOF
 )
 
