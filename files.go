@@ -31,6 +31,11 @@ func (c *Control) SideWriter(buffer string) *WriteCloser {
 	return newWriteCloser(c, buffer, "sidebar")
 }
 
+// NavWriter returns a WriteCloser attached to a buffers nav file, which will as well send the correct event to the events file
+func (c *Control) NavWriter(buffer string) *WriteCloser {
+	return newWriteCloser(c, buffer, "navi")
+}
+
 // TitleWriter returns a WriteCloser attached to a buffers title file, which will as well send the correct event to the events file
 func (c *Control) TitleWriter(buffer string) *WriteCloser {
 	return newWriteCloser(c, buffer, "title")
