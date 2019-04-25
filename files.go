@@ -36,6 +36,12 @@ func (c *Control) TitleWriter(buffer string) *WriteCloser {
 	return newWriteCloser(c, buffer, "title")
 }
 
+// ImageWriter returns a WriteCloser attached to a named file in the buffers' image directory
+func (c *Control) ImageWriter(buffer, resource string) *WriteCloser {
+	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
+	return newWriteCloser(c, buffer, path.Join("images", resource))
+}
+
 // MainWriter returns a WriteCloser attached to a buffers feed/document function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file
 func (c *Control) MainWriter(buffer, doctype string) *WriteCloser {
 	return newWriteCloser(c, buffer, doctype)
