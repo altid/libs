@@ -26,9 +26,9 @@ func (c *Control) StatusWriter(buffer string) *WriteCloser {
 	return newWriteCloser(c, buffer, "status")
 }
 
-// SideWriter returns a WriteCloser attached to a buffers sidebar file, which will as well send the correct event to the events file
+// SideWriter returns a WriteCloser attached to a buffers `aside` file, which will as well send the correct event to the events file
 func (c *Control) SideWriter(buffer string) *WriteCloser {
-	return newWriteCloser(c, buffer, "sidebar")
+	return newWriteCloser(c, buffer, "aside")
 }
 
 // NavWriter returns a WriteCloser attached to a buffers nav file, which will as well send the correct event to the events file
