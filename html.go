@@ -14,11 +14,28 @@ var empty struct{}
 // HTMLCleaner wraps the underlying WriteCloser, and handles parsing HTML into Altid-flavoured markdown, to the underlying writer.
 type HTMLCleaner struct {
 	w io.WriteCloser
+	p Handler
 }
 
-func NewHTMLCleaner(w io.WriteCloser) *HTMLCleaner {
+type Handler interface {
+	NavHandler
+	ImgHandler
+
+}
+
+type NavHandler interface {
+	Nav(*Url) error
+}
+
+type ImgHandler interface {
+	Img(string) error
+}
+
+// NewHTMLCleaner accepts a 
+func NewHTMLCleaner(w io.WriteCloser, p Handler) *HTMLCleaner {
 	return &HTMLCleaner{
 		w: w,
+		p: p,
 	}
 }
 
@@ -60,6 +77,17 @@ func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 			if t.DataAtom == atom.Img {
 				image, msg := parseImage(t)
 				fmt.Fprintf(c.w, "![%s](%s)", msg, image)
+				if i, ok := c.p.(ImgHandler); ok {
+					go i.Img(image)
+				}
+				continue
+			}
+			if t.DataAtom == atom.Nav {
+				if i, ok := c.p.(NavHandler); ok {
+					for n := range parseNav(z, t) {
+						i.Nav(n)
+					}
+				}
 				continue
 			}
 			tags[t.DataAtom] = true
@@ -75,6 +103,9 @@ func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 			if t.DataAtom == atom.Img {
 				image, msg := parseImage(t)
 				fmt.Fprintf(c.w, "![%s](%s)", msg, image)
+				if i, ok := c.p.(ImgHandler); ok {
+					go i.Img(image)
+				}
 				continue
 			}
 			data := parseToken(t, tags)
@@ -203,4 +234,35 @@ func parseImage(token html.Token) (image, alt string) {
 		}
 	}
 	return
+}
+
+func parseNav(z *html.Tokenizer, t html.Token) chan *Url {
+	m := make(chan *Url)
+	go func() {
+		defer close(m)
+		for {
+			switch z.Next() {
+			case html.StartTagToken:
+				t := z.Token()
+				if t.DataAtom == atom.Nav {
+					return
+				}		
+				if t.DataAtom != atom.A {
+					continue
+				}
+				link, url := parseUrl(z, t)
+				m <- &Url{ 
+					link: []byte(link),
+					msg:  []byte(url),
+				}
+			case html.EndTagToken:
+				if z.Token().DataAtom == atom.Nav {
+					return
+				}
+			case html.ErrorToken:
+				return
+			}
+		}
+	}()
+	return m
 }
