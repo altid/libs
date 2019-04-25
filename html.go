@@ -31,7 +31,9 @@ type ImgHandler interface {
 	Img(string) error
 }
 
-// NewHTMLCleaner accepts a 
+// NewHTMLCleaner accepts a WriteCloser and a type which satisfies the p.Handler interface
+// Nav will be called for each <a> tag found in a <nav> section
+// Img will be called whenever an <img> tag is found
 func NewHTMLCleaner(w io.WriteCloser, p Handler) *HTMLCleaner {
 	return &HTMLCleaner{
 		w: w,

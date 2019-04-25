@@ -60,9 +60,9 @@ func (l *Lexer) Bytes() []byte {
 		case ColorCode, ImagePath:
 			continue
 		case UrlLink, ImageLink:
-			dst.WriteString("( ")
+			dst.WriteString(" (")
 			dst.Write(i.Data)
-			dst.WriteString(" )")
+			dst.WriteString(") ")
 		default:
 			dst.Write(i.Data)
 		}
