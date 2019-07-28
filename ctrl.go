@@ -104,6 +104,9 @@ func (c *Control) Cleanup() {
 // This logged file will persist across reboots
 // Calling CreateBuffer on a directory that already exists will return nil
 func (c *Control) CreateBuffer(name, doctype string) error {
+	if name == "" {
+		return fmt.Errorf("No buffer name given")
+	}
 	d := path.Join(c.rundir, name, doctype)
 	_, err := os.Stat(path.Join(c.rundir, name))
 	if os.IsNotExist(err) {
@@ -112,6 +115,7 @@ func (c *Control) CreateBuffer(name, doctype string) error {
 	if err == nil {
 		return nil
 	}
+
 	ioutil.WriteFile(d, []byte("Welcome!\n"), 0644)
 	if c.logdir == "none" {
 		return nil
