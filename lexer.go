@@ -47,6 +47,14 @@ func NewLexer(src []byte) *Lexer {
 	}
 }
 
+func NewStringLexer(src string) *Lexer {
+	return &Lexer{
+		src: []byte(src),
+		items: make(chan Item, 2),
+		state: lexText,
+	}
+}
+
 // Bytes wil return a parsed byte array from the input with markdown elements cleaned
 // Any URL will be turned from `[some text](someurl)` to `some text (some url)`
 // IMG will be turned from `![some text](someimage)` to `some text (some image)`
@@ -110,7 +118,7 @@ func (l *Lexer) nextChar() byte {
 
 func lexText(l *Lexer) stateFn {
 	for {
-		if strings.IndexByte("\\%", l.peek()) >= 0 {
+		if strings.IndexByte("\\%[!*-~_", l.peek()) >= 0 {
 			if l.pos > l.start {
 				l.emit(NormalText)
 			}
@@ -403,7 +411,6 @@ func lexColorCode(l *Lexer) stateFn {
 	l.ignore()
 	// Hex code
 	l.acceptRun("#1234567890,")
-	// All valid chars from color code const 
 	l.acceptRun("abcdefghijklmnopqrstuvwxyz,")
 	l.emit(ColorCode)
 	l.accept(")")
@@ -591,7 +598,10 @@ func (l *Lexer) accept(valid string) bool {
 }
 
 func (l *Lexer) acceptRun(valid string) {
-	for strings.IndexByte(valid, l.nextChar()) >= 0 {
+	for {
+		if strings.IndexByte(valid, l.nextChar()) < 0 {
+			l.backup()
+			return
+		}	
 	}
-	l.backup()
 }

@@ -1,6 +1,7 @@
 package cleanmark
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -152,7 +153,7 @@ func endToken(t atom.Atom) string {
 
 func parseToken(t html.Token, m map[atom.Atom]bool) string {
 	// NOTE(halfwit): This is rather messy right now, and will need a revisit
-	var dst strings.Builder
+	var dst bytes.Buffer
 	if m[atom.Script] || m[atom.Head] {
 		return ""
 	}
