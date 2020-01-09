@@ -11,3 +11,5 @@ const (
 	pageTabs
 	pageClosed
 )
+
+// TODO: Mack client
