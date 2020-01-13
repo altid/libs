@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log"
 	"os"
@@ -13,13 +14,12 @@ import (
 
 var tails map[string]*tail
 
-func listenEvents(cfg *config) (chan *event, chan struct{}) {
+func listenEvents(ctx context.Context, cfg *config) (chan *event, error) {
 	events := make(chan *event)
-	done := make(chan struct{})
 	tails = make(map[string]*tail)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	go func() {
 		for {
@@ -32,7 +32,7 @@ func listenEvents(cfg *config) (chan *event, chan struct{}) {
 
 				events <- tails[ev.Name].readlines()
 			case err := <-watcher.Errors:
-				close(done)
+				ctx.Done()
 				log.Print(err)
 			}
 		}
@@ -46,7 +46,7 @@ func listenEvents(cfg *config) (chan *event, chan struct{}) {
 		}
 		stat, err := f.Stat()
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		f.Seek(0, io.SeekEnd)
 		tail := &tail{
@@ -57,5 +57,5 @@ func listenEvents(cfg *config) (chan *event, chan struct{}) {
 		tails[dir] = tail
 		watcher.Add(dir)
 	}
-	return events, done
+	return events, nil
 }

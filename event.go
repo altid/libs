@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -37,4 +38,12 @@ func (t *tail) readlines() *event {
 		lines: lines,
 		name:  t.name,
 	}
+}
+
+func handleEvent(ev *event) {
+	if ev == nil {
+		return
+	}
+	// events will have the service and any (possibly > 1) line of files with changes.
+	fmt.Printf("%s - %s", ev.name, ev.lines)
 }

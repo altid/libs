@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"path"
 
 	"github.com/altid/fslib"
@@ -22,25 +24,39 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//TODO(halfwit) switch to context here for all threads
-	events, done := listenEvents(config)
-	//events, err := listenEvents(config, ctx)
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals)
+	ctx := context.Background()
+
+	events, err := listenEvents(ctx, config)
+	if err != nil {
+		log.Fatal(err)
+	}
 	//input, err := listenInput(config, ctx)
 	//control, err := listenControl(config, ctx)
 	//client, err := listenClients(ctx)
+
+	err = registerMDNS(config)
+	if err != nil {
+		// Do we want to try n times to register here?
+		log.Print(err)
+	}
+
 	for {
-		// Use the select here to keep all clients in scope so messages can go vhere they need to
 		select {
 		case event := <-events:
-			if event == nil {
-				continue
-			}
-			// events will have the service and any (possibly > 1) line of files with changes.
-			fmt.Printf("%s - %s", event.name, event.lines)
+			handleEvent(event)
 		//case in := <-input:
+		//handleInput(in)
 		//case ctl := <-control:
-		//case client := <- client:
-		case <-done:
+		//handleCtl(ctl)
+		//case cli := <- client:
+		//handleClient(cli)
+		case sig := <-signals:
+			handleSig(ctx, sig.String())
+		case <-ctx.Done():
+			cleanupMDNS()
 			break
 		}
 	}

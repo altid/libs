@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log"
 	"os"
@@ -12,16 +13,15 @@ import (
 type tailer struct {
 	tails []*tail
 	out   chan *event
-	done  chan struct{}
+	ctx   context.Context
 	sync.Mutex
 }
 
-func listenEvents(cfg *config) (chan *event, chan struct{}) {
+func listenEvents(ctx context.Context, cfg *config) (chan *event, err) {
 	events := make(chan *event)
-	done := make(chan struct{})
 	t := &tailer{
-		out:  events,
-		done: done,
+		out: events,
+		ctx: ctx,
 	}
 	services := cfg.listServices()
 	for _, service := range services {
@@ -31,7 +31,7 @@ func listenEvents(cfg *config) (chan *event, chan struct{}) {
 		}
 	}
 	go t.tail()
-	return events, done
+	return events, nil
 }
 
 func (t *tailer) add(name string) error {
@@ -60,7 +60,7 @@ func (t *tailer) add(name string) error {
 func (t *tailer) tail() {
 	for {
 		select {
-		case <-t.done:
+		case <-t.ctx.Done():
 			t.cleanup()
 			break
 		case <-time.After(125 * time.Millisecond):
