@@ -33,7 +33,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//input, err := listenInput(config, ctx)
+	inputs, err := listenInput(ctx, config)
 	//control, err := listenControl(config, ctx)
 	//client, err := listenClients(ctx)
 
@@ -47,8 +47,8 @@ func main() {
 		select {
 		case event := <-events:
 			handleEvent(event)
-		//case in := <-input:
-		//handleInput(in)
+		case input := <-inputs:
+			handleInput(input)
 		//case ctl := <-control:
 		//handleCtl(ctl)
 		//case cli := <- client:
