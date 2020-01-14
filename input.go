@@ -1,17 +1,21 @@
 package main
 
-import "context"
+import (
+	"context"
+	"log"
+	"os"
+	"path"
+)
 
 type input struct {
-	from string
-	buff string
-	data string
+	service string
+	buff    string
+	data    string
 }
 
 var in chan interface{}
 
 func init() {
-	// Register a handler for styx messages. We use input and ctl the same way
 	in = make(chan interface{})
 	s := &fileHandler{
 		fn: newInput,
@@ -21,21 +25,32 @@ func init() {
 }
 
 // From the Styx server we get input data, send it from there to the underlying input files here
-func listenInput(ctx context.Context, cfg *config) (chan interface{}, error) {
+func listenInputs(ctx context.Context, cfg *config) (chan interface{}, error) {
 	return in, nil
 }
 
 func newInput(msg *message) interface{} {
 	return &input{
-		from: msg.service,
-		data: msg.data,
-		buff: msg.buff,
+		service: msg.service,
+		data:    msg.data,
+		buff:    msg.buff,
 	}
 }
 
-func handleInput(in interface{}) {
-	// Verify we have an *input
-	// Check that in.from is a service that exists
-	// Validate that in.buff has an input file present
-	// write data
+// Just append the message to the underlying file
+func handleInput(msg interface{}) {
+	input, ok := msg.(*input)
+	if !ok {
+		return
+	}
+
+	file := path.Join(*inpath, input.service, input.buff, "input")
+
+	fp, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer fp.Close()
+	fp.WriteString(input.data)
 }

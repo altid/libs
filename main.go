@@ -33,9 +33,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	inputs, err := listenInput(ctx, config)
-	//control, err := listenControl(config, ctx)
-	//client, err := listenClients(ctx)
+	inputs, err := listenInputs(ctx, config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	controls, err := listenControls(ctx, config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	clients, err := listenClients(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	err = registerMDNS(config)
 	if err != nil {
@@ -49,10 +58,10 @@ func main() {
 			handleEvent(event)
 		case input := <-inputs:
 			handleInput(input)
-		//case ctl := <-control:
-		//handleCtl(ctl)
-		//case cli := <- client:
-		//handleClient(cli)
+		case control := <-controls:
+			handleControl(ctx, control)
+		case client := <- clients:
+			handleClient(client)
 		case sig := <-signals:
 			handleSig(ctx, sig.String())
 		case <-ctx.Done():

@@ -1,5 +1,7 @@
 package main
 
+import "context"
+
 type filetype int
 
 const (
@@ -12,4 +14,11 @@ const (
 	pageClosed
 )
 
-// TODO: Mack client
+func listenClients(ctx context.Context) (chan interface{}, error) {
+	cl := make(chan interface{})
+	return cl, nil
+}
+
+func handleClient(msg interface{}) {
+	// Add client to list
+}
