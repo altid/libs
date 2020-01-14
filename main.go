@@ -44,8 +44,6 @@ func main() {
 
 	for {
 		select {
-		case event := <-srv.events:
-			handleEvent(event)
 		case input := <-srv.inputs:
 			handleInput(input)
 		case control := <-srv.controls:

@@ -1,6 +1,11 @@
 package main
 
-import "context"
+import (
+	"context"
+	"sync"
+
+	"aqwari.net/net/styx"
+)
 
 type server struct {
 	ctx      context.Context
@@ -9,7 +14,8 @@ type server struct {
 	inputs   chan interface{}
 	clients  chan interface{}
 	controls chan interface{}
-	errors   []error
+	sync.Mutex
+	errors []error
 }
 
 type message struct {
@@ -38,16 +44,25 @@ func newServer(ctx context.Context, cfg *config) (*server, error) {
 		return nil, err
 	}
 	s := &server{
-		events: events,
-		inputs: make(chan interface{}),
+		events:   events,
+		inputs:   make(chan interface{}),
 		controls: make(chan interface{}),
-		clients: make(chan interface{}),
-		ctx: ctx,
-		cfg: cfg,
+		clients:  make(chan interface{}),
+		ctx:      ctx,
+		cfg:      cfg,
 	}
 	return s, nil
 }
 
 func (s *server) listenAndServe() {
 	// Loop through each service and listen. Use our fileHandlers
+	// messages received on events update our internal state
+	// So get events here from Styx, call the handler for them
+	// Then also events to update our state.
+	// use the mutex to lock event-based updates
+	// 
+}
+
+func (s *server) Serve9P(sess *styx.Session) {
+
 }
