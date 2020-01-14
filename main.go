@@ -29,19 +29,7 @@ func main() {
 	signal.Notify(signals)
 	ctx := context.Background()
 
-	events, err := listenEvents(ctx, config)
-	if err != nil {
-		log.Fatal(err)
-	}
-	inputs, err := listenInputs(ctx, config)
-	if err != nil {
-		log.Fatal(err)
-	}
-	controls, err := listenControls(ctx, config)
-	if err != nil {
-		log.Fatal(err)
-	}
-	clients, err := listenClients(ctx)
+	srv, err := newServer(ctx, config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,15 +40,17 @@ func main() {
 		log.Print(err)
 	}
 
+	go srv.listenAndServe()
+
 	for {
 		select {
-		case event := <-events:
+		case event := <-srv.events:
 			handleEvent(event)
-		case input := <-inputs:
+		case input := <-srv.inputs:
 			handleInput(input)
-		case control := <-controls:
+		case control := <-srv.controls:
 			handleControl(ctx, control)
-		case client := <- clients:
+		case client := <-srv.clients:
 			handleClient(client)
 		case sig := <-signals:
 			handleSig(ctx, sig.String())

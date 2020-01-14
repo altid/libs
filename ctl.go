@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"strings"
 )
 
 // ctl files need to parse commands before sending them on
@@ -15,32 +14,6 @@ type control struct {
 	buff    string
 	cmd     string
 	payload string
-}
-
-var ctl chan interface{}
-
-func init() {
-	in = make(chan interface{})
-	s := &fileHandler{
-		fn: newControl,
-		ch: ctl,
-	}
-	addFileHandler("ctl", s)
-}
-
-func listenControls(ctx context.Context, cfg *config) (chan interface{}, error) {
-	return ctl, nil
-}
-
-// Heavy lifting here with fields function and join should be rewritten eventually
-func newControl(msg *message) interface{} {
-	m := strings.Fields(msg.data)
-	return &control{
-		service: msg.service,
-		cmd:     m[0],
-		payload: strings.Join(m[1:], " "),
-		buff:    msg.buff,
-	}
 }
 
 func handleControl(ctx context.Context, msg interface{}) {

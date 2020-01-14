@@ -1,7 +1,5 @@
 package main
 
-import "context"
-
 type filetype int
 
 const (
@@ -14,11 +12,6 @@ const (
 	pageClosed
 )
 
-func listenClients(ctx context.Context) (chan interface{}, error) {
-	cl := make(chan interface{})
-	return cl, nil
-}
-
 func handleClient(msg interface{}) {
-	// Add client to list
+	// Add client to our list and update all requisite data sets
 }

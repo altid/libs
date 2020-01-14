@@ -1,18 +1,22 @@
 package main
 
-// List Avahi/Bonjour/Zeroconf mDNS entry for each service.
 import (
 	"fmt"
 
 	"github.com/grandcat/zeroconf"
 )
 
-var entries[] *zeroconf.Server
+var entries []*zeroconf.Server
 
+// Make our listings, altid and _servname._tcp listening on 564 for whichever IP 
 func registerMDNS(cfg *config) error {
 	for _, service := range cfg.listServices() {
+		ip := fmt.Sprintf(".%s", cfg.getAddress(service))
+		if ip == ".dhcp" {
+			ip = ".local"
+		}
 		sname := fmt.Sprintf("_%s._tcp", service)
-		entry, err := zeroconf.Register("altid", sname, "local.", 564, nil, nil)
+		entry, err := zeroconf.Register("altid", sname, ip, 564, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -21,7 +25,7 @@ func registerMDNS(cfg *config) error {
 	return nil
 }
 
-func cleanupMDNS(){
+func cleanupMDNS() {
 	for _, service := range entries {
 		service.Shutdown()
 	}
