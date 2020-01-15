@@ -13,14 +13,19 @@ import (
 
 type server struct {
 	services []*service
+	clients  map[int64]*client
 	ctx      context.Context
 	cfg      *config
 	events   chan *event
 	inputs   chan interface{}
-	clients  chan interface{}
 	controls chan interface{}
 	sync.Mutex
 	errors []error
+}
+
+type client struct {
+	target  string
+	current string
 }
 
 type service struct {
@@ -60,9 +65,9 @@ func newServer(ctx context.Context, cfg *config) (*server, error) {
 	s := &server{
 		services: services,
 		events:   events,
+		clients:  make(map[int64]*client),
 		inputs:   make(chan interface{}),
 		controls: make(chan interface{}),
-		clients:  make(chan interface{}),
 		ctx:      ctx,
 		cfg:      cfg,
 	}
@@ -88,10 +93,10 @@ func (s *server) start() {
 func run(s *server, srv *service) {
 	h := styx.HandlerFunc(func(sess *styx.Session) {
 		uuid := rand.Int63()
-		s.clients <- &client{
+		c := &client{
 			target: srv.name,
-			uuid:   uuid,
 		}
+		s.clients[uuid] = c
 		for sess.Next() {
 			handleReq(s, sess.Request())
 		}

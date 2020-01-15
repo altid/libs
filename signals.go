@@ -5,11 +5,12 @@ import (
 	"fmt"
 )
 
-func handleSig(ctx context.Context, signal string) {
+func handleSig(cancel context.CancelFunc, signal string) {
 	switch signal {
 	case "interrupt":
-		ctx.Done()
-		return
+		cancel()
+	case "suspended":
+		cancel()
 	default:
 		fmt.Printf("Unhandled signal caught: %s", signal)
 	}

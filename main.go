@@ -37,8 +37,8 @@ func main() {
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals)
-	ctx := context.Background()
 
+	ctx, cancel := context.WithCancel(context.Background())
 	srv, err := newServer(ctx, config)
 	if err != nil {
 		log.Fatal(err)
@@ -62,13 +62,11 @@ func main() {
 			handleInput(input)
 		case control := <-srv.controls:
 			handleControl(ctx, control)
-		case client := <-srv.clients:
-			handleClient(client)
 		case sig := <-signals:
-			handleSig(ctx, sig.String())
+			handleSig(cancel, sig.String())
 		case <-ctx.Done():
 			cleanupMDNS()
-			break
+			os.Exit(0)
 		}
 	}
 }
