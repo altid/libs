@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"log"
+)
+
 type filetype int
 
 const (
@@ -12,6 +17,17 @@ const (
 	pageClosed
 )
 
+type client struct {
+	target string
+	uuid   int64
+}
+
+// Clients can be connected tospecial buffer "none"
+// Client message means incoming new client
 func handleClient(msg interface{}) {
-	// Add client to our list and update all requisite data sets
+	cl, ok := msg.(*client)
+	if !ok {
+		log.Fatal("Received non-client struct in handleClient")
+	}
+	fmt.Println(cl)
 }

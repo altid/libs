@@ -13,8 +13,18 @@ import (
 
 var enableFactotum = flag.Bool("f", false, "Enable client authentication via a plan9 factotum")
 var inpath = flag.String("m", "/tmp/altid", "Path to Altid services")
+var usetls = flag.Bool("t", false, "Use TLS")
+var certfile = flag.String("c", "/etc/ssl/certs/altid.pem", "Path to certificate file")
+var keyfile = flag.String("k", "/etc/ssl/private/altid.pem", "Path to key file")
+var dir = flag.String("d", "/tmp/altid", "Directory to watch")
+var username = flag.String("u", "", "Run as another user")
 
 func main() {
+	flag.Parse()
+	if flag.Lookup("h") != nil {
+		flag.Usage()
+		os.Exit(0)
+	}
 	confdir, err := fslib.UserConfDir()
 	if err != nil {
 		log.Fatal(err)
@@ -34,13 +44,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = registerMDNS(config)
-	if err != nil {
-		// Do we want to try n times to register here?
-		log.Print(err)
+	if len(srv.services) < 1 {
+		log.Fatal("Found no running services, exiting")
 	}
 
-	go srv.listenAndServe()
+	err = registerMDNS(srv.services)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go srv.listenEvents()
+	go srv.start()
 
 	for {
 		select {
