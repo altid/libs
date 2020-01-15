@@ -55,5 +55,5 @@ func (c *config) getAddress(name string) string {
 	if address := rs.Search("listen_address"); address != "" {
 		return address
 	}
-	return "dhcp"
+	return ""
 }

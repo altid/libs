@@ -58,6 +58,7 @@ func newServer(ctx context.Context, cfg *config) (*server, error) {
 		services = append(services, service)
 	}
 	s := &server{
+		services: services,
 		events:   events,
 		inputs:   make(chan interface{}),
 		controls: make(chan interface{}),
@@ -69,15 +70,12 @@ func newServer(ctx context.Context, cfg *config) (*server, error) {
 }
 
 func (s *server) listenEvents() {
-	// Loop through each service and listen. Use our fileHandlers
-	// messages received on events update our internal state
-	// So get events here from Styx, call the handler for them
-	// Then also events to update our state.
-	// use the mutex to lock event-based updates
 	for event := range s.events {
 		s.Lock()
 		defer s.Unlock()
-		fmt.Println(event.name)
+		// We want to update our service/server here for when we generate content for tabs.
+		// Event name is where it comes from, event lines are >0 lines of events
+		fmt.Println(event.lines)
 	}
 }
 
