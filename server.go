@@ -85,12 +85,18 @@ func (s *server) listenEvents() {
 		switch e.etype {
 		case feedEvent:
 			// Increment our unread count for any inactive buffers
-			t := s.services[e.service].tabs[e.name]
+			srv := s.services[e.service]
+			t, ok := srv.tabs[e.name]
+			if !ok {
+				// We have a new buffer
+				srv.tabs[e.name] = &tab{1, false}
+				continue
+			}
 			if !t.active {
 				t.count++
 			}
 		case notifyEvent:
-			//fmt.Printf("notify: %s\n", e.name)
+			// TODO(halfwit) Figure out notifications
 		}
 	}
 }
