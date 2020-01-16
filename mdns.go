@@ -9,7 +9,7 @@ import (
 var entries []*zeroconf.Server
 
 // Make our listings, altid and _servname._tcp listening on 564 for whichever IP 
-func registerMDNS(srv []*service) error {
+func registerMDNS(srv map[string]*service) error {
 	for _, s := range srv {
 		ip := fmt.Sprintf(".%s", s.addr)
 		if ip == ".dhcp" {
