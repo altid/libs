@@ -24,6 +24,8 @@ func handleControl(ctx context.Context, msg interface{}) {
 	switch ctl.cmd {
 	case "quit":
 		ctx.Done()
+	case "buffer":
+		// Update active tab
 	default:
 		file := path.Join(*inpath, ctl.service, ctl.buff, "ctl")
 		fp, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0644)

@@ -1,15 +1,28 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"log"
 	"os"
 )
 
+type eventType int8
+
+const (
+	feedEvent eventType = iota
+	notifyEvent
+	noneEvent
+)
+
+var isfeed = []byte("feed")
+var isnoti = []byte("notification")
+
 // event will be a batch of all received events since the last
 type event struct {
-	lines []byte
-	name  string
+	service string
+	etype   eventType
+	name    string
 }
 
 type tail struct {
@@ -18,8 +31,9 @@ type tail struct {
 	size int64
 }
 
-func (t *tail) readlines() *event {
+func (t *tail) readlines() []*event {
 	var lines = make([]byte, 2048)
+	var events []*event
 	hs, _ := t.fd.Stat()
 	// Assume truncation
 	if hs.Size() < t.size {
@@ -33,8 +47,29 @@ func (t *tail) readlines() *event {
 		return nil
 	}
 	t.size = hs.Size()
-	return &event{
-		lines: lines,
-		name:  t.name,
+	b := bytes.NewBuffer(lines)
+	// TODO(halfwit): Switch to raw byte manipulation here.
+	for {
+		etype := noneEvent
+		line, err := b.ReadBytes('\n')
+		if err != nil {
+			return events
+		}
+		if bytes.Contains(line, isfeed) {
+			etype = feedEvent
+		} else if bytes.Contains(line, isnoti) {
+			etype = notifyEvent
+		}
+		lines := bytes.Split(line, []byte("/"))
+		l := len(lines)
+		if l < 3 {
+			return events
+		}
+		e := &event{
+			service: t.name,
+			etype:   etype,
+			name:    string(lines[l-2]),
+		}
+		events = append(events, e)
 	}
 }

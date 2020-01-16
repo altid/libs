@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -12,7 +11,7 @@ import (
 )
 
 type server struct {
-	services []*service
+	services map[string]*service
 	clients  map[int64]*client
 	ctx      context.Context
 	cfg      *config
@@ -29,6 +28,7 @@ type client struct {
 }
 
 type service struct {
+	tabs map[string]*tab
 	addr string
 	name string
 }
@@ -40,7 +40,7 @@ type message struct {
 }
 
 type fileHandler struct {
-	fn func(msg *message) (interface{}, error)
+	fn func(srv *service, msg *message) (interface{}, error)
 }
 
 var handlers = make(map[string]*fileHandler)
@@ -50,17 +50,23 @@ func addFileHandler(path string, fh *fileHandler) {
 }
 
 func newServer(ctx context.Context, cfg *config) (*server, error) {
-	events, err := listenEvents(ctx, cfg)
-	if err != nil {
-		return nil, err
-	}
-	var services []*service
+	services := make(map[string]*service)
 	for _, svc := range cfg.listServices() {
+		tabs, err := listInitialTabs(svc)
+		if err != nil {
+			log.Printf("Unable to add service %s, no tabs file found\n", svc)
+			continue
+		}
 		service := &service{
+			tabs: tabs,
 			addr: cfg.getAddress(svc),
 			name: svc,
 		}
-		services = append(services, service)
+		services[svc] = service
+	}
+	events, err := listenEvents(ctx, services)
+	if err != nil {
+		return nil, err
 	}
 	s := &server{
 		services: services,
@@ -75,12 +81,17 @@ func newServer(ctx context.Context, cfg *config) (*server, error) {
 }
 
 func (s *server) listenEvents() {
-	for event := range s.events {
-		s.Lock()
-		defer s.Unlock()
-		// We want to update our service/server here for when we generate content for tabs.
-		// Event name is where it comes from, event lines are >0 lines of events
-		fmt.Println(event.lines)
+	for e := range s.events {
+		switch e.etype {
+		case feedEvent:
+			// Increment our unread count for any inactive buffers
+			t := s.services[e.service].tabs[e.name]
+			if !t.active {
+				t.count++
+			}
+		case notifyEvent:
+			//fmt.Printf("notify: %s\n", e.name)
+		}
 	}
 }
 

@@ -14,7 +14,7 @@ import (
 
 var tails map[string]*tail
 
-func listenEvents(ctx context.Context, cfg *config) (chan *event, error) {
+func listenEvents(ctx context.Context, services map[string]*service) (chan *event, error) {
 	events := make(chan *event)
 	tails = make(map[string]*tail)
 	watcher, err := fsnotify.NewWatcher()
@@ -29,19 +29,20 @@ func listenEvents(ctx context.Context, cfg *config) (chan *event, error) {
 					log.Printf("Unknown event: %s", ev.Name)
 					continue
 				}
-
-				events <- tails[ev.Name].readlines()
+				for _, event := range tails[ev.Name].readlines() {
+					events <- event
+				}
 			case err := <-watcher.Errors:
 				ctx.Done()
 				log.Print(err)
 			}
 		}
 	}()
-	for _, conf := range cfg.listServices() {
-		dir := path.Join(*inpath, conf, "event")
+	for _, svc := range services {
+		dir := path.Join(*inpath, svc.name, "event")
 		f, err := os.Open(dir)
 		if err != nil {
-			log.Printf("%s: Entry found, but no service running\n", conf)
+			log.Printf("%s: Entry found, but no service running\n", svc.name)
 			continue
 		}
 		stat, err := f.Stat()
@@ -51,7 +52,7 @@ func listenEvents(ctx context.Context, cfg *config) (chan *event, error) {
 		f.Seek(0, io.SeekEnd)
 		tail := &tail{
 			fd:   f,
-			name: conf,
+			name: svc.name,
 			size: stat.Size(),
 		}
 		tails[dir] = tail
