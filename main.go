@@ -47,12 +47,12 @@ func main() {
 	if len(srv.services) < 1 {
 		log.Fatal("Found no running services, exiting")
 	}
-/*
+
 	err = registerMDNS(srv.services)
 	if err != nil {
 		log.Fatal(err)
 	}
-*/
+
 	go srv.listenEvents()
 	go srv.start()
 
@@ -61,7 +61,7 @@ func main() {
 		case input := <-srv.inputs:
 			handleInput(input)
 		case control := <-srv.controls:
-			handleControl(ctx, control)
+			handleControl(ctx, control, srv)
 		case sig := <-signals:
 			handleSig(cancel, sig.String())
 		case <-ctx.Done():

@@ -28,9 +28,9 @@ type client struct {
 }
 
 type service struct {
-	tabs map[string]*tab
-	addr string
-	name string
+	tabs    map[string]*tab
+	addr    string
+	name    string
 }
 
 type message struct {
