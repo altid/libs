@@ -12,6 +12,6 @@ func init() {
 }
 
 // Heavy lifting here with fields function and join should be rewritten eventually
-func getNormal(msg *message) (interface{}, error) {
+func getNormal(srv *service, msg *message) (interface{}, error) {
 	return &normal{}, nil
 }
