@@ -6,27 +6,22 @@ import (
 	"github.com/grandcat/zeroconf"
 )
 
-var entries []*zeroconf.Server
+var mdnsEntries []*zeroconf.Server
 
-// Make our listings, altid and _servname._tcp listening on 564 for whichever IP 
 func registerMDNS(srv map[string]*service) error {
 	for _, s := range srv {
-		ip := fmt.Sprintf(".%s", s.addr)
-		if ip == ".dhcp" {
-			ip = ".local"
-		}
 		sname := fmt.Sprintf("_%s._tcp", s.name)
-		entry, err := zeroconf.Register("altid", sname, ip, 564, nil, nil)
+		entry, err := zeroconf.Register("altid", sname, s.addr, s.port, nil, nil)
 		if err != nil {
 			return err
 		}
-		entries = append(entries, entry)
+		mdnsEntries = append(mdnsEntries, entry)
 	}
 	return nil
 }
 
 func cleanupMDNS() {
-	for _, service := range entries {
+	for _, service := range mdnsEntries {
 		service.Shutdown()
 	}
 }
