@@ -13,6 +13,7 @@ import (
 
 var enableFactotum = flag.Bool("f", false, "Enable client authentication via a plan9 factotum")
 var inpath = flag.String("m", "/tmp/altid", "Path to Altid services")
+var listenPort = flag.Int("p", 564, "Port to listen on")
 var usetls = flag.Bool("t", false, "Use TLS")
 var certfile = flag.String("c", "/etc/ssl/certs/altid.pem", "Path to certificate file")
 var keyfile = flag.String("k", "/etc/ssl/private/altid.pem", "Path to key file")

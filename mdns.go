@@ -11,7 +11,7 @@ var mdnsEntries []*zeroconf.Server
 func registerMDNS(srv map[string]*service) error {
 	for _, s := range srv {
 		sname := fmt.Sprintf("_%s._tcp", s.name)
-		entry, err := zeroconf.Register("altid", sname, s.addr, s.port, nil, nil)
+		entry, err := zeroconf.Register("altid", sname, s.addr, *listenPort, nil, nil)
 		if err != nil {
 			return err
 		}
