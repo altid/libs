@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -29,7 +30,6 @@ type client struct {
 
 type service struct {
 	tabs map[string]*tab
-	port int
 	addr string
 	name string
 }
@@ -59,7 +59,6 @@ func newServer(ctx context.Context, cfg *config) (*server, error) {
 			continue
 		}
 		service := &service{
-			port: cfg.getPort(svc),
 			tabs: tabs,
 			addr: cfg.getAddress(svc),
 			name: svc,
@@ -120,8 +119,9 @@ func run(s *server, srv *service) {
 			handleReq(s, sess.Request())
 		}
 	})
+	port := fmt.Sprintf(":%d", listenPort)
 	t := &styx.Server{
-		Addr:    srv.addr + ":564",
+		Addr:    srv.addr + port,
 		Handler: h,
 		//Auth: auth,
 	}
