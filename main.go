@@ -48,11 +48,12 @@ func main() {
 		log.Fatal("Found no running services, exiting")
 	}
 
-	err = registerMDNS(srv.services)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	/*
+		err = registerMDNS(srv.services)
+		if err != nil {
+			log.Fatal(err)
+		}
+	*/
 	go srv.listenEvents()
 	go srv.start()
 
