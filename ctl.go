@@ -24,23 +24,13 @@ func handleControl(ctx context.Context, msg interface{}, srv *server) {
 	switch ctl.cmd {
 	case "quit":
 		ctx.Done()
-	case "buffer":
-		// Update active tab
-		// Update current buffer for service
+	case "buffer", "active":
 		s := srv.services[ctl.service]
 		t, ok := s.tabs[ctl.buff]
 		if !ok {
 			return
 		}
 		t.count = 0
-	case "active":
-		s := srv.services[ctl.service]
-		t, ok := s.tabs[ctl.buff]
-		if !ok {
-			return
-		}
-		t.count = 0
-		// Update active tab unread to 0
 	default:
 		file := path.Join(*inpath, ctl.service, ctl.buff, "ctl")
 		fp, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0644)
