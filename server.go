@@ -28,9 +28,10 @@ type client struct {
 }
 
 type service struct {
-	tabs    map[string]*tab
-	addr    string
-	name    string
+	tabs map[string]*tab
+	port int
+	addr string
+	name string
 }
 
 type message struct {
@@ -58,6 +59,7 @@ func newServer(ctx context.Context, cfg *config) (*server, error) {
 			continue
 		}
 		service := &service{
+			port: cfg.getPort(svc),
 			tabs: tabs,
 			addr: cfg.getAddress(svc),
 			name: svc,

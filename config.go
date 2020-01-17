@@ -5,6 +5,7 @@ package main
 import (
 	"errors"
 	"log"
+	"strconv"
 
 	"github.com/mischief/ndb"
 )
@@ -47,10 +48,25 @@ func (c *config) refresh() error {
 	return nil
 }
 
+func (c *config) getPort(name string) int {
+	rs := c.Search("service", name)
+	if rs == nil {
+		log.Fatal(errors.New("No service entry found"))
+	}
+	if port := rs.Search("listen_port"); port != "" {
+		i, err := strconv.Atoi(port)
+		if err != nil {
+			return 564
+		}
+		return i
+	}
+	return 564
+}
+
 func (c *config) getAddress(name string) string {
 	rs := c.Search("service", name)
 	if rs == nil {
-		log.Fatal(errors.New("No services found"))
+		log.Fatal(errors.New("No service entry found"))
 	}
 	if address := rs.Search("listen_address"); address != "" {
 		return address
