@@ -1,17 +1,24 @@
 package main
 
-// Every normal file
-type normal struct {
-}
+import (
+	"os"
+	"path"
+)
 
 func init() {
 	s := &fileHandler{
-		fn: getNormal,
+		fn:   getNormal,
+		stat: getNormalStat,
 	}
-	addFileHandler("default", s)
+	addFileHandler("/default", s)
 }
 
-// Heavy lifting here with fields function and join should be rewritten eventually
-func getNormal(srv *service, msg *message) (interface{}, error) {
-	return &normal{}, nil
+func getNormal(msg *message) (interface{}, error) {
+	fp := path.Join(*inpath, msg.service, msg.buff, msg.file)
+	return os.Open(fp)
+}
+
+func getNormalStat(msg *message) (os.FileInfo, error) {
+	fp := path.Join(*inpath, msg.service, msg.buff, msg.file)
+	return os.Stat(fp)
 }

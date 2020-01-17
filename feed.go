@@ -11,6 +11,6 @@ func init() {
 }
 
 // Heavy lifting here with fields function and join should be rewritten eventually
-func getFeed(srv *service, msg *message) (interface{}, error) {
+func getFeed(msg *message) (interface{}, error) {
 	return &feed{}, nil
 }

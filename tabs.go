@@ -20,8 +20,8 @@ func init() {
 	addFileHandler("/tabs", s)
 }
 
-func getTabs(srv *service, msg *message) (interface{}, error) {
-	return srv.tabs, nil
+func getTabs(msg *message) (interface{}, error) {
+	return nil, nil
 }
 
 func listInitialTabs(service string) (map[string]*tab, error) {
