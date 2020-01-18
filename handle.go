@@ -51,15 +51,15 @@ func open(svc *service, c *client) (io.ReadWriteCloser, error) {
 }
 
 func handler(svc *service, c *client) (*fileHandler, *message) {
-	h, ok := handlers[c.reading]
-	if !ok {
-		h = handlers["/default"]
-	}
 	m := &message{
 		state:   svc.state,
 		service: svc.name,
 		buff:    c.current,
 		file:    c.reading,
+	}
+	h, ok := handlers[c.reading]
+	if !ok {
+		return handlers["/default"], m
 	}
 	return h, m
 }

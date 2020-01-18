@@ -53,7 +53,7 @@ func (c *ctl) Close() error { return nil }
 func getCtl(msg *message) (interface{}, error) {
 	c := &ctl{
 		state: msg.state,
-		path:  path.Join(*inpath, msg.service, msg.buff, "ctl"),
+		path:  path.Join(*inpath, msg.service, "ctl"),
 	}
 	if _, err := os.Stat(c.path); err != nil {
 		return nil, err
@@ -63,6 +63,6 @@ func getCtl(msg *message) (interface{}, error) {
 
 // We should be able to get away with sending back a normal stat
 func getCtlStat(msg *message) (os.FileInfo, error) {
-	fp := path.Join(*inpath, msg.service, msg.buff, "ctl")
+	fp := path.Join(*inpath, msg.service, "ctl")
 	return os.Stat(fp)
 }
