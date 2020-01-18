@@ -59,10 +59,6 @@ func main() {
 
 	for {
 		select {
-		case input := <-srv.inputs:
-			handleInput(input)
-		case control := <-srv.controls:
-			handleControl(ctx, control, srv)
 		case sig := <-signals:
 			handleSig(cancel, sig.String())
 		case <-ctx.Done():

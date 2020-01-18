@@ -1,44 +1,68 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
+	"bytes"
+	"errors"
+	"io"
 	"os"
 	"path"
 )
 
-// ctl files need to parse commands before sending them on
-type control struct {
-	service string
-	buff    string
-	cmd     string
-	payload string
+func init() {
+	s := &fileHandler{
+		fn:   getCtl,
+		stat: getCtlStat,
+	}
+	addFileHandler("/ctl", s)
 }
 
-func handleControl(ctx context.Context, msg interface{}, srv *server) {
-	ctl, ok := msg.(*control)
-	if !ok {
-		return
+type ctl struct {
+	state chan *update
+	path  string
+}
+
+func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
+	buff := bytes.NewBuffer(p)
+	command, err := buff.ReadString(' ')
+	if err != nil {
+		return 0, errors.New("Nil or empty command received")
 	}
-	switch ctl.cmd {
-	case "quit":
-		ctx.Done()
-	case "buffer", "active":
-		s := srv.services[ctl.service]
-		t, ok := s.tabs[ctl.buff]
-		if !ok {
-			return
+	switch command {
+	case "buffer ":
+		value, err := buff.ReadString('\n')
+		if err != io.EOF {
+			return 0, err
 		}
-		t.count = 0
+		c.state <- &update{
+			key:   bufferUpdate,
+			value: value,
+		}
+		return 0, nil
 	default:
-		file := path.Join(*inpath, ctl.service, ctl.buff, "ctl")
-		fp, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0644)
+		fp, err := os.OpenFile(c.path, os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
-			log.Println(err)
-			return
+			return 0, err
 		}
 		defer fp.Close()
-		fp.WriteString(fmt.Sprintf("%s %s", ctl.cmd, ctl.payload))
+		return fp.Write(p)
 	}
+}
+
+func (c *ctl) Close() error { return nil }
+
+func getCtl(msg *message) (interface{}, error) {
+	c := &ctl{
+		state: msg.state,
+		path:  path.Join(*inpath, msg.service, msg.buff, "ctl"),
+	}
+	if _, err := os.Stat(c.path); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// We should be able to get away with sending back a normal stat
+func getCtlStat(msg *message) (os.FileInfo, error) {
+	fp := path.Join(*inpath, msg.service, msg.buff, "ctl")
+	return os.Stat(fp)
 }
