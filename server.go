@@ -66,7 +66,7 @@ func (s *server) run(svc *service) {
 	h := styx.HandlerFunc(func(sess *styx.Session) {
 		uuid := rand.Int63()
 		current := "server"
-		if sess.Access != "/" {
+		if len(sess.Access) > 1 {
 			current = sess.Access
 		}
 		c := &client{

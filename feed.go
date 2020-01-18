@@ -1,16 +1,26 @@
 package main
 
+import (
+	"os"
+	"path"
+)
+
 // feed files are special in that they're blocking
 type feed struct{}
 
 func init() {
 	s := &fileHandler{
-		fn: getFeed,
+		fn:   getFeed,
+		stat: getFeedStat,
 	}
 	addFileHandler("/feed", s)
 }
 
-// Heavy lifting here with fields function and join should be rewritten eventually
 func getFeed(msg *message) (interface{}, error) {
-	return &feed{}, nil
+	fp := path.Join(*inpath, msg.service, msg.buff, "feed")
+	return os.Open(fp)
+}
+func getFeedStat(msg *message) (os.FileInfo, error) {
+	fp := path.Join(*inpath, msg.service, msg.buff, "feed")
+	return os.Stat(fp)
 }

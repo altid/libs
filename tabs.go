@@ -15,12 +15,17 @@ type tab struct {
 
 func init() {
 	s := &fileHandler{
-		fn: getTabs,
+		fn:   getTabs,
+		stat: getTabsStat,
 	}
 	addFileHandler("/tabs", s)
 }
 
 func getTabs(msg *message) (interface{}, error) {
+	return nil, nil
+}
+
+func getTabsStat(msg *message) (os.FileInfo, error) {
 	return nil, nil
 }
 

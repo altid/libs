@@ -3,7 +3,6 @@ package main
 import (
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"time"
@@ -26,24 +25,31 @@ type dir struct {
 func getDir(msg *message) (interface{}, error) {
 	c := make(chan os.FileInfo, 10)
 	done := make(chan struct{})
-	fp := path.Join(*inpath, msg.service)
+	fp := path.Join(*inpath, msg.service, msg.buff)
 	list, err := ioutil.ReadDir(fp)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
+	// We take the least resistance for error handling here
+	// a missing entry may occur in the worst case
+	// but a direct read of the file will correctly error
+	// with all details we want
 	cstat, err := getCtlStat(msg)
-	if err != nil {
-		log.Println(err)
-		return nil, nil
+	if err == nil {
+		list = append(list, cstat)
 	}
-	list = append(list, cstat)
+	cfeed, err := getFeedStat(msg)
+	if err == nil {
+		list = append(list, cfeed)
+	}
+	ctabs, err := getTabsStat(msg)
+	if err != nil {
+		list = append(list, ctabs)
+	}
 	cinput, err := getInputStat(msg)
-	if err != nil {
-		log.Println(err)
-		return nil, nil
+	if err == nil {
+		list = append(list, cinput)
 	}
-	list = append(list, cinput)
-	//ctabs, err := getTabsStat(msg)
 	go func([]os.FileInfo) {
 		for _, f := range list {
 			select {

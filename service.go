@@ -46,7 +46,7 @@ func getServices(cfg *config) map[string]*service {
 			addr:    cfg.getAddress(svc),
 			name:    svc,
 		}
-		service.watch()
+		go service.watch()
 		services[svc] = service
 	}
 	return services
