@@ -44,6 +44,7 @@ type SigHandler interface {
 	SigHandle(c *Control)
 }
 
+// Control type can be used to manage a running ctrl file session
 type Control struct {
 	rundir   string
 	logdir   string
@@ -70,7 +71,7 @@ func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Co
 		return nil, fmt.Errorf("Unknown doctype: %s", doctype)
 	}
 	rundir := path.Join(mtpt, service)
-	_, err := os.Stat(path.Join(rundir, "ctrl"))
+	_, err := os.Stat(path.Join(rundir, "ctl"))
 	if os.IsNotExist(err) {
 		var tab []string
 		req := make(chan string)
@@ -184,7 +185,7 @@ func (c *Control) Listen() error {
 	if err != nil {
 		return err
 	}
-	cfile := path.Join(c.rundir, "ctrl")
+	cfile := path.Join(c.rundir, "ctl")
 	go c.sighandle()
 	go dispatch(c)
 	r, err := newReader(cfile)
@@ -212,7 +213,7 @@ func (c *Control) Start() (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfile := path.Join(c.rundir, "ctrl")
+	cfile := path.Join(c.rundir, "ctl")
 	go c.sighandle()
 	go dispatch(c)
 	event(c, cfile)
