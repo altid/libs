@@ -68,8 +68,10 @@ func getDir(msg *message) (interface{}, error) {
 }
 
 func getDirStat(msg *message) (os.FileInfo, error) {
-	fp := path.Join(*inpath, msg.service)
-	return os.Stat(fp)
+	fp := path.Join(*inpath, msg.service, msg.buff)
+	return &dir{
+		name: fp,
+	}, nil
 }
 
 func (d *dir) Error() string      { return "" }
