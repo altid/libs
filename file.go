@@ -20,5 +20,5 @@ func getNormal(msg *message) (interface{}, error) {
 
 func getNormalStat(msg *message) (os.FileInfo, error) {
 	fp := path.Join(*inpath, msg.service, msg.buff, msg.file)
-	return os.Stat(fp)
+	return os.Lstat(fp)
 }

@@ -21,12 +21,16 @@ func init() {
 	addFileHandler("/tabs", s)
 }
 
+/* func (t *tabs) Read() {}
+func (t *tabs) Close() {}*/
 func getTabs(msg *message) (interface{}, error) {
-	return nil, nil
+	fp := path.Join(*inpath, msg.service, "tabs")
+	return os.Open(fp)
 }
 
 func getTabsStat(msg *message) (os.FileInfo, error) {
-	return nil, nil
+	fp := path.Join(*inpath, msg.service, "tabs")
+	return os.Lstat(fp)
 }
 
 func listInitialTabs(service string) (map[string]*tab, error) {

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"os/user"
 	"path"
 
 	"github.com/altid/fslib"
@@ -19,11 +20,28 @@ var certfile = flag.String("c", "/etc/ssl/certs/altid.pem", "Path to certificate
 var keyfile = flag.String("k", "/etc/ssl/private/altid.pem", "Path to key file")
 var username = flag.String("u", "", "Run as another user")
 
+var defaultUid string
+var defaultGid string
+
+func init() {
+	us, _ := user.Current()
+	defaultUid = us.Uid
+	defaultGid = us.Gid
+}
+
 func main() {
 	flag.Parse()
 	if flag.Lookup("h") != nil {
 		flag.Usage()
 		os.Exit(0)
+	}
+	if *username != "" {
+		us, err := user.Lookup(*username)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defaultUid = us.Uid
+		defaultGid = us.Gid
 	}
 	confdir, err := fslib.UserConfDir()
 	if err != nil {
