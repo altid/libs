@@ -1,9 +1,6 @@
 package main
 
 import (
-	"errors"
-	"io"
-	"log"
 	"os"
 
 	"aqwari.net/net/styx"
@@ -29,25 +26,12 @@ func addFileHandler(path string, fh *fileHandler) {
 
 func walk(svc *service, c *client) (os.FileInfo, error) {
 	h, m := handler(svc, c)
-	i, err := h.stat(m)
-	if err != nil {
-		log.Print(err)
-	}
-	info, ok := i.(os.FileInfo)
-	if !ok {
-		return nil, errors.New("requested file does not exist on server")
-	}
-	return info, err
+	return h.stat(m)
 }
 
-func open(svc *service, c *client) (io.ReadWriteCloser, error) {
+func open(svc *service, c *client) (interface{}, error) {
 	h, m := handler(svc, c)
-	i, err := h.fn(m)
-	info, ok := i.(io.ReadWriteCloser)
-	if !ok {
-		return nil, errors.New("requested file does not exist on server")
-	}
-	return info, err
+	return h.fn(m)
 }
 
 func handler(svc *service, c *client) (*fileHandler, *message) {
@@ -79,7 +63,7 @@ func handleReq(s *server, c *client, req styx.Request) {
 		msg.Rstat(walk(service, c))
 	case styx.Tutimes:
 		switch msg.Path() {
-		case "/", "/tabs":
+		case "/", "/tabs", "/ctl":
 			msg.Rutimes(nil)
 		default:
 			fp := s.getPath(c)
@@ -87,7 +71,7 @@ func handleReq(s *server, c *client, req styx.Request) {
 		}
 	case styx.Ttruncate:
 		switch msg.Path() {
-		case "/", "/tabs":
+		case "/", "/tabs", "/ctl":
 			msg.Rtruncate(nil)
 		default:
 			fp := s.getPath(c)

@@ -16,11 +16,13 @@ func init() {
 	addFileHandler("/feed", s)
 }
 
+//func (f *feed) Read() {}
+//func (f *feed) Close() {}
 func getFeed(msg *message) (interface{}, error) {
 	fp := path.Join(*inpath, msg.service, msg.buff, "feed")
 	return os.Open(fp)
 }
 func getFeedStat(msg *message) (os.FileInfo, error) {
 	fp := path.Join(*inpath, msg.service, msg.buff, "feed")
-	return os.Stat(fp)
+	return os.Lstat(fp)
 }

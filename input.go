@@ -20,5 +20,5 @@ func getInput(msg *message) (interface{}, error) {
 
 func getInputStat(msg *message) (os.FileInfo, error) {
 	fp := path.Join(*inpath, msg.service, msg.buff, "input")
-	return os.Stat(fp)
+	return os.Lstat(fp)
 }

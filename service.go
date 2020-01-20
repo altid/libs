@@ -8,6 +8,7 @@ type updateKey int
 
 const (
 	bufferUpdate updateKey = iota
+	linkUpdate
 	openUpdate
 	closeUpdate
 )
@@ -66,6 +67,8 @@ func (s *service) watch() {
 		case closeUpdate:
 			// We're moving back to an old buffer. Only update
 			// The active status on the buffer we're moving to
+		case linkUpdate:
+			// We're renaming a buffer outright
 		}
 	}
 }
