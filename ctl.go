@@ -81,8 +81,8 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 }
 
 func (c *ctl) Close() error { return nil }
-func (c *ctl) Uid() string  { return defaultUid }
-func (c *ctl) Gid() string  { return defaultGid }
+func (c *ctl) Uid() string  { return defaultUID }
+func (c *ctl) Gid() string  { return defaultGID }
 
 func getCtl(msg *message) (interface{}, error) {
 	fp := path.Join(*inpath, msg.service, "ctl")

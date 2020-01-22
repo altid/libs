@@ -20,13 +20,13 @@ var certfile = flag.String("c", "/etc/ssl/certs/altid.pem", "Path to certificate
 var keyfile = flag.String("k", "/etc/ssl/private/altid.pem", "Path to key file")
 var username = flag.String("u", "", "Run as another user")
 
-var defaultUid string
-var defaultGid string
+var defaultUID string
+var defaultGID string
 
 func init() {
 	us, _ := user.Current()
-	defaultUid = us.Uid
-	defaultGid = us.Gid
+	defaultUID = us.Uid
+	defaultGID = us.Gid
 }
 
 func main() {
@@ -40,8 +40,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defaultUid = us.Uid
-		defaultGid = us.Gid
+		defaultUID = us.Uid
+		defaultGID = us.Gid
 	}
 	confdir, err := fslib.UserConfDir()
 	if err != nil {
