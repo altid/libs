@@ -13,8 +13,6 @@ type config struct {
 }
 
 func newConfig(filename string) (*config, error) {
-	var c *config
-
 	conf, err := ndb.Open(filename)
 	if err != nil {
 		return nil, err
@@ -24,8 +22,8 @@ func newConfig(filename string) (*config, error) {
 		log.Fatal("error parsing Altid config")
 	}
 
-	c.Ndb = conf
-
+	c := &config{conf}
+	
 	return c, nil
 }
 

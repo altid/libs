@@ -66,7 +66,7 @@ func handleReq(s *server, c *client, req styx.Request) {
 		msg.Rstat(walk(service, c))
 	case styx.Tutimes:
 		switch msg.Path() {
-		case "/tabs", "/ctl":
+		case "/", "/tabs", "/ctl":
 			msg.Rutimes(nil)
 		default:
 			fp := s.getPath(c)
@@ -74,7 +74,7 @@ func handleReq(s *server, c *client, req styx.Request) {
 		}
 	case styx.Ttruncate:
 		switch msg.Path() {
-		case "/tabs", "/ctl":
+		case "/", "/tabs", "/ctl":
 			msg.Rtruncate(nil)
 		default:
 			fp := s.getPath(c)
