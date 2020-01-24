@@ -24,30 +24,32 @@ func init() {
 /* func (t *tabs) Read() {}
 func (t *tabs) Close() {}*/
 func getTabs(msg *message) (interface{}, error) {
-	fp := path.Join(*inpath, msg.service, "tabs")
-	return os.Open(fp)
+	return os.Open(path.Join(*inpath, msg.service, "tabs"))
 }
 
 func getTabsStat(msg *message) (os.FileInfo, error) {
-	fp := path.Join(*inpath, msg.service, "tabs")
-	return os.Lstat(fp)
+	return os.Lstat(path.Join(*inpath, msg.service, "tabs"))
 }
 
 func listInitialTabs(service string) (map[string]*tab, error) {
-	var tabs map[string]*tab
-	tabs = make(map[string]*tab)
+	tabs := make(map[string]*tab)
 	fp := path.Join(*inpath, service, "tabs")
+
 	file, err := os.Open(fp)
 	if err != nil {
 		return nil, err
 	}
+
 	defer file.Close()
+
 	r := bufio.NewReader(file)
+	
 	for {
 		line, err := r.ReadString('\n')
 		if err != nil {
 			return tabs, nil
 		}
+
 		name := strings.TrimSpace(line)
 		tabs[name] = &tab{}
 	}

@@ -41,10 +41,12 @@ func handler(svc *service, c *client) (*fileHandler, *message) {
 		buff:    c.current,
 		file:    c.reading,
 	}
+
 	h, ok := handlers[c.reading]
 	if !ok {
 		return handlers["/default"], m
 	}
+
 	return h, m
 }
 
@@ -54,6 +56,7 @@ func handleReq(s *server, c *client, req styx.Request) {
 		req.Rerror("%s", "No such service")
 		return
 	}
+	
 	switch msg := req.(type) {
 	case styx.Twalk:
 		msg.Rwalk(walk(service, c))

@@ -6,7 +6,7 @@ import (
 )
 
 // feed files are special in that they're blocking
-type feed struct{}
+//type feed struct{}
 
 func init() {
 	s := &fileHandler{
