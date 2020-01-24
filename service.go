@@ -8,6 +8,7 @@ type updateKey int
 
 const (
 	bufferUpdate updateKey = iota
+	configUpdate
 	linkUpdate
 	openUpdate
 	closeUpdate
@@ -34,12 +35,14 @@ type update struct {
 
 func getServices(cfg *config) map[string]*service {
 	services := make(map[string]*service)
+
 	for _, svc := range cfg.listServices() {
 		tabs, err := listInitialTabs(svc)
 		if err != nil {
 			log.Printf("Unable to add service %s, no tabs file found\n", svc)
 			continue
 		}
+
 		service := &service{
 			clients: make(map[int64]*client),
 			state:   make(chan *update),
@@ -47,28 +50,36 @@ func getServices(cfg *config) map[string]*service {
 			addr:    cfg.getAddress(svc),
 			name:    svc,
 		}
-		go service.watch()
+
+		go service.watch(cfg)
 		services[svc] = service
 	}
+
 	return services
 }
 
-func (s *service) watch() {
+func (s *service) watch(cfg *config) {
 	for update := range s.state {
 		switch update.key {
+		case configUpdate:
+			s.addr = cfg.getAddress(s.name)
 		case bufferUpdate:
 			// A client is switching buffers. Go through
 			// and update all unread counts to reflect this
 			// Mark old buffer as inactive if there are no
 			// more readers on it
+			continue
 		case openUpdate:
 			// A client is moving to a new buffer much like above
 			// Validate we have no listeners on the old on
+			continue
 		case closeUpdate:
 			// We're moving back to an old buffer. Only update
 			// The active status on the buffer we're moving to
+			continue
 		case linkUpdate:
 			// We're renaming a buffer outright
+			continue
 		}
 	}
 }

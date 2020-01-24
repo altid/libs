@@ -32,13 +32,18 @@ type tail struct {
 }
 
 func (t *tail) readlines() []*event {
-	var lines = make([]byte, 2048)
 	var events []*event
+
+	lines := make([]byte, 2048)
+	b := bytes.NewBuffer(lines)
 	hs, _ := t.fd.Stat()
+	t.size = hs.Size()
+
 	// Assume truncation
 	if hs.Size() < t.size {
 		t.size = 0
 	}
+
 	_, err := t.fd.ReadAt(lines, t.size)
 	if err != nil && err != io.EOF {
 		// NOTE(halfwit) We set t.size to 0 on truncation so the logs are correct
@@ -46,30 +51,36 @@ func (t *tail) readlines() []*event {
 		log.Printf("Error reading from file %s at offset %d: %v", t.name, t.size, err)
 		return nil
 	}
-	t.size = hs.Size()
-	b := bytes.NewBuffer(lines)
+
+
 	// TODO(halfwit): Switch to raw byte manipulation here.
 	for {
 		etype := noneEvent
+
 		line, err := b.ReadBytes('\n')
 		if err != nil {
 			return events
 		}
+
 		if bytes.Contains(line, isfeed) {
 			etype = feedEvent
 		} else if bytes.Contains(line, isnoti) {
 			etype = notifyEvent
 		}
+
 		lines := bytes.Split(line, []byte("/"))
+
 		l := len(lines)
 		if l < 3 {
 			return events
 		}
+		
 		e := &event{
 			service: t.name,
 			etype:   etype,
 			name:    string(lines[l-2]),
 		}
+
 		events = append(events, e)
 	}
 }

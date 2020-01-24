@@ -25,24 +25,29 @@ var defaultGID string
 
 func init() {
 	us, _ := user.Current()
+
 	defaultUID = us.Uid
 	defaultGID = us.Gid
 }
 
 func main() {
 	flag.Parse()
+
 	if flag.Lookup("h") != nil {
 		flag.Usage()
 		os.Exit(0)
 	}
+
 	if *username != "" {
 		us, err := user.Lookup(*username)
 		if err != nil {
 			log.Fatal(err)
 		}
+		
 		defaultUID = us.Uid
 		defaultGID = us.Gid
 	}
+
 	confdir, err := fslib.UserConfDir()
 	if err != nil {
 		log.Fatal(err)
@@ -57,6 +62,7 @@ func main() {
 	signal.Notify(signals)
 
 	ctx, cancel := context.WithCancel(context.Background())
+
 	srv, err := newServer(ctx, config)
 	if err != nil {
 		log.Fatal(err)
@@ -66,12 +72,11 @@ func main() {
 		log.Fatal("Found no running services, exiting")
 	}
 
-	/*
-		err = registerMDNS(srv.services)
-		if err != nil {
-			log.Fatal(err)
-		}
-	*/
+	err = registerMDNS(srv.services)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	go srv.listenEvents()
 	go srv.start()
 
