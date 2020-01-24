@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"time"
 )
 
 func init() {
@@ -20,12 +19,13 @@ type dir struct {
 	name string
 	c    chan os.FileInfo
 	done chan struct{}
+	off int64
 }
 
 func getDir(msg *message) (interface{}, error) {
 	c := make(chan os.FileInfo, 10)
 	done := make(chan struct{})
-	fp := path.Join(*inpath, msg.service, msg.buff)
+	fp := path.Join(*inpath, msg.service, msg.file)
 
 	list, err := ioutil.ReadDir(fp)
 	if err != nil {
@@ -75,27 +75,21 @@ func getDir(msg *message) (interface{}, error) {
 }
 
 func getDirStat(msg *message) (os.FileInfo, error) {
-	d := &dir{
-		name: path.Join(*inpath, msg.service, msg.buff),
-	}
-	
-	return d, nil
+	return os.Stat(path.Join(*inpath, msg.service, msg.file))
 }
 
-func (d *dir) Error() string      { return "" }
-func (d *dir) IsDir() bool        { return true }
-func (d *dir) ModTime() time.Time { return time.Now() }
-func (d *dir) Mode() os.FileMode  { return os.ModeDir }
-func (d *dir) Name() string       { return d.name }
-func (d *dir) Size() int64        { return 0 }
-func (d *dir) Sys() interface{}   { return nil }
-func (d *dir) Uid() string        { return defaultUID }
-func (d *dir) Gid() string        { return defaultGID }
+func (d *dir) Error() string { return "" }
+func (d *dir) Uid() string   { return defaultUID }
+func (d *dir) Gid() string   { return defaultGID }
 
-// Listen for os.FileInfo members to come in from mkdir
+// Readdir for Directory interface
 func (d *dir) Readdir(n int) ([]os.FileInfo, error) {
 	var err error
-	
+
+	if n <= 0 {
+		return d.readAllDir()
+	}
+
 	fi := make([]os.FileInfo, 0, 10)
 
 	for i := 0; i < n; i++ {
@@ -108,7 +102,20 @@ func (d *dir) Readdir(n int) ([]os.FileInfo, error) {
 		fi = append(fi, s)
 	}
 
+
+	d.done <- struct{}{}
+
 	return fi, err
+}
+
+func (d *dir) readAllDir() ([]os.FileInfo, error) {
+	fi := make([]os.FileInfo, 0, 10)
+
+	for s := range d.c {
+		fi = append(fi, s)
+	}
+
+	return fi, io.EOF
 }
 
 func (d *dir) Close() error {

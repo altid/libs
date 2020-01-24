@@ -14,11 +14,10 @@ func init() {
 }
 
 func getInput(msg *message) (interface{}, error) {
-	fp := path.Join(*inpath, msg.service, msg.buff, "input")
+	fp := path.Join(*inpath, msg.service, msg.buff, "feed")
 	return os.OpenFile(fp, os.O_RDWR|os.O_APPEND, 0644)
 }
 
 func getInputStat(msg *message) (os.FileInfo, error) {
-	fp := path.Join(*inpath, msg.service, msg.buff, "input")
-	return os.Lstat(fp)
+	return os.Stat(path.Join(*inpath, msg.service, msg.buff, "input"))
 }
