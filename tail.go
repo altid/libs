@@ -14,7 +14,7 @@ import (
 
 var tails map[string]*tail
 
-func listenEvents(ctx context.Context, services map[string]*service) (chan *event, error) {
+func tailEvents(ctx context.Context, services map[string]*service) (chan *event, error) {
 	events := make(chan *event)
 	tails = make(map[string]*tail)
 	watcher, err := fsnotify.NewWatcher()
