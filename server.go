@@ -22,7 +22,7 @@ type server struct {
 
 func newServer(ctx context.Context, cfg *config) (*server, error) {
 	services := getServices(cfg)
-	events, err := listenEvents(ctx, services)
+	events, err := tailEvents(ctx, services)
 	if err != nil {
 		return nil, err
 	}

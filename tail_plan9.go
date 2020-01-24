@@ -17,7 +17,7 @@ type tailer struct {
 	sync.Mutex
 }
 
-func listenEvents(ctx context.Context, cfg *config) (chan *event, err) {
+func tailEvents(ctx context.Context, cfg *config) (chan *event, err) {
 	events := make(chan *event)
 	t := &tailer{
 		out: events,
