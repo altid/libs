@@ -37,7 +37,7 @@ func (t *tabs) ReadAt(b []byte, off int64) (n int, err error) {
 		fmt.Fprintf(&buff, "%s [%d]\n", tab.name, tab.count)
 	}
 
-	n = copy(b, buff.Bytes())
+	n = copy(b, buff.Bytes()[:off])
 	if int64(n)+off > int64(buff.Len()) {
 		return n, io.EOF
 	}

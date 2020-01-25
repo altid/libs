@@ -34,6 +34,8 @@ func getDir(msg *message) (interface{}, error) {
 		return nil, err
 	}
 	go func(list []os.FileInfo, c chan os.FileInfo, done chan struct{}) {
+		defer close(c)
+
 		for _, f := range list {
 			select {
 			case c <- f:
@@ -42,8 +44,6 @@ func getDir(msg *message) (interface{}, error) {
 				break
 			}
 		}
-
-		close(c)
 	}(list, c, done)
 
 	d := &dir{
