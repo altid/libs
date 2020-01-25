@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"sync"
 )
 
 type updateKey int
@@ -16,10 +17,12 @@ const (
 
 type service struct {
 	state   chan *update
+	feed    chan struct{}
 	clients map[int64]*client
 	tabs    map[string]*tab
 	addr    string
 	name    string
+	sync.Mutex
 }
 
 type client struct {
@@ -46,6 +49,7 @@ func getServices(cfg *config) map[string]*service {
 		service := &service{
 			clients: make(map[int64]*client),
 			state:   make(chan *update),
+			feed:    make(chan struct{}),
 			tabs:    tabs,
 			addr:    cfg.getAddress(svc),
 			name:    svc,
@@ -68,10 +72,16 @@ func (s *service) watch(cfg *config) {
 			// and update all unread counts to reflect this
 			// Mark old buffer as inactive if there are no
 			// more readers on it
+
+			// We close feed so that all readers can send the EOF
+			s.Lock()
+			close(s.feed)
+			s.feed = make(chan struct{})
+			s.Unlock()
 			continue
 		case openUpdate:
 			// A client is moving to a new buffer much like above
-			// Validate we have no listeners on the old on
+			// Validate we have no listeners on the old one
 			continue
 		case closeUpdate:
 			// We're moving back to an old buffer. Only update

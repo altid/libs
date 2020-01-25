@@ -61,7 +61,10 @@ func (s *server) listenEvents() {
 
 			if !t.active {
 				t.count++
+				continue
 			}
+			srv.feed <- struct{}{}
+
 		}
 	}
 }
