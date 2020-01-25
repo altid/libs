@@ -19,9 +19,9 @@ func init() {
 //func (f *feed) Read() {}
 //func (f *feed) Close() {}
 func getFeed(msg *message) (interface{}, error) {
-	return os.Open(path.Join(*inpath, msg.service, msg.buff, "feed"))
+	return os.Open(path.Join(*inpath, msg.svc.name, msg.buff, "feed"))
 }
 
 func getFeedStat(msg *message) (os.FileInfo, error) {
-	return os.Stat(path.Join(*inpath, msg.service, msg.buff, "feed"))
+	return os.Stat(path.Join(*inpath, msg.svc.name, msg.buff, "feed"))
 }

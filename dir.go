@@ -27,7 +27,7 @@ type dir struct {
 func getDir(msg *message) (interface{}, error) {
 	c := make(chan os.FileInfo)
 	done := make(chan struct{})
-	fp := path.Join(*inpath, msg.service, msg.buff)
+	fp := path.Join(*inpath, msg.svc.name, msg.buff)
 
 	list, total, err := listDir(msg, fp)
 	if err != nil {
@@ -57,7 +57,7 @@ func getDir(msg *message) (interface{}, error) {
 }
 
 func getDirStat(msg *message) (os.FileInfo, error) {
-	fp := path.Join(*inpath, msg.service, msg.buff)
+	fp := path.Join(*inpath, msg.svc.name, msg.buff)
 
 	_, count, err := listDir(msg, fp)
 	if err != nil {

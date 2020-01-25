@@ -14,11 +14,11 @@ func init() {
 }
 
 func getNormal(msg *message) (interface{}, error) {
-	fp := path.Join(*inpath, msg.service, msg.buff, msg.file)
+	fp := path.Join(*inpath, msg.svc.name, msg.buff, msg.file)
 	return os.Open(fp)
 }
 
 func getNormalStat(msg *message) (os.FileInfo, error) {
-	fp := path.Join(*inpath, msg.service, msg.buff, msg.file)
+	fp := path.Join(*inpath, msg.svc.name, msg.buff, msg.file)
 	return os.Lstat(fp)
 }
