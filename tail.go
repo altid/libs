@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -31,8 +32,8 @@ func tailEvents(ctx context.Context, services map[string]*service) (chan *event,
 					log.Printf("Unknown event: %s", ev.Name)
 					continue
 				}
-
 				for _, event := range tails[ev.Name].readlines() {
+					fmt.Println("Sending event")
 					events <- event
 				}
 			case err := <-watcher.Errors:
@@ -43,9 +44,9 @@ func tailEvents(ctx context.Context, services map[string]*service) (chan *event,
 	}()
 
 	for _, svc := range services {
-		dir := path.Join(*inpath, svc.name, "event")
+		fp := path.Join(*inpath, svc.name, "event")
 
-		f, err := os.Open(dir)
+		f, err := os.Open(fp)
 		if err != nil {
 			log.Printf("%s: Entry found, but no service running\n", svc.name)
 			continue
@@ -68,12 +69,12 @@ func tailEvents(ctx context.Context, services map[string]*service) (chan *event,
 			size: stat.Size(),
 		}
 
-		if err = watcher.Add(dir); err != nil {
+		if err = watcher.Add(fp); err != nil {
 			log.Print(err)
 			continue
 		}
 
-		tails[dir] = tail
+		tails[fp] = tail
 	}
 
 	return events, nil

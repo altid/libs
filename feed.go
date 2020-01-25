@@ -1,19 +1,17 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"io"
-	"log"
 	"os"
 	"path"
-	"time"
 )
 
 // feed files are special in that they're blocking
 type feed struct {
+	tailing  bool
+	path     string
 	incoming chan struct{}
-	buff     bytes.Buffer
 	done     chan struct{}
 }
 
@@ -25,70 +23,49 @@ func init() {
 	addFileHandler("/feed", s)
 }
 
-func (f *feed) ReadAt(b []byte, off int64) (n int, err error) {
-	if f.buff.Len() == 0 {
-		return 0, io.EOF
-	}
-
-	copy(b, f.buff.Next(1024))
-	time.Sleep(200 * time.Millisecond)
-
-	return
-}
-
-func (f *feed) Close() error {
-	close(f.done)
-	return nil
-}
-
-func (f *feed) getLines(msg *message) {
-	fp, err := os.Open(path.Join(*inpath, msg.svc.name, msg.buff, "feed"))
+func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
+	fp, err := os.Open(f.path)
 	if err != nil {
-		log.Println(err)
-		return
+		return 0, err
 	}
 
 	defer fp.Close()
 
-	for {
-		b := make([]byte, 1024)
-
-		n, err := fp.Read(b)
-		if err != nil || n == 0 {
-			break
+	if !f.tailing {
+		n, err = fp.ReadAt(p, off)
+		if err != nil && err != io.EOF {
+			return
 		}
 
-		f.buff.Write(b)
-	}
-
-	for {
-		b := make([]byte, 1024)
-
-		select {
-		case <-f.incoming:
-			n, err := fp.Read(b)
-			if err == io.EOF || n == 0 {
-				continue
-			}
-			if err != nil {
-				f.buff.Reset()
-				break
-			}
-
-			f.buff.Write(b)
-		case <-f.done:
-			f.buff.Reset()
-			break
+		if err == io.EOF {
+			f.tailing = true
 		}
+		return n, nil
 	}
+
+	// Bit of a trick here to get a single event on a potentially closed pipe
+	for range f.incoming {
+		n, err = fp.ReadAt(p, off)
+		if err == io.EOF {
+			return n, nil
+		}
+
+		return
+	}
+
+	return 0, io.EOF
 }
 
-func getFeed(msg *message) (interface{}, error) {
-	var buff bytes.Buffer
+func (f *feed) WriteAt(p []byte, off int64) (int, error) {
+	return 0, errors.New("writing to feed files is currently unsupported")
+}
 
+func (f *feed) Close() error { return nil }
+
+func getFeed(msg *message) (interface{}, error) {
 	done := make(chan struct{})
 	f := &feed{
-		buff: buff,
+		path: path.Join(*inpath, msg.svc.name, msg.buff, "feed"),
 		done: done,
 	}
 
@@ -98,7 +75,6 @@ func getFeed(msg *message) (interface{}, error) {
 		}
 
 		f.incoming = cl.feed
-		go f.getLines(msg)
 
 		return f, nil
 	}

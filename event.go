@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -31,15 +32,15 @@ type tail struct {
 	size int64
 }
 
+// REDO
 func (t *tail) readlines() []*event {
 	var events []*event
 
 	lines := make([]byte, 2048)
 	b := bytes.NewBuffer(lines)
 	hs, _ := t.fd.Stat()
-	t.size = hs.Size()
 
-	// Assume truncation
+	t.size = hs.Size()
 	if hs.Size() < t.size {
 		t.size = 0
 	}
@@ -52,35 +53,44 @@ func (t *tail) readlines() []*event {
 		return nil
 	}
 
-
-	// TODO(halfwit): Switch to raw byte manipulation here.
 	for {
-		etype := noneEvent
-
 		line, err := b.ReadBytes('\n')
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return events
 		}
 
-		if bytes.Contains(line, isfeed) {
-			etype = feedEvent
-		} else if bytes.Contains(line, isnoti) {
-			etype = notifyEvent
+		if e := parseEvent(line, t.name); e != nil {
+			events = append(events, e)
 		}
 
-		lines := bytes.Split(line, []byte("/"))
-
-		l := len(lines)
-		if l < 3 {
+		if err == io.EOF {
 			return events
 		}
-		
-		e := &event{
-			service: t.name,
-			etype:   etype,
-			name:    string(lines[l-2]),
-		}
-
-		events = append(events, e)
 	}
+}
+
+func parseEvent(line []byte, name string) *event {
+	etype := noneEvent
+
+	if bytes.Contains(line, isfeed) {
+		etype = feedEvent
+	} else if bytes.Contains(line, isnoti) {
+		etype = notifyEvent
+	}
+
+	lines := bytes.Split(line, []byte("/"))
+
+	l := len(lines)
+	if l < 3 {
+		fmt.Printf("Small read on %s with %s\n", lines, string(line))
+		return nil
+	}
+
+	e := &event{
+		service: name,
+		etype:   etype,
+		name:    string(lines[l-2]),
+	}
+
+	return e
 }
