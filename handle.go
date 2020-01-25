@@ -17,6 +17,7 @@ type message struct {
 	svc  *service
 	buff string
 	file string
+	uuid int64
 }
 
 func addFileHandler(path string, fh *fileHandler) {
@@ -35,6 +36,7 @@ func open(svc *service, c *client) (interface{}, error) {
 
 func handler(svc *service, c *client) (*fileHandler, *message) {
 	m := &message{
+		uuid: c.uuid,
 		svc:  svc,
 		buff: c.current,
 		file: c.reading,
@@ -63,7 +65,7 @@ func handleReq(s *server, c *client, req styx.Request) {
 		msg.Rstat(walk(service, c))
 	case styx.Tutimes:
 		switch msg.Path() {
-		case "/tabs", "/ctl":
+		case "/tabs", "/ctl", "/feed":
 			msg.Rutimes(nil)
 		default:
 			fp := s.getPath(c)
@@ -71,7 +73,7 @@ func handleReq(s *server, c *client, req styx.Request) {
 		}
 	case styx.Ttruncate:
 		switch msg.Path() {
-		case "/tabs", "/ctl":
+		case "/tabs", "/ctl", "/feed":
 			msg.Rtruncate(nil)
 		default:
 			fp := s.getPath(c)

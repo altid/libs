@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,8 +19,8 @@ type tab struct {
 }
 
 type tabs struct {
-	t    chan *tab
-	done chan struct{}
+	data []byte
+	size int64
 }
 
 func init() {
@@ -30,47 +31,35 @@ func init() {
 	addFileHandler("/tabs", s)
 }
 
-func (t *tabs) ReadAt(b []byte, off int64) (n int, err error) {
-	var buff bytes.Buffer
-
-	for tab := range t.t {
-		fmt.Fprintf(&buff, "%s [%d]\n", tab.name, tab.count)
-	}
-
-	n = copy(b, buff.Bytes()[:off])
-	if int64(n)+off > int64(buff.Len()) {
+func (t *tabs) ReadAt(p []byte, off int64) (n int, err error) {
+	fmt.Println("in call")
+	n = copy(p, t.data[:off])
+	if int64(n)+off > t.size {
 		return n, io.EOF
 	}
 
 	return
 }
 
-func (t *tabs) Close() {
-	close(t.done)
+func (t *tabs) WriteAt(p []byte, off int64) (int, error) {
+	return 0, errors.New("writes not allowed to feed")
 }
 
+func (t *tabs) Close() error { return nil }
+func (t *tabs) Uid() string  { return defaultUID }
+func (t *tabs) Gid() string  { return defaultGID }
+
 func getTabs(msg *message) (interface{}, error) {
-	t := make(chan *tab)
-	done := make(chan struct{})
-
-	go func(msg *message, t chan *tab, done chan struct{}) {
-		for name, tab := range msg.svc.tabs {
-			tab.name = name
-			select {
-			case t <- tab:
-				continue
-			case <-done:
-				break
-			}
-		}
-	}(msg, t, done)
-
-	b := &tabs{
-		t:    t,
-		done: done,
+	var b bytes.Buffer
+	for name, tab := range msg.svc.tabs {
+		fmt.Fprintf(&b, "%s [%d]\n", name, tab.count)
+	}
+	t := tabs{
+		size: int64(b.Len()),
+		data: b.Bytes(),
 	}
 
-	return b, nil
+	return t, nil
 }
 
 func getTabsStat(msg *message) (os.FileInfo, error) {
