@@ -18,7 +18,7 @@ const (
 type service struct {
 	state   chan *update
 	clients []*client
-	tabs    map[string]*tab
+	tablist map[string]*tab
 	addr    string
 	name    string
 	sync.Mutex
@@ -33,7 +33,7 @@ type client struct {
 }
 
 type update struct {
-	uuid  int
+	uuid  int64
 	key   updateKey
 	value string
 }
@@ -42,7 +42,7 @@ func getServices(cfg *config) map[string]*service {
 	services := make(map[string]*service)
 
 	for _, svc := range cfg.listServices() {
-		tabs, err := listInitialTabs(svc)
+		tlist, err := listInitialTabs(svc)
 		if err != nil {
 			log.Printf("Unable to add service %s, no tabs file found\n", svc)
 			continue
@@ -50,7 +50,7 @@ func getServices(cfg *config) map[string]*service {
 
 		service := &service{
 			state:   make(chan *update),
-			tabs:    tabs,
+			tablist: tlist,
 			addr:    cfg.getAddress(svc),
 			name:    svc,
 		}
@@ -74,13 +74,16 @@ func (s *service) watch(cfg *config) {
 			// more readers on it
 
 			// We close feed so that all readers can send the EOF
-			/*
-				s.clients
+			for _, cl := range s.clients {
+				if cl.uuid != update.uuid {
+					continue
+				}
 				s.Lock()
-				close(s.feed)
-				s.feed = make(chan struct{})
+				close(cl.feed)
+				cl.feed = make(chan struct{})
 				s.Unlock()
-			*/
+			}
+
 			continue
 		case openUpdate:
 			// A client is moving to a new buffer much like above

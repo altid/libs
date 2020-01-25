@@ -18,7 +18,7 @@ type tab struct {
 	active bool
 }
 
-type tabs struct {
+type tabfile struct {
 	data []byte
 	size int64
 }
@@ -31,9 +31,8 @@ func init() {
 	addFileHandler("/tabs", s)
 }
 
-func (t *tabs) ReadAt(p []byte, off int64) (n int, err error) {
-	fmt.Println("in call")
-	n = copy(p, t.data[:off])
+func (t *tabfile) ReadAt(p []byte, off int64) (n int, err error) {
+	n = copy(p, t.data[off:])
 	if int64(n)+off > t.size {
 		return n, io.EOF
 	}
@@ -41,20 +40,18 @@ func (t *tabs) ReadAt(p []byte, off int64) (n int, err error) {
 	return
 }
 
-func (t *tabs) WriteAt(p []byte, off int64) (int, error) {
-	return 0, errors.New("writes not allowed to feed")
+func (t *tabfile) WriteAt(p []byte, off int64) (int, error) {
+	return 0, errors.New("tabs file does not allow modification")
 }
-
-func (t *tabs) Close() error { return nil }
-func (t *tabs) Uid() string  { return defaultUID }
-func (t *tabs) Gid() string  { return defaultGID }
 
 func getTabs(msg *message) (interface{}, error) {
 	var b bytes.Buffer
-	for name, tab := range msg.svc.tabs {
+
+	for name, tab := range msg.svc.tablist {
 		fmt.Fprintf(&b, "%s [%d]\n", name, tab.count)
 	}
-	t := tabs{
+
+	t := &tabfile{
 		size: int64(b.Len()),
 		data: b.Bytes(),
 	}
@@ -63,11 +60,11 @@ func getTabs(msg *message) (interface{}, error) {
 }
 
 func getTabsStat(msg *message) (os.FileInfo, error) {
-	return os.Lstat(path.Join(*inpath, msg.svc.name, "tabs"))
+	return os.Stat(path.Join(*inpath, msg.svc.name, "tabs"))
 }
 
 func listInitialTabs(service string) (map[string]*tab, error) {
-	tabs := make(map[string]*tab)
+	tablist := make(map[string]*tab)
 	fp := path.Join(*inpath, service, "tabs")
 
 	file, err := os.Open(fp)
@@ -82,10 +79,10 @@ func listInitialTabs(service string) (map[string]*tab, error) {
 	for {
 		line, err := r.ReadString('\n')
 		if err != nil {
-			return tabs, nil
+			return tablist, nil
 		}
 
 		name := strings.TrimSpace(line)
-		tabs[name] = &tab{}
+		tablist[name] = &tab{}
 	}
 }

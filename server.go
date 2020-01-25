@@ -48,7 +48,7 @@ func (s *server) listenEvents() {
 			// Increment our unread count for any inactive buffers
 			srv := s.services[e.service]
 
-			t, ok := srv.tabs[e.name]
+			t, ok := srv.tablist[e.name]
 			if !ok {
 				// We have a new buffer
 				t := &tab{
@@ -56,7 +56,7 @@ func (s *server) listenEvents() {
 					active: false,
 				}
 
-				srv.tabs[e.name] = t
+				srv.tablist[e.name] = t
 				continue
 			}
 
@@ -102,7 +102,7 @@ func (s *server) run(svc *service) {
 			current: current,
 		}
 		svc.clients = append(svc.clients, c)
-		svc.tabs[current].active = true
+		svc.tablist[current].active = true
 
 		for sess.Next() {
 			q := sess.Request()
