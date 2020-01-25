@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"path"
 	"sync"
 
@@ -63,8 +64,10 @@ func (s *server) listenEvents() {
 				t.count++
 				continue
 			}
-			srv.feed <- struct{}{}
 
+			for _, cl := range srv.clients {
+				cl.feed <- struct{}{}
+			}
 		}
 	}
 }
@@ -78,7 +81,9 @@ func (s *server) start() {
 func (s *server) run(svc *service) {
 	port := fmt.Sprintf(":%d", *listenPort)
 	t := &styx.Server{
-		Addr: svc.addr + port,
+		Addr:     svc.addr + port,
+		ErrorLog: log.New(os.Stderr, "", 0),
+		TraceLog: log.New(os.Stderr, "", 0),
 		//Auth: auth,
 	}
 
@@ -91,10 +96,13 @@ func (s *server) run(svc *service) {
 		}
 
 		c := &client{
+			uuid:    uuid,
+			feed:    make(chan struct{}),
 			target:  svc.name,
 			current: current,
 		}
-		svc.clients[uuid] = c
+		svc.clients = append(svc.clients, c)
+		svc.tabs[current].active = true
 
 		for sess.Next() {
 			q := sess.Request()

@@ -17,8 +17,7 @@ const (
 
 type service struct {
 	state   chan *update
-	feed    chan struct{}
-	clients map[int64]*client
+	clients []*client
 	tabs    map[string]*tab
 	addr    string
 	name    string
@@ -26,12 +25,15 @@ type service struct {
 }
 
 type client struct {
+	feed    chan struct{}
 	target  string
 	reading string
 	current string
+	uuid    int64
 }
 
 type update struct {
+	uuid  int
 	key   updateKey
 	value string
 }
@@ -47,9 +49,7 @@ func getServices(cfg *config) map[string]*service {
 		}
 
 		service := &service{
-			clients: make(map[int64]*client),
 			state:   make(chan *update),
-			feed:    make(chan struct{}),
 			tabs:    tabs,
 			addr:    cfg.getAddress(svc),
 			name:    svc,
@@ -74,10 +74,13 @@ func (s *service) watch(cfg *config) {
 			// more readers on it
 
 			// We close feed so that all readers can send the EOF
-			s.Lock()
-			close(s.feed)
-			s.feed = make(chan struct{})
-			s.Unlock()
+			/*
+				s.clients
+				s.Lock()
+				close(s.feed)
+				s.feed = make(chan struct{})
+				s.Unlock()
+			*/
 			continue
 		case openUpdate:
 			// A client is moving to a new buffer much like above

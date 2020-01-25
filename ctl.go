@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"time"
 )
 
 func init() {
@@ -19,12 +18,11 @@ func init() {
 }
 
 type ctl struct {
-	state   chan *update
-	modTime time.Time
-	off     int64
-	size    int64
-	data    []byte
-	path    string
+	state chan *update
+	off   int64
+	size  int64
+	data  []byte
+	path  string
 }
 
 func (c *ctl) ReadAt(b []byte, off int64) (n int, err error) {
@@ -37,7 +35,6 @@ func (c *ctl) ReadAt(b []byte, off int64) (n int, err error) {
 }
 
 func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
-	c.modTime = time.Now().Truncate(time.Hour)
 	c.off += off + int64(len(p))
 	buff := bytes.NewBuffer(p)
 
@@ -104,11 +101,10 @@ func getCtl(msg *message) (interface{}, error) {
 	}
 
 	c := &ctl{
-		data:    buff,
-		size:    int64(len(buff)),
-		modTime: time.Now(),
-		state:   msg.svc.state,
-		path:    fp,
+		data:  buff,
+		size:  int64(len(buff)),
+		state: msg.svc.state,
+		path:  fp,
 	}
 
 	return c, nil
