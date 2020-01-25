@@ -54,7 +54,7 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 	switch command {
 	case "refresh":
 		c.state <- &update{
-			key: configUpdate,
+			key:   configUpdate,
 			value: value,
 		}
 	case "buffer ":
@@ -96,7 +96,7 @@ func (c *ctl) Uid() string  { return defaultUID }
 func (c *ctl) Gid() string  { return defaultGID }
 
 func getCtl(msg *message) (interface{}, error) {
-	fp := path.Join(*inpath, msg.service, "ctl")
+	fp := path.Join(*inpath, msg.svc.name, "ctl")
 
 	buff, err := ioutil.ReadFile(fp)
 	if err != nil {
@@ -107,7 +107,7 @@ func getCtl(msg *message) (interface{}, error) {
 		data:    buff,
 		size:    int64(len(buff)),
 		modTime: time.Now(),
-		state:   msg.state,
+		state:   msg.svc.state,
 		path:    fp,
 	}
 
@@ -116,5 +116,5 @@ func getCtl(msg *message) (interface{}, error) {
 
 // We should be able to get away with sending back a normal stat
 func getCtlStat(msg *message) (os.FileInfo, error) {
-	return os.Lstat(path.Join(*inpath, msg.service, "ctl"))
+	return os.Lstat(path.Join(*inpath, msg.svc.name, "ctl"))
 }

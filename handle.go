@@ -14,10 +14,9 @@ type fileHandler struct {
 var handlers = make(map[string]*fileHandler)
 
 type message struct {
-	state   chan *update
-	service string
-	buff    string
-	file    string
+	svc  *service
+	buff string
+	file string
 }
 
 func addFileHandler(path string, fh *fileHandler) {
@@ -36,10 +35,9 @@ func open(svc *service, c *client) (interface{}, error) {
 
 func handler(svc *service, c *client) (*fileHandler, *message) {
 	m := &message{
-		state:   svc.state,
-		service: svc.name,
-		buff:    c.current,
-		file:    c.reading,
+		svc:  svc,
+		buff: c.current,
+		file: c.reading,
 	}
 
 	h, ok := handlers[c.reading]

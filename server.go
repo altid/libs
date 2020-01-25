@@ -50,7 +50,12 @@ func (s *server) listenEvents() {
 			t, ok := srv.tabs[e.name]
 			if !ok {
 				// We have a new buffer
-				srv.tabs[e.name] = &tab{1, false}
+				t := &tab{
+					count:  1,
+					active: false,
+				}
+
+				srv.tabs[e.name] = t
 				continue
 			}
 
@@ -70,7 +75,7 @@ func (s *server) start() {
 func (s *server) run(svc *service) {
 	port := fmt.Sprintf(":%d", *listenPort)
 	t := &styx.Server{
-		Addr:    svc.addr + port,
+		Addr: svc.addr + port,
 		//Auth: auth,
 	}
 
