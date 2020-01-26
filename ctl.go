@@ -110,7 +110,6 @@ func getCtl(msg *message) (interface{}, error) {
 	return c, nil
 }
 
-// We should be able to get away with sending back a normal stat
 func getCtlStat(msg *message) (os.FileInfo, error) {
 	return os.Lstat(path.Join(*inpath, msg.svc.name, "ctl"))
 }

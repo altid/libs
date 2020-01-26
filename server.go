@@ -127,7 +127,8 @@ func (s *server) run(svc *service) {
 			target:  svc.name,
 			current: current,
 		}
-		svc.clients = append(svc.clients, c)
+		svc.clients[uuid] = c
+
 		if tab, ok := svc.tablist[current]; ok {
 			tab.active = true
 			tab.count = 0
@@ -157,7 +158,6 @@ func (s *server) getPath(c *client) string {
 }
 
 func addTab(srv *service, e *event) {
-	// We have a new buffer
 	t := &tab{
 		count:  1,
 		active: false,

@@ -17,19 +17,19 @@ const (
 
 type service struct {
 	commands chan *cmd
-	clients  []*client
+	clients  map[int64]*client
 	tablist  map[string]*tab
 	addr     string
 	name     string
-	sync.Mutex
 }
 
 type client struct {
+	uuid    int64
 	feed    chan struct{}
 	target  string
 	reading string
 	current string
-	uuid    int64
+	sync.Mutex
 }
 
 type cmd struct {
@@ -49,53 +49,104 @@ func getServices(cfg *config) map[string]*service {
 		}
 
 		service := &service{
+			clients:  make(map[int64]*client),
 			commands: make(chan *cmd),
 			tablist:  tlist,
 			addr:     cfg.getAddress(svc),
 			name:     svc,
 		}
 
-		go service.watch(cfg)
+		go service.watchCommands(cfg)
 		services[svc] = service
 	}
 
 	return services
 }
 
-func (s *service) watch(cfg *config) {
+func (s *service) watchCommands(cfg *config) {
 	for cmd := range s.commands {
+		cl := s.clients[cmd.uuid]
 		switch cmd.key {
 		case reloadCmd:
 			s.addr = cfg.getAddress(s.name)
 		case bufferCmd:
-			// A client is switching buffers. Go through
-			// and update all unread counts to reflect this
-			// Mark old buffer as inactive if there are no
-			// more readers on it
-
-			// We close feed so that all readers can send the EOF
-			for _, cl := range s.clients {
-				if cl.uuid != cmd.uuid {
-					continue
-				}
-				s.Lock()
-				close(cl.feed)
-				cl.feed = make(chan struct{})
-				s.Unlock()
-			}
-
-			continue
+			s.move(cl, cmd.value)
+			cl.sendFeedEOF()
 		case openCmd:
-			// A client is moving to a new buffer much like above
-			// Validate we have no listeners on the old one
-			continue
+			s.open(cl, cmd.value)
+			cl.sendFeedEOF()
 		case closeCmd:
-			// We're moving back to an old buffer. Only update
-			// The active status on the buffer we're moving to
-			continue
+			s.close(cl)
+			cl.sendFeedEOF()
 		case linkCmd:
-			// We're renaming a buffer outright
-			continue
+			s.close(cl)
+			s.open(cl, cmd.value)
+			cl.sendFeedEOF()
 		}
 	}
+}
+
+func (s *service) open(c *client, name string) {
+	s.checkInactive(c)
+	c.current = name
+}
+
+func (s *service) close(c *client) {
+	delete(s.tablist, c.current)
+
+	for _, cl := range s.clients {
+		if cl.current != c.current {
+			continue
+		}
+
+		// Grab first item
+		for _, t := range s.tablist {
+			cl.current = t.name
+			t.active = true
+			t.count = 0
+			break
+		}
+	}
+
+}
+
+func (s *service) move(c *client, name string) {
+
+	t, ok := s.tablist[name]
+	if !ok {
+		t = &tab{
+			name: name,
+		}
+		s.tablist[name] = t
+	}
+
+	t.active = true
+	t.count = 0
+
+	s.checkInactive(c)
+	c.current = name
+}
+
+func (s *service) checkInactive(c *client) {
+	old := c.current
+
+	for _, cl := range s.clients {
+		if cl.uuid == c.uuid {
+			continue
+		}
+
+		// At least one listener, no need to update
+		if cl.current == old {
+			return
+		}
+	}
+
+	s.tablist[old].active = false
+}
+
+func (cl *client) sendFeedEOF() {
+	cl.Lock()
+	close(cl.feed)
+	cl.feed = make(chan struct{})
+	cl.Unlock()
 }
