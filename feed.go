@@ -70,18 +70,11 @@ func getFeed(msg *message) (interface{}, error) {
 		path: path.Join(*inpath, msg.svc.name, msg.buff, "feed"),
 		done: done,
 	}
+	cl := msg.svc.clients[msg.uuid]
+	f.incoming = cl.feed
 
-	for _, cl := range msg.svc.clients {
-		if cl.uuid != msg.uuid {
-			continue
-		}
+	return f, nil
 
-		f.incoming = cl.feed
-
-		return f, nil
-	}
-
-	return nil, errors.New("unable to open file")
 }
 
 func getFeedStat(msg *message) (os.FileInfo, error) {
