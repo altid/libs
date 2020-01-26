@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -40,23 +41,27 @@ func newServer(ctx context.Context, cfg *config) (*server, error) {
 
 func (s *server) listenEvents() {
 	for e := range s.events {
+		srv := s.services[e.service]
+
 		switch e.etype {
+		//case streamEvent:
 		case notifyEvent:
 			// TODO(halfwit) Figure out notifications
 			continue
-		case feedEvent:
-			// Increment our unread count for any inactive buffers
-			srv := s.services[e.service]
-
+		case docEvent:
 			t, ok := srv.tablist[e.name]
 			if !ok {
-				// We have a new buffer
-				t := &tab{
-					count:  1,
-					active: false,
-				}
+				addTab(srv, e)
+				continue
+			}
 
-				srv.tablist[e.name] = t
+			if !t.active {
+				t.count++
+			}
+		case feedEvent:
+			t, ok := srv.tablist[e.name]
+			if !ok {
+				addTab(srv, e)
 				continue
 			}
 
@@ -80,16 +85,37 @@ func (s *server) start() {
 
 func (s *server) run(svc *service) {
 	port := fmt.Sprintf(":%d", *listenPort)
+
 	t := &styx.Server{
-		Addr:     svc.addr + port,
-		ErrorLog: log.New(os.Stderr, "", 0),
-		TraceLog: log.New(os.Stderr, "", 0),
+		Addr: svc.addr + port,
 		//Auth: auth,
 	}
 
+	if *verbose {
+		t.TraceLog = log.New(os.Stderr, "", 0)
+	}
+
+	if *debug {
+		t.ErrorLog = log.New(os.Stderr, "", 0)
+	}
+	
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
+		var current string
 		uuid := rand.Int63()
-		current := "server"
+
+		// Try our best to get a dir
+		dirs, err := ioutil.ReadDir(path.Join(*inpath, svc.name))
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
+		for _, file := range dirs {
+			if file.IsDir() {
+				current = file.Name()
+				break
+			}
+		}
 
 		if len(sess.Access) > 1 {
 			current = sess.Access
@@ -102,7 +128,9 @@ func (s *server) run(svc *service) {
 			current: current,
 		}
 		svc.clients = append(svc.clients, c)
-		svc.tablist[current].active = true
+		if tab, ok := svc.tablist[current]; ok {
+			tab.active = true
+		}
 
 		for sess.Next() {
 			q := sess.Request()
@@ -125,4 +153,14 @@ func (s *server) run(svc *service) {
 
 func (s *server) getPath(c *client) string {
 	return path.Join(*inpath, c.target, c.current, c.reading)
+}
+
+func addTab(srv *service, e *event) {
+	// We have a new buffer
+	t := &tab{
+		count:  1,
+		active: false,
+	}
+
+	srv.tablist[e.name] = t
 }

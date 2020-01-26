@@ -56,6 +56,7 @@ func handleReq(s *server, c *client, req styx.Request) {
 		req.Rerror("%s", "No such service")
 		return
 	}
+
 	switch msg := req.(type) {
 	case styx.Twalk:
 		msg.Rwalk(walk(service, c))
