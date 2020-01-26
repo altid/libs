@@ -98,7 +98,7 @@ func (s *server) run(svc *service) {
 	if *debug {
 		t.ErrorLog = log.New(os.Stderr, "", 0)
 	}
-	
+
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
 		var current string
 		uuid := rand.Int63()
@@ -130,6 +130,7 @@ func (s *server) run(svc *service) {
 		svc.clients = append(svc.clients, c)
 		if tab, ok := svc.tablist[current]; ok {
 			tab.active = true
+			tab.count = 0
 		}
 
 		for sess.Next() {

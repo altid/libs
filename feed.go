@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"time"
 )
 
 // feed files are special in that they're blocking
@@ -47,6 +48,7 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 	for range f.incoming {
 		n, err = fp.ReadAt(p, off)
 		if err == io.EOF {
+			time.Sleep(time.Millisecond * 150)
 			return n, nil
 		}
 
