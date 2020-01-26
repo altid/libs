@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -13,10 +12,12 @@ type eventType int8
 const (
 	feedEvent eventType = iota
 	notifyEvent
+	docEvent
 	noneEvent
 )
 
 var isfeed = []byte("feed")
+var isdocu = []byte("document")
 var isnoti = []byte("notification")
 
 // event will be a batch of all received events since the last
@@ -32,7 +33,6 @@ type tail struct {
 	size int64
 }
 
-// REDO
 func (t *tail) readlines() []*event {
 	var events []*event
 
@@ -40,7 +40,6 @@ func (t *tail) readlines() []*event {
 	b := bytes.NewBuffer(lines)
 	hs, _ := t.fd.Stat()
 
-	t.size = hs.Size()
 	if hs.Size() < t.size {
 		t.size = 0
 	}
@@ -52,6 +51,8 @@ func (t *tail) readlines() []*event {
 		log.Printf("Error reading from file %s at offset %d: %v", t.name, t.size, err)
 		return nil
 	}
+
+	t.size = hs.Size()
 
 	for {
 		line, err := b.ReadBytes('\n')
@@ -74,6 +75,8 @@ func parseEvent(line []byte, name string) *event {
 
 	if bytes.Contains(line, isfeed) {
 		etype = feedEvent
+	} else if bytes.Contains(line, isdocu) {
+		etype = docEvent
 	} else if bytes.Contains(line, isnoti) {
 		etype = notifyEvent
 	}
@@ -82,7 +85,6 @@ func parseEvent(line []byte, name string) *event {
 
 	l := len(lines)
 	if l < 3 {
-		fmt.Printf("Small read on %s with %s\n", lines, string(line))
 		return nil
 	}
 

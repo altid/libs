@@ -5,22 +5,22 @@ import (
 	"sync"
 )
 
-type updateKey int
+type cmdKey int
 
 const (
-	bufferUpdate updateKey = iota
-	configUpdate
-	linkUpdate
-	openUpdate
-	closeUpdate
+	bufferCmd cmdKey = iota
+	reloadCmd
+	linkCmd
+	openCmd
+	closeCmd
 )
 
 type service struct {
-	state   chan *update
-	clients []*client
-	tablist map[string]*tab
-	addr    string
-	name    string
+	commands chan *cmd
+	clients  []*client
+	tablist  map[string]*tab
+	addr     string
+	name     string
 	sync.Mutex
 }
 
@@ -32,9 +32,9 @@ type client struct {
 	uuid    int64
 }
 
-type update struct {
+type cmd struct {
 	uuid  int64
-	key   updateKey
+	key   cmdKey
 	value string
 }
 
@@ -49,10 +49,10 @@ func getServices(cfg *config) map[string]*service {
 		}
 
 		service := &service{
-			state:   make(chan *update),
-			tablist: tlist,
-			addr:    cfg.getAddress(svc),
-			name:    svc,
+			commands: make(chan *cmd),
+			tablist:  tlist,
+			addr:     cfg.getAddress(svc),
+			name:     svc,
 		}
 
 		go service.watch(cfg)
@@ -63,11 +63,11 @@ func getServices(cfg *config) map[string]*service {
 }
 
 func (s *service) watch(cfg *config) {
-	for update := range s.state {
-		switch update.key {
-		case configUpdate:
+	for cmd := range s.commands {
+		switch cmd.key {
+		case reloadCmd:
 			s.addr = cfg.getAddress(s.name)
-		case bufferUpdate:
+		case bufferCmd:
 			// A client is switching buffers. Go through
 			// and update all unread counts to reflect this
 			// Mark old buffer as inactive if there are no
@@ -75,7 +75,7 @@ func (s *service) watch(cfg *config) {
 
 			// We close feed so that all readers can send the EOF
 			for _, cl := range s.clients {
-				if cl.uuid != update.uuid {
+				if cl.uuid != cmd.uuid {
 					continue
 				}
 				s.Lock()
@@ -85,15 +85,15 @@ func (s *service) watch(cfg *config) {
 			}
 
 			continue
-		case openUpdate:
+		case openCmd:
 			// A client is moving to a new buffer much like above
 			// Validate we have no listeners on the old one
 			continue
-		case closeUpdate:
+		case closeCmd:
 			// We're moving back to an old buffer. Only update
 			// The active status on the buffer we're moving to
 			continue
-		case linkUpdate:
+		case linkCmd:
 			// We're renaming a buffer outright
 			continue
 		}

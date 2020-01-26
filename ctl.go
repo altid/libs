@@ -18,11 +18,11 @@ func init() {
 }
 
 type ctl struct {
-	state chan *update
-	off   int64
-	size  int64
-	data  []byte
-	path  string
+	commands chan *cmd
+	off      int64
+	size     int64
+	data     []byte
+	path     string
 }
 
 func (c *ctl) ReadAt(b []byte, off int64) (n int, err error) {
@@ -50,30 +50,30 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 
 	switch command {
 	case "refresh":
-		c.state <- &update{
-			key:   configUpdate,
+		c.commands <- &cmd{
+			key:   reloadCmd,
 			value: value,
 		}
 	case "buffer ":
-		c.state <- &update{
-			key:   bufferUpdate,
+		c.commands <- &cmd{
+			key:   bufferCmd,
 			value: value,
 		}
 
 		return len(p), nil
 	case "close ":
-		c.state <- &update{
-			key:   closeUpdate,
+		c.commands <- &cmd{
+			key:   closeCmd,
 			value: value,
 		}
 	case "link ":
-		c.state <- &update{
-			key:   linkUpdate,
+		c.commands <- &cmd{
+			key:   linkCmd,
 			value: value,
 		}
 	case "open ":
-		c.state <- &update{
-			key:   openUpdate,
+		c.commands <- &cmd{
+			key:   openCmd,
 			value: value,
 		}
 	}
@@ -101,10 +101,10 @@ func getCtl(msg *message) (interface{}, error) {
 	}
 
 	c := &ctl{
-		data:  buff,
-		size:  int64(len(buff)),
-		state: msg.svc.state,
-		path:  fp,
+		data:     buff,
+		size:     int64(len(buff)),
+		commands: msg.svc.commands,
+		path:     fp,
 	}
 
 	return c, nil

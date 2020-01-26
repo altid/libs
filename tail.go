@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -33,7 +32,6 @@ func tailEvents(ctx context.Context, services map[string]*service) (chan *event,
 					continue
 				}
 				for _, event := range tails[ev.Name].readlines() {
-					fmt.Println("Sending event")
 					events <- event
 				}
 			case err := <-watcher.Errors:

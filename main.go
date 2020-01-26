@@ -18,7 +18,9 @@ var listenPort = flag.Int("p", 564, "Port to listen on")
 var usetls = flag.Bool("t", false, "Use TLS")
 var certfile = flag.String("c", "/etc/ssl/certs/altid.pem", "Path to certificate file")
 var keyfile = flag.String("k", "/etc/ssl/private/altid.pem", "Path to key file")
-var username = flag.String("u", "", "Run as another user")
+var username = flag.String("u", "", "Run as user")
+var verbose = flag.Bool("v", false, "Enable verbose logging")
+var debug = flag.Bool("d", false, "Enable debug logging")
 
 var defaultUID string
 var defaultGID string
@@ -43,7 +45,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		
+
 		defaultUID = us.Uid
 		defaultGID = us.Gid
 	}
@@ -72,10 +74,12 @@ func main() {
 		log.Fatal("Found no running services, exiting")
 	}
 
-	err = registerMDNS(srv.services)
-	if err != nil {
-		log.Fatal(err)
-	}
+	/*
+		err = registerMDNS(srv.services)
+		if err != nil {
+			log.Fatal(err)
+		}
+	*/
 
 	go srv.listenEvents()
 	go srv.start()

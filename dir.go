@@ -82,7 +82,7 @@ func listDir(msg *message, fp string) ([]os.FileInfo, int64, error) {
 	// We need to trim duplicate entries from here should they exist
 	for _, entry := range list {
 		switch entry.Name() {
-		case "feed", "input", "tabs":
+		case "feed", "input", "tabs", "ctl":
 			if len(list) > 1 {
 				list[count] = list[len(list)-1]
 			}
