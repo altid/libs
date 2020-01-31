@@ -100,8 +100,8 @@ func (s *server) run(svc *service) {
 	}
 
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
-		var current string
 		uuid := rand.Int63()
+		current := "server"
 
 		// Try our best to get a dir
 		dirs, err := ioutil.ReadDir(path.Join(*inpath, svc.name))
