@@ -65,7 +65,11 @@ func getServices(cfg *config) map[string]*service {
 
 func (s *service) watchCommands(cfg *config) {
 	for cmd := range s.commands {
-		cl := s.clients[cmd.uuid]
+		cl, ok := s.clients[cmd.uuid]
+		if !ok {
+			continue
+		}
+
 		switch cmd.key {
 		case reloadCmd:
 			s.addr = cfg.getAddress(s.name)
@@ -111,7 +115,6 @@ func (s *service) close(c *client) {
 }
 
 func (s *service) move(c *client, name string) {
-
 	t, ok := s.tablist[name]
 	if !ok {
 		t = &tab{
@@ -128,20 +131,20 @@ func (s *service) move(c *client, name string) {
 }
 
 func (s *service) checkInactive(c *client) {
-	old := c.current
-
 	for _, cl := range s.clients {
 		if cl.uuid == c.uuid {
 			continue
 		}
 
 		// At least one listener, no need to update
-		if cl.current == old {
+		if cl.current == c.current {
 			return
 		}
 	}
 
-	s.tablist[old].active = false
+	if t, ok := s.tablist[c.current]; ok {
+		t.active = false
+	}
 }
 
 func (cl *client) sendFeedEOF() {

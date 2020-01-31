@@ -21,6 +21,7 @@ type ctl struct {
 	commands chan *cmd
 	off      int64
 	size     int64
+	uuid     int64
 	data     []byte
 	path     string
 }
@@ -44,18 +45,22 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 	}
 
 	value, err := buff.ReadString('\n')
-	if err != io.EOF {
+	if err != nil && err != io.EOF {
 		return 0, err
 	}
+
+	value = value[:len(value)-1]
 
 	switch command {
 	case "refresh":
 		c.commands <- &cmd{
+			uuid:  c.uuid,
 			key:   reloadCmd,
 			value: value,
 		}
 	case "buffer ":
 		c.commands <- &cmd{
+			uuid:  c.uuid,
 			key:   bufferCmd,
 			value: value,
 		}
@@ -63,16 +68,19 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 		return len(p), nil
 	case "close ":
 		c.commands <- &cmd{
+			uuid:  c.uuid,
 			key:   closeCmd,
 			value: value,
 		}
 	case "link ":
 		c.commands <- &cmd{
+			uuid:  c.uuid,
 			key:   linkCmd,
 			value: value,
 		}
 	case "open ":
 		c.commands <- &cmd{
+			uuid:  c.uuid,
 			key:   openCmd,
 			value: value,
 		}
@@ -101,6 +109,7 @@ func getCtl(msg *message) (interface{}, error) {
 	}
 
 	c := &ctl{
+		uuid:     msg.uuid,
 		data:     buff,
 		size:     int64(len(buff)),
 		commands: msg.svc.commands,
