@@ -36,15 +36,30 @@ type Controller interface {
 	Default(c *Control, cmd, from, msg string) error
 }
 
-type Control struct {
-	rundir  string
-	logdir  string
-	doctype string
-	tabs    []string
-	req     chan string
-	done    chan struct{}
-	ctrl    Controller
+// SigHandler
+// Optional interface to provide fine grained control for catching signals.
+// It is expected that you will call c.Cleanup() within your SigHandle function
+// If none is supplied, c.Cleanup() will be called on SIGINT and SIGKILL
+type SigHandler interface {
+	SigHandle(c *Control)
 }
+
+// Control type can be used to manage a running ctrl file session
+type Control struct {
+	rundir   string
+	logdir   string
+	doctype  string
+	tabs     []string
+	req      chan string
+	done     chan struct{}
+	ctrl     Controller
+	// It's considered bad form to handle signals internally to a library
+	// In this case, the desired interface for a running service is dictated by the library being used itself
+	// Rather than a how-to guide, or similar
+	sigwatch SigHandler
+}
+
+type watcher struct{}
 
 // CreateCtrlFile sets up a ready-to-listen ctrl file
 // logdir is the directory to store copies of the contents of files created; specifically doctype. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
@@ -61,18 +76,24 @@ func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Co
 		var tab []string
 		req := make(chan string)
 		done := make(chan struct{})
+		w := &watcher{}
+    
 		c := &Control{
-			rundir:  rundir,
-			logdir:  logdir,
-			doctype: doctype,
-			tabs:    tab,
-			req:     req,
-			done:    done,
-			ctrl:    ctrl,
+			rundir:   rundir,
+			logdir:   logdir,
+			doctype:  doctype,
+			tabs:     tab,
+			req:      req,
+			done:     done,
+			ctrl:     ctrl,
+			sigwatch: w,
+		}
+		if _, ok := ctrl.(SigHandler); ok {
+			c.sigwatch = ctrl.(SigHandler)
 		}
 		return c, nil
 	}
-	return nil, fmt.Errorf("control file already exist at %s", rundir)
+	return nil, fmt.Errorf("Control file already exist at %s", rundir)
 }
 
 // Event appends the given string to the events file of Control's working directory.
@@ -288,7 +309,12 @@ func (c *Control) popTab(tabname string) error {
 	return fmt.Errorf("entry not found: %s", tabname)
 }
 
-func sigwatch(c *Control) {
+func (c *Control) sighandle() {
+	d := c.sigwatch
+	d.SigHandle(c)
+}
+
+func (w *watcher) SigHandle(c *Control) {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGKILL, syscall.SIGINT)
 	for sig := range sigs {
@@ -354,6 +380,7 @@ func dispatch(c *Control) {
 					log.Print(fmt.Errorf("no command specified"))
 					continue
 				}
+        
 				msg := strings.Join(token[2:], " ")
 				err := c.ctrl.Default(c, token[0], token[1], msg)
 				if err != nil {

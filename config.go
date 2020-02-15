@@ -127,6 +127,7 @@ func GetLogDir(service string) string {
 	return logDir(service)
 }
 
+// If we can't get a valid dir it should be fatal
 func logDir(service string) string {
 	userdir, err := UserShareDir()
 	if err != nil {
