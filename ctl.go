@@ -56,7 +56,7 @@ func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Co
 		return nil, fmt.Errorf("unknown doctype: %s", doctype)
 	}
 	rundir := path.Join(mtpt, service)
-	_, err := os.Stat(path.Join(rundir, "ctrl"))
+	_, err := os.Stat(path.Join(rundir, "ctl"))
 	if os.IsNotExist(err) {
 		var tab []string
 		req := make(chan string)
@@ -172,7 +172,7 @@ func (c *Control) Listen() error {
 		return err
 	}
 
-	cfile := path.Join(c.rundir, "ctrl")
+	cfile := path.Join(c.rundir, "ctl")
 
 	go sigwatch(c)
 	go dispatch(c)
@@ -206,7 +206,7 @@ func (c *Control) Start() (context.Context, error) {
 		return nil, e
 	}
 
-	cfile := path.Join(c.rundir, "ctrl")
+	cfile := path.Join(c.rundir, "ctl")
 	go sigwatch(c)
 	go dispatch(c)
 	event(c, cfile)
