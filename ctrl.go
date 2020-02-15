@@ -53,7 +53,7 @@ type Control struct {
 // This will return an error if a ctrl file exists at the given directory, or if doctype is invalid.
 func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Control, error) {
 	if doctype != "document" && doctype != "feed" {
-		return nil, fmt.Errorf("Unknown doctype: %s", doctype)
+		return nil, fmt.Errorf("unknown doctype: %s", doctype)
 	}
 	rundir := path.Join(mtpt, service)
 	_, err := os.Stat(path.Join(rundir, "ctrl"))
@@ -72,7 +72,7 @@ func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Co
 		}
 		return c, nil
 	}
-	return nil, fmt.Errorf("Control file already exist at %s", rundir)
+	return nil, fmt.Errorf("control file already exist at %s", rundir)
 }
 
 // Event appends the given string to the events file of Control's working directory.
@@ -93,7 +93,7 @@ func (c *Control) Cleanup() {
 		}
 		for _, f := range files {
 			command := exec.Command("/bin/unmount", f)
-			command.Run()
+			log.Print(command.Run())
 		}
 	}
 	os.RemoveAll(c.rundir)
@@ -105,45 +105,50 @@ func (c *Control) Cleanup() {
 // Calling CreateBuffer on a directory that already exists will return nil
 func (c *Control) CreateBuffer(name, doctype string) error {
 	if name == "" {
-		return fmt.Errorf("No buffer name given")
-	}
-	d := path.Join(c.rundir, name, doctype)
-	_, err := os.Stat(path.Join(c.rundir, name))
-	if os.IsNotExist(err) {
-		os.MkdirAll(path.Join(c.rundir, name), 0755)
-	}
-	if err == nil {
-		return nil
+		return fmt.Errorf("no buffer name given")
 	}
 
-	ioutil.WriteFile(d, []byte("Welcome!\n"), 0644)
-	if c.logdir == "none" {
-		return nil
+	fp := path.Join(c.rundir, name)
+	d := path.Join(fp, doctype)
+
+	if _, e := os.Stat(fp); !os.IsNotExist(e) {
+		return e
 	}
-	logfile := path.Join(c.logdir, name)
-	err = c.pushTab(name)
-	if err != nil {
-		return err
+
+	if e := os.MkdirAll(fp, 0755); e != nil {
+		return e
 	}
-	return symlink(logfile, d)
+
+	if e := ioutil.WriteFile(d, []byte("Welcome!\n"), 0644); e != nil {
+		return e
+	}
+
+	if e := c.pushTab(name); e != nil {
+		return e
+	}
+
+	// If there is no log, we're done otherwise create symlink
+	if c.logdir != "none" {
+		logfile := path.Join(c.logdir, name)
+		return symlink(logfile, d)
+	}
+
+	return nil
 }
 
 // DeleteBuffer unlinks a document/buffer, and cleanly removes the directory
 // Will return an error if it's unable to unlink on plan9, or if the remove fails.
 func (c *Control) DeleteBuffer(name, doctype string) error {
-	d := path.Join(c.rundir, name, doctype)
 	if c.logdir != "none" {
-		err := unlink(d)
-		if err != nil {
-			return err
+		d := path.Join(c.rundir, name, doctype)
+		if e := unlink(d); e != nil {
+			return e
 		}
 	}
+
 	defer os.RemoveAll(path.Join(c.rundir, name))
-	err := c.popTab(name)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return c.popTab(name)
 }
 
 // HasBuffer returns whether or not a buffer is present in the current control session
@@ -153,6 +158,7 @@ func (c *Control) HasBuffer(name, doctype string) bool {
 	if os.IsNotExist(err) {
 		return false
 	}
+
 	return true
 }
 
@@ -165,23 +171,30 @@ func (c *Control) Listen() error {
 	if err != nil {
 		return err
 	}
+
 	cfile := path.Join(c.rundir, "ctrl")
+
 	go sigwatch(c)
 	go dispatch(c)
+
 	r, err := newReader(cfile)
 	if err != nil {
 		return err
 	}
+
 	event(c, cfile)
 	scanner := bufio.NewScanner(r)
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "quit" {
 			close(c.done)
 			break
 		}
+
 		c.req <- line
 	}
+
 	close(c.req)
 	return nil
 }
@@ -189,22 +202,26 @@ func (c *Control) Listen() error {
 // Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctrl file is instantiated.
 // This provides a context.Context that can be used for cancellations
 func (c *Control) Start() (context.Context, error) {
-	err := os.MkdirAll(c.rundir, 0755)
-	if err != nil {
-		return nil, err
+	if e := os.MkdirAll(c.rundir, 0755); e != nil {
+		return nil, e
 	}
+
 	cfile := path.Join(c.rundir, "ctrl")
 	go sigwatch(c)
 	go dispatch(c)
 	event(c, cfile)
+
 	r, err := newReader(cfile)
 	if err != nil {
 		return nil, err
 	}
+
 	ctx, cancel := context.WithCancel(context.Background())
+
 	go func() {
 		defer close(c.req)
 		scanner := bufio.NewScanner(r)
+
 		for scanner.Scan() {
 			line := scanner.Text()
 			if line == "quit" {
@@ -212,9 +229,11 @@ func (c *Control) Start() (context.Context, error) {
 				close(c.done)
 				break
 			}
+
 			c.req <- line
 		}
 	}()
+
 	return ctx, nil
 }
 
@@ -266,7 +285,7 @@ func (c *Control) popTab(tabname string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Entry not found: %s", tabname)
+	return fmt.Errorf("entry not found: %s", tabname)
 }
 
 func sigwatch(c *Control) {
@@ -332,7 +351,7 @@ func dispatch(c *Control) {
 				}
 			default:
 				if len(token) < 3 {
-					log.Print(fmt.Errorf("No command specified"))
+					log.Print(fmt.Errorf("no command specified"))
 					continue
 				}
 				msg := strings.Join(token[2:], " ")
