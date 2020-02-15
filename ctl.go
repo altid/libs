@@ -46,13 +46,13 @@ type SigHandler interface {
 
 // Control type can be used to manage a running ctrl file session
 type Control struct {
-	rundir   string
-	logdir   string
-	doctype  string
-	tabs     []string
-	req      chan string
-	done     chan struct{}
-	ctrl     Controller
+	rundir  string
+	logdir  string
+	doctype string
+	tabs    []string
+	req     chan string
+	done    chan struct{}
+	ctrl    Controller
 	// It's considered bad form to handle signals internally to a library
 	// In this case, the desired interface for a running service is dictated by the library being used itself
 	// Rather than a how-to guide, or similar
@@ -77,7 +77,7 @@ func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Co
 		req := make(chan string)
 		done := make(chan struct{})
 		w := &watcher{}
-    
+
 		c := &Control{
 			rundir:   rundir,
 			logdir:   logdir,
@@ -309,7 +309,7 @@ func (c *Control) popTab(tabname string) error {
 	return fmt.Errorf("entry not found: %s", tabname)
 }
 
-func (c *Control) sighandle() {
+func sigwatch(c *Control) {
 	d := c.sigwatch
 	d.SigHandle(c)
 }
@@ -380,7 +380,7 @@ func dispatch(c *Control) {
 					log.Print(fmt.Errorf("no command specified"))
 					continue
 				}
-        
+
 				msg := strings.Join(token[2:], " ")
 				err := c.ctrl.Default(c, token[0], token[1], msg)
 				if err != nil {
