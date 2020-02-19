@@ -1,3 +1,4 @@
+// escape and parse markdown elements
 package markup
 
 import (
