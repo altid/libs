@@ -7,11 +7,11 @@ import (
 	"os"
 	"path"
 
-	"github.com/altid/cleanmark"
+	"github.com/altid/libs/markup"
 )
 
 type Handler interface {
-	Handle(path string, c *cleanmark.Lexer) error
+	Handle(path string, c *markup.Lexer) error
 }
 
 type Input struct {
@@ -59,7 +59,7 @@ func (i *Input) StartContext(ctx context.Context) error {
 	defer close(inputMsg)
 	go func() {
 		for msg := range inputMsg {
-			l := cleanmark.NewLexer(msg)
+			l := markup.NewLexer(msg)
 			err := i.h.Handle(i.fname, l)
 			if err != nil {
 				errorMsg <- err
