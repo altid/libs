@@ -44,7 +44,6 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 		return n, nil
 	}
 
-	// Bit of a trick here to get a single event on a potentially closed pipe
 	for range f.incoming {
 		n, err = fp.ReadAt(p, off)
 		if err == io.EOF {
