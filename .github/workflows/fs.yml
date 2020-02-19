@@ -1,5 +1,8 @@
 name: Go
-on: [push]
+on:
+  push:
+    paths:
+      - 'fs/**'
 jobs:
 
   build:
