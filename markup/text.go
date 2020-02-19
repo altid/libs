@@ -59,8 +59,8 @@ func (c *Color) String() string {
 
 // Url represents a link markdown element
 type Url struct {
-	link []byte
-	msg  []byte
+	Link []byte
+	Msg  []byte
 }
 
 // NewUrl returns a Url
@@ -74,15 +74,15 @@ func NewUrl(link, msg []byte) (*Url, error) {
 		msg = link
 	}
 	url := &Url{
-		link: link,
-		msg:  msg,
+		Link: link,
+		Msg:  msg,
 	}
 	return url, nil
 }
 
 // The form will be "[msg](link)"
 func (u *Url) String() string {
-	return fmt.Sprintf("[%s](%s)", u.msg, u.link)
+	return fmt.Sprintf("[%s](%s)", u.Msg, u.Link)
 }
 
 // Image represents an image markdown element
@@ -151,7 +151,7 @@ func (c *Cleaner) WriteEscaped(msg []byte) (n int, err error) {
 
 // Variant of WriteEscaped which accepts a string as input
 func (c *Cleaner) WriteStringEscaped(msg string) (n int, err error) {
-	return io.WriteString(c.w, escapeString(msg))
+	return io.WriteString(c.w, EscapeString(msg))
 }
 
 // Variant of Write which accepts a format specifier
@@ -218,8 +218,8 @@ func NewNotifier(path, from, msg string) *Notifier {
 // Parse will properly clean the markdown for the `from` and `msg` elements
 // As well as format the lines to fit the notification idioms expected by clients
 func (n *Notifier) Parse() (string, string, string) {
-	from := "# " + escapeString(n.from)
-	msg := escapeString(n.msg)
+	from := "# " + EscapeString(n.from)
+	msg := EscapeString(n.msg)
 	return n.buff, from, msg
 }
 
@@ -229,7 +229,7 @@ func doWritef(w io.WriteCloser, format string, args ...interface{}) (n int, err 
 		case []byte:
 			args[n] = escape(f)
 		case string:
-			args[n] = escapeString(f)
+			args[n] = EscapeString(f)
 		}
 	}
 	return fmt.Fprintf(w, format, args...)
@@ -249,7 +249,8 @@ func escape(msg []byte) []byte {
 	return result[:len(msg)+offset]
 }
 
-func escapeString(msg string) string {
+// EscapeString returns a properly escaped Altid markup string
+func EscapeString(msg string) string {
 	escaped := escape([]byte(msg))
 	return string(escaped)
 }

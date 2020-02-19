@@ -1,4 +1,4 @@
-package markup
+package html
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/altid/libs/markup"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -21,11 +22,10 @@ type HTMLCleaner struct {
 type Handler interface {
 	NavHandler
 	ImgHandler
-
 }
 
 type NavHandler interface {
-	Nav(*Url) error
+	Nav(*markup.Url) error
 }
 
 type ImgHandler interface {
@@ -54,7 +54,7 @@ func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 			return z.Err()
 		case html.StartTagToken:
 			t := z.Token()
-			// NOTE(halfwit): It's likely that this will grow much larger 
+			// NOTE(halfwit): It's likely that this will grow much larger
 			// due to how the tokenizer works, this is being done out of band
 			if t.DataAtom == atom.A {
 				switch {
@@ -188,8 +188,8 @@ func parseToken(t html.Token, m map[atom.Atom]bool) string {
 	if strings.TrimSpace(d) == "" {
 		return ""
 	}
-	
-	dst.WriteString(escapeString(d))
+
+	dst.WriteString(markup.EscapeString(d))
 	return dst.String()
 }
 
@@ -213,7 +213,7 @@ func parseUrl(z *html.Tokenizer, t html.Token) (link, url string) {
 			//   <img src="assets/pressbooks-promo.png" alt="pressbooks.com"/>
 			// </a>
 			if z.Token().DataAtom == atom.Img {
-					
+
 			}
 		case html.SelfClosingTagToken:
 			link = string(z.Text())
@@ -239,8 +239,8 @@ func parseImage(token html.Token) (image, alt string) {
 	return
 }
 
-func parseNav(z *html.Tokenizer, t html.Token) chan *Url {
-	m := make(chan *Url)
+func parseNav(z *html.Tokenizer, t html.Token) chan *markup.Url {
+	m := make(chan *markup.Url)
 	go func() {
 		defer close(m)
 		for {
@@ -249,14 +249,14 @@ func parseNav(z *html.Tokenizer, t html.Token) chan *Url {
 				t := z.Token()
 				if t.DataAtom == atom.Nav {
 					return
-				}		
+				}
 				if t.DataAtom != atom.A {
 					continue
 				}
 				link, url := parseUrl(z, t)
-				m <- &Url{ 
-					link: []byte(link),
-					msg:  []byte(url),
+				m <- &markup.Url{
+					Link: []byte(link),
+					Msg:  []byte(url),
 				}
 			case html.EndTagToken:
 				if z.Token().DataAtom == atom.Nav {
