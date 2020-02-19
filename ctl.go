@@ -20,10 +20,10 @@ import (
 var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 
 // Controller
-// Open is called when a control message starting with 'open' or 'join' is written to the ctrl file
-// Close is called when a control message starting with 'close or 'part' is written to the ctrl file
-// Link is called when a control message starting with 'link' is written to the ctrl file
-// Default is called when any other control message is written to the ctrl file.
+// Open is called when a control message starting with 'open' or 'join' is written to the ctl file
+// Close is called when a control message starting with 'close or 'part' is written to the ctl file
+// Link is called when a control message starting with 'link' is written to the ctl file
+// Default is called when any other control message is written to the ctl file.
 // Client messages to Default must come in the order, `cmd buffer msg...`, and to that effect any other formats behavior is undefined.
 // When Open is called, a file will be created with a path of `mountpoint/msg/document (or feed)`, containing initially a file named what you've set doctype to.. Calls to open are expected to populate that file, as well as create any supplementary files needed, such as title, aside, status, input, etc
 // When Link is called, the content of the current buffer is expected to change, and the name of the current tab will be removed, replaced with msg
@@ -44,15 +44,15 @@ type SigHandler interface {
 	SigHandle(c *Control)
 }
 
-// Control type can be used to manage a running ctrl file session
+// Control type can be used to manage a running ctl file session
 type Control struct {
-	rundir   string
-	logdir   string
-	doctype  string
-	tabs     []string
-	req      chan string
-	done     chan struct{}
-	ctrl     Controller
+	rundir  string
+	logdir  string
+	doctype string
+	tabs    []string
+	req     chan string
+	done    chan struct{}
+	ctl     Controller
 	// It's considered bad form to handle signals internally to a library
 	// In this case, the desired interface for a running service is dictated by the library being used itself
 	// Rather than a how-to guide, or similar
@@ -61,22 +61,24 @@ type Control struct {
 
 type watcher struct{}
 
-// CreateCtrlFile sets up a ready-to-listen ctrl file
+// CreateCtlFile sets up a ready-to-listen ctl file
 // logdir is the directory to store copies of the contents of files created; specifically doctype. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
 // mtpt is the directory to create the file system in
 // service is the subdirectory inside mtpt for the runtime fs
-// This will return an error if a ctrl file exists at the given directory, or if doctype is invalid.
-func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Control, error) {
+// This will return an error if a ctl file exists at the given directory, or if doctype is invalid.
+func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string) (*Control, error) {
 	if doctype != "document" && doctype != "feed" {
-		return nil, fmt.Errorf("Unknown doctype: %s", doctype)
+		return nil, fmt.Errorf("unknown doctype: %s", doctype)
 	}
 	rundir := path.Join(mtpt, service)
+
 	_, err := os.Stat(path.Join(rundir, "ctl"))
 	if os.IsNotExist(err) {
 		var tab []string
 		req := make(chan string)
 		done := make(chan struct{})
 		w := &watcher{}
+
 		c := &Control{
 			rundir:   rundir,
 			logdir:   logdir,
@@ -84,14 +86,16 @@ func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Co
 			tabs:     tab,
 			req:      req,
 			done:     done,
-			ctrl:     ctrl,
+			ctl:      ctl,
 			sigwatch: w,
 		}
-		if _, ok := ctrl.(SigHandler); ok {
-			c.sigwatch = ctrl.(SigHandler)
+		if _, ok := ctl.(SigHandler); ok {
+			c.sigwatch = ctl.(SigHandler)
 		}
+
 		return c, nil
 	}
+
 	return nil, fmt.Errorf("Control file already exist at %s", rundir)
 }
 
@@ -113,7 +117,7 @@ func (c *Control) Cleanup() {
 		}
 		for _, f := range files {
 			command := exec.Command("/bin/unmount", f)
-			command.Run()
+			log.Print(command.Run())
 		}
 	}
 	os.RemoveAll(c.rundir)
@@ -125,45 +129,50 @@ func (c *Control) Cleanup() {
 // Calling CreateBuffer on a directory that already exists will return nil
 func (c *Control) CreateBuffer(name, doctype string) error {
 	if name == "" {
-		return fmt.Errorf("No buffer name given")
-	}
-	d := path.Join(c.rundir, name, doctype)
-	_, err := os.Stat(path.Join(c.rundir, name))
-	if os.IsNotExist(err) {
-		os.MkdirAll(path.Join(c.rundir, name), 0755)
-	}
-	if err == nil {
-		return nil
+		return fmt.Errorf("no buffer name given")
 	}
 
-	ioutil.WriteFile(d, []byte("Welcome!\n"), 0644)
-	if c.logdir == "none" {
-		return nil
+	fp := path.Join(c.rundir, name)
+	d := path.Join(fp, doctype)
+
+	if _, e := os.Stat(fp); !os.IsNotExist(e) {
+		return e
 	}
-	logfile := path.Join(c.logdir, name)
-	err = c.pushTab(name)
-	if err != nil {
-		return err
+
+	if e := os.MkdirAll(fp, 0755); e != nil {
+		return e
 	}
-	return symlink(logfile, d)
+
+	if e := ioutil.WriteFile(d, []byte("Welcome!\n"), 0644); e != nil {
+		return e
+	}
+
+	if e := c.pushTab(name); e != nil {
+		return e
+	}
+
+	// If there is no log, we're done otherwise create symlink
+	if c.logdir != "none" {
+		logfile := path.Join(c.logdir, name)
+		return symlink(logfile, d)
+	}
+
+	return nil
 }
 
 // DeleteBuffer unlinks a document/buffer, and cleanly removes the directory
 // Will return an error if it's unable to unlink on plan9, or if the remove fails.
 func (c *Control) DeleteBuffer(name, doctype string) error {
-	d := path.Join(c.rundir, name, doctype)
 	if c.logdir != "none" {
-		err := unlink(d)
-		if err != nil {
-			return err
+		d := path.Join(c.rundir, name, doctype)
+		if e := unlink(d); e != nil {
+			return e
 		}
 	}
+
 	defer os.RemoveAll(path.Join(c.rundir, name))
-	err := c.popTab(name)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return c.popTab(name)
 }
 
 // HasBuffer returns whether or not a buffer is present in the current control session
@@ -173,58 +182,70 @@ func (c *Control) HasBuffer(name, doctype string) bool {
 	if os.IsNotExist(err) {
 		return false
 	}
+
 	return true
 }
 
-// Listen creates a file named "ctrl" inside RunDirectory, after making sure the directory exists
-// Any text written to the ctrl file will be parsed, line by line.
+// Listen creates a file named "ctl" inside RunDirectory, after making sure the directory exists
+// Any text written to the ctl file will be parsed, line by line.
 // Messages handled internally are as follows: open (or join), close (or part), and quit, which causes Listen() to return.
-// This will return an error if we're unable to create the ctrlfile itself, and will log any error relating to control messages.
+// This will return an error if we're unable to create the ctlfile itself, and will log any error relating to control messages.
 func (c *Control) Listen() error {
 	err := os.MkdirAll(c.rundir, 0755)
 	if err != nil {
 		return err
 	}
+
 	cfile := path.Join(c.rundir, "ctl")
-	go c.sighandle()
+
+	go sigwatch(c)
 	go dispatch(c)
+
 	r, err := newReader(cfile)
 	if err != nil {
 		return err
 	}
+
 	event(c, cfile)
 	scanner := bufio.NewScanner(r)
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "quit" {
 			close(c.done)
 			break
 		}
+
 		c.req <- line
 	}
+
 	close(c.req)
 	return nil
 }
 
-// Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctrl file is instantiated.
+// Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctl file is instantiated.
 // This provides a context.Context that can be used for cancellations
 func (c *Control) Start() (context.Context, error) {
-	err := os.MkdirAll(c.rundir, 0755)
-	if err != nil {
-		return nil, err
+	if e := os.MkdirAll(c.rundir, 0755); e != nil {
+		return nil, e
 	}
+
 	cfile := path.Join(c.rundir, "ctl")
-	go c.sighandle()
+	go sigwatch(c)
 	go dispatch(c)
 	event(c, cfile)
+
 	r, err := newReader(cfile)
 	if err != nil {
 		return nil, err
 	}
+
 	ctx, cancel := context.WithCancel(context.Background())
+
 	go func() {
 		defer close(c.req)
 		scanner := bufio.NewScanner(r)
+
 		for scanner.Scan() {
 			line := scanner.Text()
 			if line == "quit" {
@@ -232,9 +253,11 @@ func (c *Control) Start() (context.Context, error) {
 				close(c.done)
 				break
 			}
+
 			c.req <- line
 		}
 	}()
+
 	return ctx, nil
 }
 
@@ -286,10 +309,10 @@ func (c *Control) popTab(tabname string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Entry not found: %s", tabname)
+	return fmt.Errorf("entry not found: %s", tabname)
 }
 
-func (c *Control) sighandle() {
+func sigwatch(c *Control) {
 	d := c.sigwatch
 	d.SigHandle(c)
 }
@@ -335,7 +358,7 @@ func dispatch(c *Control) {
 				if len(token) < 2 {
 					continue
 				}
-				err := c.ctrl.Open(c, token[1])
+				err := c.ctl.Open(c, token[1])
 				if err != nil {
 					log.Print(err)
 				}
@@ -343,7 +366,7 @@ func dispatch(c *Control) {
 				if len(token) < 2 {
 					continue
 				}
-				err := c.ctrl.Close(c, token[1])
+				err := c.ctl.Close(c, token[1])
 				if err != nil {
 					log.Print(err)
 				}
@@ -351,17 +374,18 @@ func dispatch(c *Control) {
 				if len(token) < 2 {
 					continue
 				}
-				err := c.ctrl.Link(c, token[1], token[2])
+				err := c.ctl.Link(c, token[1], token[2])
 				if err != nil {
 					log.Print(err)
 				}
 			default:
 				if len(token) < 3 {
-					log.Print(fmt.Errorf("No command specified"))
+					log.Print(fmt.Errorf("no command specified"))
 					continue
 				}
+
 				msg := strings.Join(token[2:], " ")
-				err := c.ctrl.Default(c, token[0], token[1], msg)
+				err := c.ctl.Default(c, token[0], token[1], msg)
 				if err != nil {
 					log.Print(err)
 				}
