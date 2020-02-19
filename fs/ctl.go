@@ -1,4 +1,4 @@
-// Package fs framework for creation and management of Altid services
+// canonically create and manage Altid services
 package fs
 
 import (

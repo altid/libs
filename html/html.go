@@ -1,4 +1,4 @@
-// Package html helper library for parsing HTML
+// helper library for parsing HTML
 package html
 
 import (
