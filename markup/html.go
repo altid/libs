@@ -1,4 +1,4 @@
-package cleanmark
+package markup
 
 import (
 	"bytes"
