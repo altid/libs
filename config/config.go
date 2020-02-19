@@ -1,3 +1,4 @@
+// Package config provides tools to manage and create configs for Altid services
 package config
 
 import (
