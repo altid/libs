@@ -1,4 +1,4 @@
-// helper library for parsing HTML
+// helper library for parsing HTML for Altid markup
 package html
 
 import (
