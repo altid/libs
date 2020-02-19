@@ -20,10 +20,10 @@ import (
 var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 
 // Controller
-// Open is called when a control message starting with 'open' or 'join' is written to the ctrl file
-// Close is called when a control message starting with 'close or 'part' is written to the ctrl file
-// Link is called when a control message starting with 'link' is written to the ctrl file
-// Default is called when any other control message is written to the ctrl file.
+// Open is called when a control message starting with 'open' or 'join' is written to the ctl file
+// Close is called when a control message starting with 'close or 'part' is written to the ctl file
+// Link is called when a control message starting with 'link' is written to the ctl file
+// Default is called when any other control message is written to the ctl file.
 // Client messages to Default must come in the order, `cmd buffer msg...`, and to that effect any other formats behavior is undefined.
 // When Open is called, a file will be created with a path of `mountpoint/msg/document (or feed)`, containing initially a file named what you've set doctype to.. Calls to open are expected to populate that file, as well as create any supplementary files needed, such as title, aside, status, input, etc
 // When Link is called, the content of the current buffer is expected to change, and the name of the current tab will be removed, replaced with msg
@@ -44,7 +44,7 @@ type SigHandler interface {
 	SigHandle(c *Control)
 }
 
-// Control type can be used to manage a running ctrl file session
+// Control type can be used to manage a running ctl file session
 type Control struct {
 	rundir  string
 	logdir  string
@@ -52,7 +52,7 @@ type Control struct {
 	tabs    []string
 	req     chan string
 	done    chan struct{}
-	ctrl    Controller
+	ctl     Controller
 	// It's considered bad form to handle signals internally to a library
 	// In this case, the desired interface for a running service is dictated by the library being used itself
 	// Rather than a how-to guide, or similar
@@ -61,16 +61,17 @@ type Control struct {
 
 type watcher struct{}
 
-// CreateCtrlFile sets up a ready-to-listen ctrl file
+// CreateCtlFile sets up a ready-to-listen ctl file
 // logdir is the directory to store copies of the contents of files created; specifically doctype. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
 // mtpt is the directory to create the file system in
 // service is the subdirectory inside mtpt for the runtime fs
-// This will return an error if a ctrl file exists at the given directory, or if doctype is invalid.
-func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Control, error) {
+// This will return an error if a ctl file exists at the given directory, or if doctype is invalid.
+func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string) (*Control, error) {
 	if doctype != "document" && doctype != "feed" {
 		return nil, fmt.Errorf("unknown doctype: %s", doctype)
 	}
 	rundir := path.Join(mtpt, service)
+
 	_, err := os.Stat(path.Join(rundir, "ctl"))
 	if os.IsNotExist(err) {
 		var tab []string
@@ -85,14 +86,16 @@ func CreateCtrlFile(ctrl Controller, logdir, mtpt, service, doctype string) (*Co
 			tabs:     tab,
 			req:      req,
 			done:     done,
-			ctrl:     ctrl,
+			ctl:      ctl,
 			sigwatch: w,
 		}
-		if _, ok := ctrl.(SigHandler); ok {
-			c.sigwatch = ctrl.(SigHandler)
+		if _, ok := ctl.(SigHandler); ok {
+			c.sigwatch = ctl.(SigHandler)
 		}
+
 		return c, nil
 	}
+
 	return nil, fmt.Errorf("Control file already exist at %s", rundir)
 }
 
@@ -183,10 +186,10 @@ func (c *Control) HasBuffer(name, doctype string) bool {
 	return true
 }
 
-// Listen creates a file named "ctrl" inside RunDirectory, after making sure the directory exists
-// Any text written to the ctrl file will be parsed, line by line.
+// Listen creates a file named "ctl" inside RunDirectory, after making sure the directory exists
+// Any text written to the ctl file will be parsed, line by line.
 // Messages handled internally are as follows: open (or join), close (or part), and quit, which causes Listen() to return.
-// This will return an error if we're unable to create the ctrlfile itself, and will log any error relating to control messages.
+// This will return an error if we're unable to create the ctlfile itself, and will log any error relating to control messages.
 func (c *Control) Listen() error {
 	err := os.MkdirAll(c.rundir, 0755)
 	if err != nil {
@@ -220,7 +223,7 @@ func (c *Control) Listen() error {
 	return nil
 }
 
-// Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctrl file is instantiated.
+// Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctl file is instantiated.
 // This provides a context.Context that can be used for cancellations
 func (c *Control) Start() (context.Context, error) {
 	if e := os.MkdirAll(c.rundir, 0755); e != nil {
@@ -355,7 +358,7 @@ func dispatch(c *Control) {
 				if len(token) < 2 {
 					continue
 				}
-				err := c.ctrl.Open(c, token[1])
+				err := c.ctl.Open(c, token[1])
 				if err != nil {
 					log.Print(err)
 				}
@@ -363,7 +366,7 @@ func dispatch(c *Control) {
 				if len(token) < 2 {
 					continue
 				}
-				err := c.ctrl.Close(c, token[1])
+				err := c.ctl.Close(c, token[1])
 				if err != nil {
 					log.Print(err)
 				}
@@ -371,7 +374,7 @@ func dispatch(c *Control) {
 				if len(token) < 2 {
 					continue
 				}
-				err := c.ctrl.Link(c, token[1], token[2])
+				err := c.ctl.Link(c, token[1], token[2])
 				if err != nil {
 					log.Print(err)
 				}
@@ -382,7 +385,7 @@ func dispatch(c *Control) {
 				}
 
 				msg := strings.Join(token[2:], " ")
-				err := c.ctrl.Default(c, token[0], token[1], msg)
+				err := c.ctl.Default(c, token[0], token[1], msg)
 				if err != nil {
 					log.Print(err)
 				}
