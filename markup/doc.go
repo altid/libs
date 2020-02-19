@@ -1,5 +1,5 @@
 /*
-Package cleanmark implements a two APIs for escaping markdown elements in raw text input.
+Package markup implements a two APIs for escaping markdown elements in raw text input.
 
 The first API is the Normal Text API, and it revolves around the type Cleaner. It is used to convert normal text into properly formatted Altid markdown.
 
@@ -21,4 +21,4 @@ Common markdown elements are generally easier to insert by hand,but several help
 
 */
 
-package cleanmark
+package markup
