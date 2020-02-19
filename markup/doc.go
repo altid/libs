@@ -1,4 +1,3 @@
-// escape and parse markdown elements
 /*
 Package markup implements a two APIs for escaping markdown elements in raw text input.
 
