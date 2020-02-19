@@ -19,7 +19,7 @@ import (
 
 var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 
-// Controller
+// Controller is our main type for controlling a session
 // Open is called when a control message starting with 'open' or 'join' is written to the ctl file
 // Close is called when a control message starting with 'close or 'part' is written to the ctl file
 // Link is called when a control message starting with 'link' is written to the ctl file
@@ -36,8 +36,7 @@ type Controller interface {
 	Default(c *Control, cmd, from, msg string) error
 }
 
-// SigHandler
-// Optional interface to provide fine grained control for catching signals.
+// SigHandler - Optional interface to provide fine grained control for catching signals.
 // It is expected that you will call c.Cleanup() within your SigHandle function
 // If none is supplied, c.Cleanup() will be called on SIGINT and SIGKILL
 type SigHandler interface {

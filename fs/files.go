@@ -6,6 +6,7 @@ import (
 	"path"
 )
 
+// WriteCloser is a type that implements io.WriteCloser
 type WriteCloser struct {
 	c      *Control
 	fp     *os.File
