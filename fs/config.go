@@ -1,4 +1,4 @@
-package fslib
+package fs
 
 import (
 	"errors"
