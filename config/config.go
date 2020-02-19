@@ -1,4 +1,4 @@
-package fs
+package config
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/altid/libs/fs"
 	"github.com/mischief/ndb"
 )
 
@@ -21,11 +22,11 @@ const (
 // Config defines a services' configuration in a given config file
 type Config struct {
 	Name   string
-	Values []*ConfigEntry
+	Values []*Entry
 }
 
-// ConfigEntry is a single tuple in a services configuration
-type ConfigEntry struct {
+// Entry is a single tuple in a services configuration
+type Entry struct {
 	Key   string
 	Value string
 }
@@ -129,7 +130,7 @@ func GetLogDir(service string) string {
 
 // If we can't get a valid dir it should be fatal
 func logDir(service string) string {
-	userdir, err := UserShareDir()
+	userdir, err := fs.UserShareDir()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -138,7 +139,7 @@ func logDir(service string) string {
 }
 
 func getConfDir(service string) string {
-	confdir, err := UserConfDir()
+	confdir, err := fs.UserConfDir()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -167,11 +168,11 @@ func parseConfig(service string) (*Config, error) {
 func buildconf(recs ndb.Record, service string) (*Config, error) {
 	c := &Config{
 		Name:   service,
-		Values: make([]*ConfigEntry, len(recs)),
+		Values: make([]*Entry, len(recs)),
 	}
 
 	for _, tup := range recs {
-		v := &ConfigEntry{
+		v := &Entry{
 			Key:   tup.Attr,
 			Value: tup.Val,
 		}
