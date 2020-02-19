@@ -1,3 +1,4 @@
+// Package html helper library for parsing HTML
 package html
 
 import (
