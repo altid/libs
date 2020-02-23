@@ -2,42 +2,111 @@
 package client
 
 import (
+	"bytes"
 	"context"
-	"flag"
-	"fmt"
+	"errors"
 	"io"
-	"log"
-	"os"
 	"os/user"
 )
 
-var debug = flag.Int("d", 0, "debug level")
-var addr = flag.String("a", "127.0.0.1", "IP to dial")
+const (
+	errInvalidSession = "invalid session"
+)
 
-func run() {
-	flag.Parse()
-	if flag.Lookup("h") != nil {
-		flag.Usage()
-		os.Exit(0)
+// Client wraps an internal session, allowing us to access its read/write functions
+type Client struct {
+	ctx   context.Context
+	conns map[string]*session
+	user  string
+	debug int
+}
+
+// ReadFile - returns the contents of a file and any errors encountered
+func (c *Client) ReadFile(serv, target string, off int64) ([]byte, error) {
+	s, ok := c.conns[serv]
+	if !ok {
+		return nil, errors.New(errInvalidSession)
 	}
+
+	return s.readFile(c.ctx, target, off)
+}
+
+// WriteFile - writes the contents of data to the target file. Most files used are append-only, such as input and ctl
+func (c *Client) WriteFile(serv, target string, data []byte) error {
+	s, ok := c.conns[serv]
+	if !ok {
+		return errors.New(errInvalidSession)
+	}
+
+	// TODO(halfwit) chunked writes
+	return s.writeFile(c.ctx, target, data)
+}
+
+// TODO: WriteAt, ReadAt
+
+// ListFiles - Show all toplevel files in the directory
+func (c *Client) ListFiles(serv string) ([][]byte, error) {
+	var files [][]byte
+
+	session, ok := c.conns[serv]
+	if !ok {
+		return nil, errors.New(errInvalidSession)
+	}
+
+	b, err := session.readFile(c.ctx, "/", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	rd := bytes.NewBuffer(b)
+
+	for {
+		line, err := rd.ReadBytes('\n')
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+
+		files = append(files, line)
+
+		if err == io.EOF {
+			return files, nil
+		}
+	}
+}
+
+// NewSession - Adds a session to the client
+func (c *Client) NewSession(serv, addr string) error {
+	s, err := attach(c.ctx, c.user, addr)
+	if err == nil {
+		return err
+	}
+
+	c.conns[serv] = s
+
+	return nil
+}
+
+// NewClient - Returns a client with a connection to serv, ready for reading and writing
+func NewClient(debug int, addr, serv string) (*Client, error) {
 	ctx := context.Background()
 	u, err := user.Current()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	s, err := attach(ctx, u.Username)
+	s, err := attach(ctx, u.Username, addr)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	var off int64
+	conns := make(map[string]*session)
+	conns[serv] = s
 
-	for {
-		b, err := s.readFile(ctx, "feed", off)
-		if err != nil && err != io.EOF {
-			log.Fatal(err)
-		}
-		off += int64(len(b) - 1)
-		fmt.Printf("%s", b)
+	c := &Client{
+		ctx:   ctx,
+		user:  u.Username,
+		conns: conns,
+		debug: debug,
 	}
+
+	return c, nil
 }
