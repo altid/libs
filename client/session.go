@@ -16,14 +16,14 @@ type session struct {
 	iounit uint32
 }
 
-func attach(ctx context.Context, username string) (*session, error) {
+func attach(ctx context.Context, username, addr string) (*session, error) {
 	s := &session{
 		files:  make(map[string]p9p.Fid),
 		next:   1,
 		root:   1,
 		iounit: 8192,
 	}
-	conn, err := net.Dial("tcp", *addr+":564")
+	conn, err := net.Dial("tcp", addr+":564")
 	if err != nil {
 		return nil, fmt.Errorf("Unable to dial requested address: %v", err)
 	}
