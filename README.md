@@ -8,3 +8,5 @@
 - html: parsing library with integration for Altid markup
 
 - config: fs config management utilities
+
+- client: libs for creating clients in Go
