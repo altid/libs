@@ -2,10 +2,8 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
 	"os/user"
 )
 
@@ -45,33 +43,13 @@ func (c *Client) WriteFile(serv, target string, data []byte) error {
 // TODO: WriteAt, ReadAt
 
 // ListFiles - Show all toplevel files in the directory
-func (c *Client) ListFiles(serv string) ([][]byte, error) {
-	var files [][]byte
-
+func (c *Client) ListFiles(serv string) ([]byte, error) {
 	session, ok := c.conns[serv]
 	if !ok {
 		return nil, errors.New(errInvalidSession)
 	}
 
-	b, err := session.readFile(c.ctx, "/", 0)
-	if err != nil {
-		return nil, err
-	}
-
-	rd := bytes.NewBuffer(b)
-
-	for {
-		line, err := rd.ReadBytes('\n')
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-
-		files = append(files, line)
-
-		if err == io.EOF {
-			return files, nil
-		}
-	}
+	return session.readFile(c.ctx, "/", 0)
 }
 
 // NewSession - Adds a session to the client
