@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
+	"time"
 
 	"github.com/docker/go-p9p"
 )
@@ -23,6 +25,28 @@ type File struct {
 type FileListing struct {
 	qidpool []p9p.Qid
 	current int
+}
+
+type Qid struct {
+	Qtype   int
+	Version int
+	Path    int
+}
+
+type Dir struct {
+	Type int
+	Dev  int
+	Qid  *Qid
+	Mode int
+
+	AccessTime string
+	ModTime    string
+
+	Length int
+	Name   string
+	UID    string
+	GID    string
+	MUID   string
 }
 
 func NewSession(addr string) (*Session, error) {
@@ -50,24 +74,27 @@ func (s *Session) Hangup() error {
 	return s.conn.Close()
 }
 
-func (s *Session) Auth(afid p9p.Fid, uname, aname string) (p9p.Qid, error) {
-	return s.session.Auth(s.ctx, afid, uname, aname)
+func (s *Session) Auth(afid int, uname, aname string) (*Qid, error) {
+	q, err := s.session.Auth(s.ctx, p9p.Fid(afid), uname, aname)
+	return toQid(q), err
 }
 
-func (s *Session) Attach(fid, afid p9p.Fid, uname, aname string) (p9p.Qid, error) {
-	return s.session.Attach(s.ctx, fid, afid, uname, aname)
+func (s *Session) Attach(fid, afid int, uname, aname string) (*Qid, error) {
+	q, err := s.session.Attach(s.ctx, p9p.Fid(fid), p9p.Fid(afid), uname, aname)
+	return toQid(q), err
 }
 
-func (s *Session) Clunk(fid p9p.Fid) error {
-	return s.session.Clunk(s.ctx, fid)
+func (s *Session) Clunk(fid int) error {
+	return s.session.Clunk(s.ctx, p9p.Fid(fid))
 }
 
-func (s *Session) Remove(fid p9p.Fid) error {
-	return s.session.Remove(s.ctx, fid)
+func (s *Session) Remove(fid int) error {
+	return s.session.Remove(s.ctx, p9p.Fid(fid))
 }
 
-func (s *Session) Walk(fid, newfid p9p.Fid, names ...string) (*FileListing, error) {
-	qids, err := s.session.Walk(s.ctx, fid, newfid, names...)
+// We can't do varargs in gomobile yet, so we use a single name here
+func (s *Session) Walk(fid, newfid int, names string) (*FileListing, error) {
+	qids, err := s.session.Walk(s.ctx, p9p.Fid(fid), p9p.Fid(newfid), strings.Fields(names)...)
 	if err != nil {
 		return nil, err
 	}
@@ -79,16 +106,16 @@ func (s *Session) Walk(fid, newfid p9p.Fid, names ...string) (*FileListing, erro
 	return f, nil
 }
 
-func (s *Session) Read(fid p9p.Fid, p []byte, offset int64) (int, error) {
-	return s.session.Read(s.ctx, fid, p, offset)
+func (s *Session) Read(fid int, p []byte, offset int64) (int, error) {
+	return s.session.Read(s.ctx, p9p.Fid(fid), p, offset)
 }
 
-func (s *Session) Write(fid p9p.Fid, p []byte, offset int64) (int, error) {
-	return s.session.Write(s.ctx, fid, p, offset)
+func (s *Session) Write(fid int, p []byte, offset int64) (int, error) {
+	return s.session.Write(s.ctx, p9p.Fid(fid), p, offset)
 }
 
-func (s *Session) Open(fid p9p.Fid, mode p9p.Flag) (*File, error) {
-	qid, id, err := s.session.Open(s.ctx, fid, mode)
+func (s *Session) Open(fid, mode int) (*File, error) {
+	qid, id, err := s.session.Open(s.ctx, p9p.Fid(fid), p9p.Flag(mode))
 
 	f := &File{
 		qid: qid,
@@ -98,8 +125,8 @@ func (s *Session) Open(fid p9p.Fid, mode p9p.Flag) (*File, error) {
 	return f, err
 }
 
-func (s *Session) Create(parent p9p.Fid, name string, perm uint32, mode p9p.Flag) (*File, error) {
-	qid, id, err := s.session.Create(s.ctx, parent, name, perm, mode)
+func (s *Session) Create(parent int, name string, perm, mode int) (*File, error) {
+	qid, id, err := s.session.Create(s.ctx, p9p.Fid(parent), name, uint32(perm), p9p.Flag(mode))
 
 	f := &File{
 		qid: qid,
@@ -109,24 +136,86 @@ func (s *Session) Create(parent p9p.Fid, name string, perm uint32, mode p9p.Flag
 	return f, err
 }
 
-func (s *Session) Stat(fid p9p.Fid) (p9p.Dir, error) {
-	return s.session.Stat(s.ctx, fid)
+func (s *Session) Stat(fid int) (*Dir, error) {
+	q, err := s.session.Stat(s.ctx, p9p.Fid(fid))
+	return toDir(q), err
 }
 
-func (s *Session) WStat(fid p9p.Fid, dir p9p.Dir) error {
-	return s.session.WStat(s.ctx, fid, dir)
+func (s *Session) WStat(fid int, dir *Dir) error {
+	return s.session.WStat(s.ctx, p9p.Fid(fid), fromDir(dir))
 }
 
-func (s *Session) Version() (int, string) {
-	return s.session.Version()
+func (s *Session) Version() string {
+	_, v := s.session.Version()
+	return v
 }
 
-func (f *FileListing) Next() p9p.Qid {
+func (s *Session) MSize() int {
+	m, _ := s.session.Version()
+	return m
+}
+
+func (f *FileListing) Next() *Qid {
 	if f.current < len(f.qidpool) {
 		item := f.qidpool[f.current]
 		f.current++
-		return item
+		return toQid(item)
 	}
 
-	return p9p.Qid{}
+	return nil
+}
+
+func toQid(q p9p.Qid) *Qid {
+	return &Qid{
+		Version: int(q.Version),
+		Qtype:   int(q.Type),
+		Path:    int(q.Path),
+	}
+}
+
+func fromQid(d *Qid) p9p.Qid {
+	return p9p.Qid{
+		Version: uint32(d.Version),
+		Type:    p9p.QType(d.Qtype),
+		Path:    uint64(d.Path),
+	}
+}
+
+func toDir(d p9p.Dir) *Dir {
+	return &Dir{
+		Type: int(d.Type),
+		Dev:  int(d.Dev),
+		Qid:  toQid(d.Qid),
+		Mode: int(d.Mode),
+
+		AccessTime: d.AccessTime.String(),
+		ModTime:    d.ModTime.String(),
+
+		Length: int(d.Length),
+		Name:   d.Name,
+		UID:    d.UID,
+		GID:    d.GID,
+		MUID:   d.MUID,
+	}
+}
+
+func fromDir(d *Dir) p9p.Dir {
+	t1, _ := time.Parse(time.ANSIC, d.AccessTime)
+	t2, _ := time.Parse(time.ANSIC, d.ModTime)
+
+	return p9p.Dir{
+		Type: uint16(d.Type),
+		Dev:  uint32(d.Dev),
+		Qid:  fromQid(d.Qid),
+		Mode: uint32(d.Mode),
+
+		AccessTime: t1,
+		ModTime:    t2,
+
+		Length: uint64(d.Length),
+		Name:   d.Name,
+		UID:    d.UID,
+		GID:    d.GID,
+		MUID:   d.MUID,
+	}
 }
