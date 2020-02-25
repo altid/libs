@@ -72,6 +72,7 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 			key:   closeCmd,
 			value: value,
 		}
+
 	case "link ":
 		c.commands <- &cmd{
 			uuid:  c.uuid,
@@ -83,6 +84,10 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 			uuid:  c.uuid,
 			key:   openCmd,
 			value: value,
+		}
+
+		if value == "none" {
+			return len(p), nil
 		}
 	}
 
