@@ -297,16 +297,14 @@ func (c *Control) pushTab(tabname string) error {
 		}
 	}
 	c.tabs = append(c.tabs, tabname)
-	tabs(c)
-	return nil
+	return tabs(c)
 }
 
 func (c *Control) popTab(tabname string) error {
 	for n := range c.tabs {
 		if c.tabs[n] == tabname {
 			c.tabs = append(c.tabs[:n], c.tabs[n+1:]...)
-			tabs(c)
-			return nil
+			return tabs(c)
 		}
 	}
 	return fmt.Errorf("entry not found: %s", tabname)
@@ -329,23 +327,31 @@ func (w *watcher) SigHandle(c *Control) {
 	}
 }
 
-func tabs(c *Control) {
+func tabs(c *Control) error {
 	// Create truncates and opens file in a single step, utilize this.
 	file := path.Join(c.rundir, "tabs")
 	f, err := os.Create(file)
 	defer f.Close()
 	if err != nil {
-		log.Print(err)
-		return
+		return err
 	}
 	f.WriteString(strings.Join(c.tabs, "\n") + "\n")
 	c.Event(file)
+
+	return nil
 }
 
 func dispatch(c *Control) {
 	// TODO: wrap with waitgroups
 	// If close is requested on a file which is currently being opened, cancel open request
 	// If open is requested on file which already exists, no-op
+	cw, err := c.ErrorWriter()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer cw.Close()
+
 	for {
 		select {
 		case line := <-c.req:
@@ -360,7 +366,7 @@ func dispatch(c *Control) {
 				}
 				err := c.ctl.Open(c, token[1])
 				if err != nil {
-					log.Print(err)
+					fmt.Fprintf(cw, "open: %s\n", err)
 				}
 			case "close":
 				if len(token) < 2 {
@@ -368,7 +374,7 @@ func dispatch(c *Control) {
 				}
 				err := c.ctl.Close(c, token[1])
 				if err != nil {
-					log.Print(err)
+					fmt.Fprintf(cw, "close: %s\n", err)
 				}
 			case "link":
 				if len(token) < 2 {
@@ -376,18 +382,18 @@ func dispatch(c *Control) {
 				}
 				err := c.ctl.Link(c, token[1], token[2])
 				if err != nil {
-					log.Print(err)
+					fmt.Fprintf(cw, "link: %s\n", err)
 				}
 			default:
 				if len(token) < 3 {
-					log.Print(fmt.Errorf("no command specified"))
+					fmt.Fprintf(cw, "unknown command issued: %s\n", token[0])
 					continue
 				}
 
 				msg := strings.Join(token[2:], " ")
 				err := c.ctl.Default(c, token[0], token[1], msg)
 				if err != nil {
-					log.Print(err)
+					fmt.Fprintf(cw, "%s: %s\n", token[0], err)
 				}
 			}
 		case <-c.done:
