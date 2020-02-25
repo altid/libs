@@ -1,7 +1,6 @@
 package fs
 
 import (
-	"log"
 	"os"
 	"path"
 )
@@ -22,34 +21,53 @@ func (w *WriteCloser) Close() error {
 	return w.fp.Close()
 }
 
-// StatusWriter returns a WriterCloser attached to a buffers status file, which will as well send the correct event to the events file
-func (c *Control) StatusWriter(buffer string) *WriteCloser {
+// ErrorWriter returns a WriteCloser attached to a services' errors file
+func (c *Control) ErrorWriter() (*WriteCloser, error) {
+	ep := path.Join(c.rundir, "errors")
+
+	fp, err := os.OpenFile(ep, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+
+		return nil, err
+	}
+
+	w := &WriteCloser{
+		c:      c,
+		fp:     fp,
+		buffer: "errors",
+	}
+
+	return w, nil
+}
+
+// StatusWriter returns a WriteCloser attached to a buffers status file, which will as well send the correct event to the events file
+func (c *Control) StatusWriter(buffer string) (*WriteCloser, error) {
 	return newWriteCloser(c, buffer, "status")
 }
 
 // SideWriter returns a WriteCloser attached to a buffers `aside` file, which will as well send the correct event to the events file
-func (c *Control) SideWriter(buffer string) *WriteCloser {
+func (c *Control) SideWriter(buffer string) (*WriteCloser, error) {
 	return newWriteCloser(c, buffer, "aside")
 }
 
 // NavWriter returns a WriteCloser attached to a buffers nav file, which will as well send the correct event to the events file
-func (c *Control) NavWriter(buffer string) *WriteCloser {
+func (c *Control) NavWriter(buffer string) (*WriteCloser, error) {
 	return newWriteCloser(c, buffer, "navi")
 }
 
 // TitleWriter returns a WriteCloser attached to a buffers title file, which will as well send the correct event to the events file
-func (c *Control) TitleWriter(buffer string) *WriteCloser {
+func (c *Control) TitleWriter(buffer string) (*WriteCloser, error) {
 	return newWriteCloser(c, buffer, "title")
 }
 
 // ImageWriter returns a WriteCloser attached to a named file in the buffers' image directory
-func (c *Control) ImageWriter(buffer, resource string) *WriteCloser {
+func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
 	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
 	return newWriteCloser(c, buffer, path.Join("images", resource))
 }
 
 // MainWriter returns a WriteCloser attached to a buffers feed/document function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file
-func (c *Control) MainWriter(buffer, doctype string) *WriteCloser {
+func (c *Control) MainWriter(buffer, doctype string) (*WriteCloser, error) {
 	return newWriteCloser(c, buffer, doctype)
 }
 
@@ -64,29 +82,31 @@ func (c *Control) Remove(buffer, filename string) error {
 	return os.Remove(doc)
 }
 
-func newWriteCloser(c *Control, buffer, doctype string) *WriteCloser {
+func newWriteCloser(c *Control, buffer, doctype string) (*WriteCloser, error) {
 	doc := path.Join(c.rundir, buffer, doctype)
 	if doctype == "feed" {
 		fp, err := os.OpenFile(doc, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Print(err)
-			return nil
+
+			return nil, err
 		}
-		return &WriteCloser{
+		w := &WriteCloser{
 			fp:     fp,
 			c:      c,
 			buffer: doc,
 		}
+		return w, nil
 	}
 	// Abuse truncation semantics of Create so we clear any old data
 	fp, err := os.Create(doc)
 	if err != nil {
-		log.Print(err)
-		return nil
+		return nil, err
 	}
-	return &WriteCloser{
+	w := &WriteCloser{
 		fp:     fp,
 		c:      c,
 		buffer: doc,
 	}
+
+	return w, nil
 }
