@@ -115,6 +115,13 @@ func (s *service) close(c *client) {
 }
 
 func (s *service) move(c *client, name string) {
+	defer s.checkInactive(c)
+
+	if name == "none" {
+		c.current = "none"
+		return
+	}
+
 	t, ok := s.tablist[name]
 	if !ok {
 		t = &tab{
@@ -126,7 +133,6 @@ func (s *service) move(c *client, name string) {
 	t.active = true
 	t.count = 0
 
-	s.checkInactive(c)
 	c.current = name
 }
 
