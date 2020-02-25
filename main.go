@@ -9,7 +9,7 @@ import (
 	"os/user"
 	"path"
 
-	"github.com/altid/fslib"
+	"github.com/altid/libs/fs"
 )
 
 //var enableFactotum = flag.Bool("f", false, "Enable client authentication via a plan9 factotum")
@@ -50,7 +50,7 @@ func main() {
 		defaultGID = us.Gid
 	}
 
-	confdir, err := fslib.UserConfDir()
+	confdir, err := fs.UserConfDir()
 	if err != nil {
 		log.Fatal(err)
 	}
