@@ -152,12 +152,13 @@ func (c *Control) CreateBuffer(name, doctype string) error {
 	}
 
 	// If there is no log, we're done otherwise create symlink
-	if c.logdir != "none" {
-		logfile := path.Join(c.logdir, name)
-		return symlink(logfile, d)
+	if c.logdir == "none" {
+		return nil
 	}
 
-	return nil
+	logfile := path.Join(c.logdir, name)
+
+	return symlink(logfile, d)
 }
 
 // DeleteBuffer unlinks a document/buffer, and cleanly removes the directory
