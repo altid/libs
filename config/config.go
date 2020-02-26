@@ -2,6 +2,7 @@
 package config
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/altid/libs/auth"
 	"github.com/altid/libs/fs"
 	"github.com/mischief/ndb"
 )
@@ -37,10 +39,10 @@ type Configurator interface {
 	Configure() (*Config, error)
 }
 
-// NewConfig returns a valid config for a given service. If one is not found, the Configurators Configure method
+// New returns a valid config for a given service. If one is not found, the Configurators Configure method
 // will be called to interactively create one
 // Any errors in Configure() should be caught by the client and won't be returned
-func NewConfig(c Configurator, service string) (*Config, error) {
+func New(c Configurator, service string) (*Config, error) {
 	conf, err := ndb.Open(getConfDir(service))
 	if err != nil {
 		if err != os.ErrNotExist {
@@ -71,6 +73,46 @@ func NewConfig(c Configurator, service string) (*Config, error) {
 	return cf.writeToFile()
 }
 
+// Password queries the database for a password, and uses the factotum
+func (c *Config) Password() (string, error) {
+	pass, err := c.Search("auth")
+	if err != nil {
+		return "", err
+	}
+
+	if len(pass) > 5 && pass[:5] == "pass=" {
+		pass = pass[5:]
+	}
+
+	if pass == "factotum" {
+		userPwd, err := auth.Getuserpasswd(
+			"proto=pass service=%s",
+			c.Name,
+		)
+		if err != nil {
+			return "", err
+		}
+
+		pass = userPwd.Password
+	}
+
+	return pass, nil
+}
+
+func (c *Config) SSLCert() (tls.Certificate, error) {
+	cert, err := c.Search("cert")
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	key, err := c.Search("key")
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	return tls.LoadX509KeyPair(cert, key)
+}
+
 // Search queries for an entry in the config matching key
 // Returning the value if it exists, or a "no such key" error
 func (c *Config) Search(key string) (string, error) {
@@ -85,6 +127,19 @@ func (c *Config) Search(key string) (string, error) {
 	}
 
 	return "", errors.New(ErrNoSuchKey)
+}
+
+func (c *Config) MustSearch(key string) string {
+	val, err := c.Search(key)
+	if err != nil {
+		return ""
+	}
+
+	return val
+}
+
+func (c *Config) Log() string {
+	return GetLogDir(c.Name)
 }
 
 // String returns our entry tuples in the form of key=value
@@ -167,9 +222,10 @@ func parseConfig(service string) (*Config, error) {
 }
 
 func buildconf(recs ndb.Record, service string) (*Config, error) {
+	var values []*Entry
 	c := &Config{
 		Name:   service,
-		Values: make([]*Entry, len(recs)),
+		Values: values,
 	}
 
 	for _, tup := range recs {
