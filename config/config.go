@@ -139,7 +139,12 @@ func (c *Config) MustSearch(key string) string {
 }
 
 func (c *Config) Log() string {
-	return GetLogDir(c.Name)
+	dir, err := c.Search("log")
+	if err != nil {
+		return "none"
+	}
+
+	return dir
 }
 
 // String returns our entry tuples in the form of key=value
