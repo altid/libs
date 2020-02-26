@@ -34,14 +34,13 @@ type Entry struct {
 	Value string
 }
 
-// Configurator when satisfied will call Configure when an entry is not found, creating an entry and loading it
-type Configurator interface {
-	Configure() (*Config, error)
-}
+// Configurator is called when no entry is found for a given service
+// It should query the user for each required value, returning a
+// complete and usable Config
+type Configurator func() (*Config, error)
 
 // New returns a valid config for a given service. If one is not found, the Configurators Configure method
 // will be called to interactively create one
-// Any errors in Configure() should be caught by the client and won't be returned
 func New(c Configurator, service string) (*Config, error) {
 	conf, err := ndb.Open(getConfDir(service))
 	if err != nil {
@@ -49,7 +48,7 @@ func New(c Configurator, service string) (*Config, error) {
 			return nil, err
 		}
 
-		cf, err := c.Configure()
+		cf, err := c()
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +64,7 @@ func New(c Configurator, service string) (*Config, error) {
 		return nil, errors.New(ErrNoConfigure)
 	}
 
-	cf, err := c.Configure()
+	cf, err := c()
 	if err != nil {
 		return nil, err
 	}
