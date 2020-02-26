@@ -139,6 +139,9 @@ func (s *server) run(svc *service) {
 			c.reading = q.Path()
 			handleReq(s, c, q)
 		}
+
+		delete(svc.clients, uuid)
+		close(c.feed)
 	})
 
 	switch *usetls {
