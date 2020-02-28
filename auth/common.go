@@ -1,3 +1,4 @@
+// common auth functions for services, servers, and clients in Altid
 package auth
 
 import (
