@@ -46,13 +46,15 @@ func (tc *mockctl) remove(name, doctype string) error {
 }
 
 func (tc *mockctl) listen() error {
+	for {
+		// Wait forever
+	}
+
 	return nil
 }
 
 func (tc *mockctl) start() (context.Context, error) {
-	// Need to do stuff with Open, Close, Link and Default.
-
-	return nil, nil
+	return context.Background(), nil
 }
 
 func (tc *mockctl) notification(string, string, string) error {
