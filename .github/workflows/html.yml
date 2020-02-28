@@ -31,3 +31,7 @@ jobs:
     - name: Build
       run: go build -v .
       working-directory: html 
+
+    - name: Test
+      run: go test -v .
+      working-directory: html
