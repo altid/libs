@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"regexp"
 )
-
-var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 
 // Controller is our main type for controlling a session
 // Open is called when a control message starting with 'open' or 'join' is written to the ctl file
@@ -70,7 +67,7 @@ func MockCtlFile() (*Control, error) {
 	req := make(chan string)
 	done := make(chan struct{})
 
-	t := &testController{
+	t := &mockctl{
 		req:  req,
 		done: done,
 	}
