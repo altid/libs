@@ -2,11 +2,17 @@ package fs
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"runtime"
+	"strings"
 )
+
+var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 
 // UserShareDir returns the default root directory to use for user-specific application data. Users should create their own application-specific subdirectory within this one and use that.
 // On Unix systems, it returns $XDG_DATA_HOME as specified by https://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html if non-empty, else $HOME/.local/share. On Darwin, it returns $HOME/Library. On Windows, it returns %LocalAppData%. On Plan 9, it returns $home/lib.
@@ -78,24 +84,6 @@ func UserConfDir() (string, error) {
 	return dir, nil
 }
 
-func event(c *Control, eventmsg string) error {
-	err := validateString(eventmsg)
-	if err != nil {
-		return err
-	}
-	file := path.Join(c.rundir, "event")
-	if _, err := os.Stat(path.Dir(file)); os.IsNotExist(err) {
-		os.MkdirAll(path.Dir(file), 0755)
-	}
-	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
-	defer f.Close()
-	if err != nil {
-		return err
-	}
-	f.WriteString(eventmsg + "\n")
-	return nil
-}
-
 func symlink(logname, feedname string) error {
 	if _, err := os.Stat(logname); os.IsNotExist(err) {
 		os.MkdirAll(path.Dir(logname), 0755)
@@ -125,4 +113,77 @@ func validateString(test string) error {
 		return errors.New("error - invalid string")
 	}
 	return nil
+}
+
+func sigwatch(c *Control) {
+	d := c.watch
+	d.SigHandle(c)
+}
+
+func dispatch(c *Control) {
+	// TODO: wrap with waitgroups
+	// If close is requested on a file which is currently being opened, cancel open request
+	// If open is requested on file which already exists, no-op
+	cw, err := c.write.errorwriter()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer cw.Close()
+
+	for {
+		select {
+		case line := <-c.req:
+			token := strings.Fields(line)
+			if len(token) < 1 {
+				continue
+			}
+
+			switch token[0] {
+			case "open":
+				if len(token) < 2 {
+					continue
+				}
+
+				err := c.ctl.Open(c, token[1])
+				if err != nil {
+					fmt.Fprintf(cw, "open: %s\n", err)
+				}
+
+			case "close":
+				if len(token) < 2 {
+					continue
+				}
+
+				// We need to get to these still somehow
+				err := c.ctl.Close(c, token[1])
+				if err != nil {
+					fmt.Fprintf(cw, "close: %s\n", err)
+				}
+
+			case "link":
+				if len(token) < 2 {
+					continue
+				}
+
+				err := c.ctl.Link(c, token[1], token[2])
+				if err != nil {
+					fmt.Fprintf(cw, "link: %s\n", err)
+				}
+
+			default:
+				if len(token) < 3 {
+					fmt.Fprintf(cw, "unknown command issued: %s\n", token[0])
+					continue
+				}
+
+				msg := strings.Join(token[2:], " ")
+				if e := c.ctl.Default(c, token[0], token[1], msg); e != nil {
+					fmt.Fprintf(cw, "%s: %s\n", token[0], e)
+				}
+			}
+		case <-c.done:
+			return
+		}
+	}
 }

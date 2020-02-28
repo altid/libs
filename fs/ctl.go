@@ -2,23 +2,11 @@
 package fs
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
-	"os/exec"
-	"os/signal"
 	"path"
-	"path/filepath"
-	"regexp"
-	"runtime"
-	"strings"
-	"syscall"
 )
-
-var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 
 // Controller is our main type for controlling a session
 // Open is called when a control message starting with 'open' or 'join' is written to the ctl file
@@ -44,22 +32,54 @@ type SigHandler interface {
 	SigHandle(c *Control)
 }
 
-// Control type can be used to manage a running ctl file session
-type Control struct {
-	rundir  string
-	logdir  string
-	doctype string
-	tabs    []string
-	req     chan string
-	done    chan struct{}
-	ctl     Controller
-	// It's considered bad form to handle signals internally to a library
-	// In this case, the desired interface for a running service is dictated by the library being used itself
-	// Rather than a how-to guide, or similar
-	sigwatch SigHandler
+type runner interface {
+	cleanup()
+	event(string) error
+	createBuffer(string, string) error
+	deleteBuffer(string, string) error
+	hasBuffer(string, string) bool
+	listen() error
+	remove(string, string) error
+	start() (context.Context, error)
+	notification(string, string, string) error
 }
 
-type watcher struct{}
+type writercloser interface {
+	errorwriter() (*WriteCloser, error)
+	fileWriter(string, string) (*WriteCloser, error)
+	imageWriter(string, string) (*WriteCloser, error)
+}
+
+// Control type can be used to manage a running ctl file session
+type Control struct {
+	req  chan string
+	done chan struct{}
+
+	ctl   Controller
+	run   runner
+	write writercloser
+	watch watcher
+}
+
+// MockCtlFile returns a type that can be used for testing services
+// it will track in-memory and behave like a file-backed control
+// It will wait for messages on reqs which act as ctl messages
+func MockCtlFile(reqs chan string) (*Control, error) {
+
+	done := make(chan struct{})
+
+	t := &mockctl{}
+
+	c := &Control{
+		req:   reqs,
+		done:  done,
+		run:   t,
+		write: t,
+		watch: watcher{},
+	}
+
+	return c, nil
+}
 
 // CreateCtlFile sets up a ready-to-listen ctl file
 // logdir is the directory to store copies of the contents of files created; specifically doctype. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
@@ -77,20 +97,24 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string) (*Cont
 		var tab []string
 		req := make(chan string)
 		done := make(chan struct{})
-		w := &watcher{}
+		rtc := &control{
+			rundir:  rundir,
+			logdir:  logdir,
+			doctype: doctype,
+			tabs:    tab,
+			req:     req,
+			done:    done,
+		}
+
+		// TODO(halfwit) Go back and re-add signal watching
 
 		c := &Control{
-			rundir:   rundir,
-			logdir:   logdir,
-			doctype:  doctype,
-			tabs:     tab,
-			req:      req,
-			done:     done,
-			ctl:      ctl,
-			sigwatch: w,
-		}
-		if _, ok := ctl.(SigHandler); ok {
-			c.sigwatch = ctl.(SigHandler)
+			req:   req,
+			done:  done,
+			run:   rtc,
+			ctl:   ctl,
+			write: rtc,
+			watch: watcher{},
 		}
 
 		return c, nil
@@ -103,24 +127,14 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string) (*Cont
 // Strings cannot contain newlines, tabs, spaces, or control characters.
 // Returns "error - invalid string" or nil.
 func (c *Control) Event(eventmsg string) error {
-	return event(c, eventmsg)
+	return c.run.event(eventmsg)
 }
 
 // Cleanup removes created symlinks and removes the main dir
 // On plan9, it unbinds any file named 	"document" or "feed", prior to removing the directory itself.
 func (c *Control) Cleanup() {
-	if runtime.GOOS == "plan9" {
-		glob := path.Join(c.rundir, "*", c.doctype)
-		files, err := filepath.Glob(glob)
-		if err != nil {
-			log.Print(err)
-		}
-		for _, f := range files {
-			command := exec.Command("/bin/unmount", f)
-			log.Print(command.Run())
-		}
-	}
-	os.RemoveAll(c.rundir)
+	c.run.cleanup()
+
 }
 
 // CreateBuffer creates a buffer of given name, as well as symlinking your file as follows:
@@ -128,63 +142,23 @@ func (c *Control) Cleanup() {
 // This logged file will persist across reboots
 // Calling CreateBuffer on a directory that already exists will return nil
 func (c *Control) CreateBuffer(name, doctype string) error {
-	if name == "" {
-		return fmt.Errorf("no buffer name given")
-	}
-
-	fp := path.Join(c.rundir, name)
-	d := path.Join(fp, doctype)
-
-	if _, e := os.Stat(fp); !os.IsNotExist(e) {
-		return e
-	}
-
-	if e := os.MkdirAll(fp, 0755); e != nil {
-		return e
-	}
-
-	if e := ioutil.WriteFile(d, []byte("Welcome!\n"), 0644); e != nil {
-		return e
-	}
-
-	if e := c.pushTab(name); e != nil {
-		return e
-	}
-
-	// If there is no log, we're done otherwise create symlink
-	if c.logdir == "none" {
-		return nil
-	}
-
-	logfile := path.Join(c.logdir, name)
-
-	return symlink(logfile, d)
+	return c.run.createBuffer(name, doctype)
 }
 
 // DeleteBuffer unlinks a document/buffer, and cleanly removes the directory
 // Will return an error if it's unable to unlink on plan9, or if the remove fails.
 func (c *Control) DeleteBuffer(name, doctype string) error {
-	if c.logdir != "none" {
-		d := path.Join(c.rundir, name, doctype)
-		if e := unlink(d); e != nil {
-			return e
-		}
-	}
-
-	defer os.RemoveAll(path.Join(c.rundir, name))
-
-	return c.popTab(name)
+	return c.run.deleteBuffer(name, doctype)
 }
 
 // HasBuffer returns whether or not a buffer is present in the current control session
 func (c *Control) HasBuffer(name, doctype string) bool {
-	d := path.Join(c.rundir, name, doctype)
-	_, err := os.Stat(d)
-	if os.IsNotExist(err) {
-		return false
-	}
+	return c.run.hasBuffer(name, doctype)
+}
 
-	return true
+// Remove removes a buffer from the runtime dir. If the buffer doesn't exist, this is a no-op
+func (c *Control) Remove(buffer, filename string) error {
+	return c.run.remove(buffer, filename)
 }
 
 // Listen creates a file named "ctl" inside RunDirectory, after making sure the directory exists
@@ -192,213 +166,65 @@ func (c *Control) HasBuffer(name, doctype string) bool {
 // Messages handled internally are as follows: open (or join), close (or part), and quit, which causes Listen() to return.
 // This will return an error if we're unable to create the ctlfile itself, and will log any error relating to control messages.
 func (c *Control) Listen() error {
-	err := os.MkdirAll(c.rundir, 0755)
-	if err != nil {
-		return err
-	}
-
-	cfile := path.Join(c.rundir, "ctl")
-
 	go sigwatch(c)
 	go dispatch(c)
-
-	r, err := newReader(cfile)
-	if err != nil {
-		return err
-	}
-
-	event(c, cfile)
-	scanner := bufio.NewScanner(r)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "quit" {
-			close(c.done)
-			break
-		}
-
-		c.req <- line
-	}
-
-	close(c.req)
-	return nil
+	return c.run.listen()
 }
 
 // Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctl file is instantiated.
 // This provides a context.Context that can be used for cancellations
 func (c *Control) Start() (context.Context, error) {
-	if e := os.MkdirAll(c.rundir, 0755); e != nil {
-		return nil, e
-	}
-
-	cfile := path.Join(c.rundir, "ctl")
 	go sigwatch(c)
 	go dispatch(c)
-	event(c, cfile)
-
-	r, err := newReader(cfile)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		defer close(c.req)
-		scanner := bufio.NewScanner(r)
-
-		for scanner.Scan() {
-			line := scanner.Text()
-			if line == "quit" {
-				cancel()
-				close(c.done)
-				break
-			}
-
-			c.req <- line
-		}
-	}()
-
-	return ctx, nil
+	return c.run.start()
 }
 
 // Notification appends the content of msg to a buffers notification file
 // Any errors encountered during file opening/creation will be returned
-// The canonical form of notification can be found in cleanmark's Notification type,
+// The canonical form of notification can be found in the markup libs' Notification type,
 // And the output of the Parse() method can be used directly here
 // For example
-//     ntfy, err := cleanmark.NewNotifier(buff, from, msg)
+//     ntfy, err := markup.NewNotifier(buff, from, msg)
 //     if err != nil {
 //         log.Fatal(err)
 //     }
-//     fslib.Notification(ntfy.Parse())
+//     fs.Notification(ntfy.Parse())
 func (c *Control) Notification(buff, from, msg string) error {
-	nfile := path.Join(c.rundir, buff, "notification")
-	if _, err := os.Stat(path.Dir(nfile)); os.IsNotExist(err) {
-		os.MkdirAll(path.Dir(nfile), 0755)
-	}
-	f, err := os.OpenFile(nfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	defer f.Close()
-	if err != nil {
-		return err
-	}
-	event(c, nfile)
-	fmt.Fprintf(f, "%s\n%s\n", from, msg)
-	return nil
+	return c.run.notification(buff, from, msg)
 }
 
-func (c *Control) pushTab(tabname string) error {
-	err := validateString(tabname)
-	if err != nil {
-		return err
-	}
-	for n := range c.tabs {
-		if c.tabs[n] == tabname {
-			return fmt.Errorf("entry already exists: %s", tabname)
-		}
-	}
-	c.tabs = append(c.tabs, tabname)
-	return tabs(c)
+// ErrorWriter returns a WriteCloser attached to a services' errors file
+func (c *Control) ErrorWriter() (*WriteCloser, error) {
+	return c.write.errorwriter()
 }
 
-func (c *Control) popTab(tabname string) error {
-	for n := range c.tabs {
-		if c.tabs[n] == tabname {
-			c.tabs = append(c.tabs[:n], c.tabs[n+1:]...)
-			return tabs(c)
-		}
-	}
-	return fmt.Errorf("entry not found: %s", tabname)
+// StatusWriter returns a WriteCloser attached to a buffers status file, which will as well send the correct event to the events file
+func (c *Control) StatusWriter(buffer string) (*WriteCloser, error) {
+	return c.write.fileWriter(buffer, "status")
 }
 
-func sigwatch(c *Control) {
-	d := c.sigwatch
-	d.SigHandle(c)
+// SideWriter returns a WriteCloser attached to a buffers `aside` file, which will as well send the correct event to the events file
+func (c *Control) SideWriter(buffer string) (*WriteCloser, error) {
+	return c.write.fileWriter(buffer, "aside")
 }
 
-func (w *watcher) SigHandle(c *Control) {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGKILL, syscall.SIGINT)
-	for sig := range sigs {
-		switch sig {
-		case syscall.SIGKILL, syscall.SIGINT:
-			c.Cleanup()
-			//case syscall.SIGUSR
-		}
-	}
+// NavWriter returns a WriteCloser attached to a buffers nav file, which will as well send the correct event to the events file
+func (c *Control) NavWriter(buffer string) (*WriteCloser, error) {
+	return c.write.fileWriter(buffer, "navi")
 }
 
-func tabs(c *Control) error {
-	// Create truncates and opens file in a single step, utilize this.
-	file := path.Join(c.rundir, "tabs")
-	f, err := os.Create(file)
-	defer f.Close()
-	if err != nil {
-		return err
-	}
-	f.WriteString(strings.Join(c.tabs, "\n") + "\n")
-	c.Event(file)
-
-	return nil
+// TitleWriter returns a WriteCloser attached to a buffers title file, which will as well send the correct event to the events file
+func (c *Control) TitleWriter(buffer string) (*WriteCloser, error) {
+	return c.write.fileWriter(buffer, "title")
 }
 
-func dispatch(c *Control) {
-	// TODO: wrap with waitgroups
-	// If close is requested on a file which is currently being opened, cancel open request
-	// If open is requested on file which already exists, no-op
-	cw, err := c.ErrorWriter()
-	if err != nil {
-		log.Fatal(err)
-	}
+// ImageWriter returns a WriteCloser attached to a named file in the buffers' image directory
+func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
+	return c.write.imageWriter(buffer, resource)
 
-	defer cw.Close()
+}
 
-	for {
-		select {
-		case line := <-c.req:
-			token := strings.Fields(line)
-			if len(token) < 1 {
-				continue
-			}
-			switch token[0] {
-			case "open":
-				if len(token) < 2 {
-					continue
-				}
-				err := c.ctl.Open(c, token[1])
-				if err != nil {
-					fmt.Fprintf(cw, "open: %s\n", err)
-				}
-			case "close":
-				if len(token) < 2 {
-					continue
-				}
-				err := c.ctl.Close(c, token[1])
-				if err != nil {
-					fmt.Fprintf(cw, "close: %s\n", err)
-				}
-			case "link":
-				if len(token) < 2 {
-					continue
-				}
-				err := c.ctl.Link(c, token[1], token[2])
-				if err != nil {
-					fmt.Fprintf(cw, "link: %s\n", err)
-				}
-			default:
-				if len(token) < 3 {
-					fmt.Fprintf(cw, "unknown command issued: %s\n", token[0])
-					continue
-				}
-
-				msg := strings.Join(token[2:], " ")
-				err := c.ctl.Default(c, token[0], token[1], msg)
-				if err != nil {
-					fmt.Fprintf(cw, "%s: %s\n", token[0], err)
-				}
-			}
-		case <-c.done:
-			return
-		}
-	}
+// MainWriter returns a WriteCloser attached to a buffers feed/document function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file
+func (c *Control) MainWriter(buffer, doctype string) (*WriteCloser, error) {
+	return c.write.fileWriter(buffer, doctype)
 }
