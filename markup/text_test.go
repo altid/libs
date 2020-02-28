@@ -81,3 +81,10 @@ func TestNotifier(t *testing.T) {
 		t.Error("parsing error - invalid code in Notifier.Parse")
 	}
 }
+
+func TestEscapeString(t *testing.T) {
+	c := "this *is* ~my _test_ string~ to -see-"
+	if markup.EscapeString(c) != "this \\*is\\* \\~my \\_test\\_ string\\~ to \\-see\\-" {
+		t.Error("parsing error in EscapeString")
+	}
+}
