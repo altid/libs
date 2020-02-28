@@ -12,8 +12,6 @@ type tab struct {
 }
 
 type mockctl struct {
-	req  chan string
-	done chan struct{}
 	tabs []*tab
 }
 
@@ -49,8 +47,6 @@ func (tc *mockctl) listen() error {
 	for {
 		// Wait forever
 	}
-
-	return nil
 }
 
 func (tc *mockctl) start() (context.Context, error) {
