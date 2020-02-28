@@ -1,7 +1,9 @@
 ## Go Libs
 [![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs)
 
-- fs  creation and management of Altid services
+- auth: helper library for authentication
+
+- fs:  creation and management of Altid services
 
 - markup: tool to work with Altid's specific markup
 
