@@ -10,6 +10,7 @@ import (
 	"github.com/altid/libs/markup"
 )
 
+// Handler is called whenever content is written to the associated `input` file
 type Handler interface {
 	Handle(path string, c *markup.Lexer) error
 }
@@ -60,9 +61,10 @@ func (i *Input) StartContext(ctx context.Context) error {
 	go func() {
 		for msg := range inputMsg {
 			l := markup.NewLexer(msg)
-			err := i.h.Handle(i.fname, l)
-			if err != nil {
-				errorMsg <- err
+			fp := path.Base(i.fname)
+
+			if e := i.h.Handle(fp, l); e != nil {
+				errorMsg <- e
 				return
 			}
 		}
