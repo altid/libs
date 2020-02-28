@@ -61,9 +61,10 @@ func (i *Input) StartContext(ctx context.Context) error {
 	go func() {
 		for msg := range inputMsg {
 			l := markup.NewLexer(msg)
-			err := i.h.Handle(i.fname, l)
-			if err != nil {
-				errorMsg <- err
+			fp := path.Base(i.fname)
+
+			if e := i.h.Handle(fp, l); e != nil {
+				errorMsg <- e
 				return
 			}
 		}

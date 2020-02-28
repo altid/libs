@@ -11,28 +11,27 @@ type tab struct {
 	data string
 }
 
-// This is a test controller
-type testController struct {
+type mockctl struct {
 	req  chan string
 	done chan struct{}
 	tabs []*tab
 }
 
-func (tc *testController) cleanup() {}
+func (tc *mockctl) cleanup() {}
 
-func (tc *testController) event(ev string) error {
+func (tc *mockctl) event(ev string) error {
 	return nil
 }
 
-func (tc *testController) createBuffer(name, doctype string) error {
+func (tc *mockctl) createBuffer(name, doctype string) error {
 	return tc.pushTab(name, doctype)
 }
 
-func (tc *testController) deleteBuffer(name, doctype string) error {
+func (tc *mockctl) deleteBuffer(name, doctype string) error {
 	return tc.popTab(name)
 }
 
-func (tc *testController) hasBuffer(name, doctype string) bool {
+func (tc *mockctl) hasBuffer(name, doctype string) bool {
 	for _, i := range tc.tabs {
 		if i.name == name {
 			return true
@@ -42,25 +41,25 @@ func (tc *testController) hasBuffer(name, doctype string) bool {
 	return false
 }
 
-func (tc *testController) remove(name, doctype string) error {
+func (tc *mockctl) remove(name, doctype string) error {
 	return tc.popTab(name)
 }
 
-func (tc *testController) listen() error {
+func (tc *mockctl) listen() error {
 	return nil
 }
 
-func (tc *testController) start() (context.Context, error) {
+func (tc *mockctl) start() (context.Context, error) {
 	// Need to do stuff with Open, Close, Link and Default.
 
 	return nil, nil
 }
 
-func (tc *testController) notification(string, string, string) error {
+func (tc *mockctl) notification(string, string, string) error {
 	return nil
 }
 
-func (tc *testController) popTab(tabname string) error {
+func (tc *mockctl) popTab(tabname string) error {
 	for n := range tc.tabs {
 		if tc.tabs[n].name == tabname {
 			tc.tabs = append(tc.tabs[:n], tc.tabs[n+1:]...)
@@ -70,7 +69,7 @@ func (tc *testController) popTab(tabname string) error {
 	return fmt.Errorf("entry not found: %s", tabname)
 }
 
-func (tc *testController) pushTab(tabname, doctype string) error {
+func (tc *mockctl) pushTab(tabname, doctype string) error {
 	for n := range tc.tabs {
 		if tc.tabs[n].name == tabname {
 			return fmt.Errorf("entry already exists: %s", tabname)
@@ -86,12 +85,12 @@ func (tc *testController) pushTab(tabname, doctype string) error {
 	return nil
 }
 
-func (tc *testController) errorwriter() (*WriteCloser, error) {
+func (tc *mockctl) errorwriter() (*WriteCloser, error) {
 	return nil, nil
 }
-func (tc *testController) fileWriter(buffer, doctype string) (*WriteCloser, error) {
+func (tc *mockctl) fileWriter(buffer, doctype string) (*WriteCloser, error) {
 	return nil, nil
 }
-func (tc *testController) imageWriter(buffer, resource string) (*WriteCloser, error) {
+func (tc *mockctl) imageWriter(buffer, resource string) (*WriteCloser, error) {
 	return nil, nil
 }

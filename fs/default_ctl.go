@@ -21,10 +21,6 @@ type control struct {
 	tabs    []string
 	req     chan string
 	done    chan struct{}
-	// It's considered bad form to handle signals internally to a library
-	// In this case, the desired interface for a running service is dictated by the library being used itself
-	// Rather than a how-to guide, or similar
-	w watcher
 }
 
 func (c *control) event(eventmsg string) error {
@@ -304,12 +300,3 @@ func (c *control) imageWriter(buffer, resource string) (*WriteCloser, error) {
 	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
 	return c.fileWriter(buffer, path.Join("images", resource))
 }
-
-// Convert to control type so we can call our functions with it - this may end up being bad but we will see
-func (c *control) control() *Control {
-	return &Control{
-		run:   c,
-		write: c,
-	}
-}
-
