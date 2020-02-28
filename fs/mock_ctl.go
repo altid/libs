@@ -2,17 +2,28 @@ package fs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
 type tab struct {
 	name string
 	doct string
-	data string
+	data []byte
 }
 
 type mockctl struct {
+	err  chan error
 	tabs []*tab
+}
+
+func (t *tab) Write(p []byte) (n int, err error) {
+	n = copy(p, t.data)
+	return
+}
+
+func (t *tab) Close() error {
+	return nil
 }
 
 func (tc *mockctl) cleanup() {}
@@ -44,13 +55,11 @@ func (tc *mockctl) remove(name, doctype string) error {
 }
 
 func (tc *mockctl) listen() error {
-	for {
-		// Wait forever
-	}
+	return <-tc.err
 }
 
 func (tc *mockctl) start() (context.Context, error) {
-	return context.Background(), nil
+	return nil, errors.New("please use listen for testing")
 }
 
 func (tc *mockctl) notification(string, string, string) error {
@@ -64,6 +73,7 @@ func (tc *mockctl) popTab(tabname string) error {
 			return nil
 		}
 	}
+
 	return fmt.Errorf("entry not found: %s", tabname)
 }
 
@@ -73,6 +83,7 @@ func (tc *mockctl) pushTab(tabname, doctype string) error {
 			return fmt.Errorf("entry already exists: %s", tabname)
 		}
 	}
+
 	t := &tab{
 		name: tabname,
 		doct: doctype,
@@ -84,11 +95,53 @@ func (tc *mockctl) pushTab(tabname, doctype string) error {
 }
 
 func (tc *mockctl) errorwriter() (*WriteCloser, error) {
-	return nil, nil
+	w := &WriteCloser{
+		c:      tc,
+		fp:     &tab{},
+		buffer: "errors",
+	}
+	return w, nil
 }
 func (tc *mockctl) fileWriter(buffer, doctype string) (*WriteCloser, error) {
-	return nil, nil
+	tab, err := tc.findTab(buffer)
+	if err != nil {
+		tc.err <- err
+		return nil, err
+	}
+
+	w := &WriteCloser{
+		c:      tc,
+		fp:     tab,
+		buffer: buffer,
+	}
+
+	return w, nil
 }
 func (tc *mockctl) imageWriter(buffer, resource string) (*WriteCloser, error) {
-	return nil, nil
+	tab, err := tc.findTab(buffer)
+	if err != nil {
+		tc.err <- err
+		return nil, err
+	}
+
+	w := &WriteCloser{
+		c:      tc,
+		fp:     tab,
+		buffer: buffer,
+	}
+
+	return w, nil
+}
+
+func (tc *mockctl) findTab(buffer string) (*tab, error) {
+	for _, tab := range tc.tabs {
+		if tab.name == buffer {
+			return tab, nil
+		}
+	}
+
+	e := errors.New("no such tab")
+	tc.err <- e
+
+	return nil, e
 }
