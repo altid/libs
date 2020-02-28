@@ -31,3 +31,7 @@ jobs:
     - name: Build
       run: go build -v .
       working-directory: fs
+
+    - name: Run Tests
+      run: go test -v .
+      working-directory: fs
