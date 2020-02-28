@@ -31,3 +31,7 @@ jobs:
     - name: Build
       run: go build -v .
       working-directory: client 
+
+    - name: Test
+      run: go test -v .
+      working-directory: client
