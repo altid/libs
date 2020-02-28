@@ -1,13 +1,11 @@
 package fs
 
-import (
-	"os"
-)
+import "io"
 
 // WriteCloser is a type that implements io.WriteCloser
 type WriteCloser struct {
 	c      runner
-	fp     *os.File
+	fp     io.WriteCloser
 	buffer string
 }
 
