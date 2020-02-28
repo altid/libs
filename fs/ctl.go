@@ -63,17 +63,15 @@ type Control struct {
 
 // MockCtlFile returns a type that can be used for testing services
 // it will track in-memory and behave like a file-backed control
-func MockCtlFile() (*Control, error) {
-	req := make(chan string)
+// It will wait for messages on reqs which act as ctl messages
+func MockCtlFile(reqs chan string) (*Control, error) {
+
 	done := make(chan struct{})
 
-	t := &mockctl{
-		req:  req,
-		done: done,
-	}
+	t := &mockctl{}
 
 	c := &Control{
-		req:   req,
+		req:   reqs,
 		done:  done,
 		run:   t,
 		write: t,
