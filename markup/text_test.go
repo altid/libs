@@ -1,0 +1,83 @@
+package markup_test
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/altid/libs/markup"
+)
+
+var path = []byte("https://github.com")
+var alt = []byte("a photo of octocat")
+var id = []byte("host for code online")
+var none = []byte("")
+
+func TestColor(t *testing.T) {
+	c, err := markup.NewColor("#FFF", []byte("test"))
+	if err != nil || c.String() != "%[test](#FFF)" {
+		t.Error("failed to parse hex colour code")
+	}
+
+	c, err = markup.NewColor("#FFFFFF", []byte("test"))
+	if err != nil || c.String() != "%[test](#FFFFFF)" {
+		t.Error("failed to parse hex colour code")
+	}
+
+	c, err = markup.NewColor("grey", []byte("test"))
+	if err != nil || c.String() != "%[test](grey)" {
+		t.Error("failed to parse colour codes")
+	}
+
+	_, err = markup.NewColor("chicken", []byte("test"))
+	if err == nil {
+		t.Error("parsing error - invalid code in NewColor")
+	}
+}
+
+func TestUrl(t *testing.T) {
+	c, err := markup.NewUrl(path, id)
+	if err != nil || c.String() != fmt.Sprintf("[%s](%s)", id, path) {
+		t.Error("failed to parse URL")
+	}
+
+	c, err = markup.NewUrl(path, none)
+	if err != nil || c.String() != fmt.Sprintf("[%s](%s)", path, path) {
+		t.Error("failed to parse URL")
+	}
+
+	_, err = markup.NewUrl(none, none)
+	if err == nil {
+		t.Error("parsing error - invalid code in NewUrl")
+	}
+}
+
+func TestImage(t *testing.T) {
+	c, err := markup.NewImage(path, id, alt)
+	if err != nil || c.String() != fmt.Sprintf("![%s](%s \"%s\")", alt, path, id) {
+		t.Error("failed to parse Image")
+	}
+
+	c, err = markup.NewImage(path, id, none)
+	if err != nil || c.String() != fmt.Sprintf("![%s](%s \"%s\")", id, path, id) {
+		t.Error("failed to parse Image")
+	}
+
+	c, err = markup.NewImage(path, none, alt)
+	if err != nil || c.String() != fmt.Sprintf("![%s](%s \"%s\")", alt, path, alt) {
+		t.Error("failed to parse Image")
+	}
+
+	_, err = markup.NewImage(path, none, none)
+	if err == nil {
+		t.Error("parsing error - invalid code in NewImage")
+	}
+}
+
+func TestNotifier(t *testing.T) {
+	c := markup.NewNotifier("#foo", "bar - the place to be!", "baz is a *real* friend")
+	foo, bar, baz := c.Parse()
+	fmt.Println(c.Parse())
+	if foo != "foo" && bar != "# bar \\- the place to be\\!" && baz != "baz is a \\*real\\* friend" {
+		t.Error("parsing error - invalid code in Notifier.Parse")
+	}
+}

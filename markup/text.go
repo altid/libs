@@ -67,6 +67,8 @@ type Url struct {
 // NewUrl returns a Url
 // If `msg` is empty, the contents of `link` will be used
 // If `link` is empty, an error will be returned
+// There are no assumptions about what link points to
+// But before a beta release there may be a schema imposed
 func NewUrl(link, msg []byte) (*Url, error) {
 	if len(link) == 0 {
 		return nil, fmt.Errorf("No link provided for %s\n", msg)
@@ -252,8 +254,17 @@ func escape(msg []byte) []byte {
 
 // EscapeString returns a properly escaped Altid markup string
 func EscapeString(msg string) string {
-	escaped := escape([]byte(msg))
-	return string(escaped)
+	var result strings.Builder
+	for _, c := range msg {
+		switch c {
+		case '*', '#', '_', '-', '~', '\\', '/', '(', ')', '`', '[', ']', '!':
+			result.WriteRune('\\')
+		}
+
+		result.WriteRune(c)
+	}
+
+	return result.String()
 }
 
 func validateColorCode(s string) bool {
