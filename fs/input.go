@@ -10,6 +10,7 @@ import (
 	"github.com/altid/libs/markup"
 )
 
+// Handler is called whenever content is written to the associated `input` file
 type Handler interface {
 	Handle(path string, c *markup.Lexer) error
 }
