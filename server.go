@@ -132,7 +132,6 @@ func (s *server) run(svc *service) error {
 		uuid := rand.Int63()
 		current := "server"
 
-		// Try our best to get a dir
 		dirs, err := ioutil.ReadDir(path.Join(*inpath, svc.name))
 		if err != nil {
 			log.Print(err)

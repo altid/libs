@@ -155,8 +155,8 @@ func (s *service) checkInactive(c *client) {
 	}
 }
 
-func (svc *service) sendFeed() {
-	for _, cl := range svc.clients {
+func (s *service) sendFeed() {
+	for _, cl := range s.clients {
 		cl.feed <- struct{}{}
 	}
 }
