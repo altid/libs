@@ -18,7 +18,7 @@ const (
 type service struct {
 	commands chan *cmd
 	clients  map[int64]*client
-	tablist  map[string]*tab
+	tablist  map[string]*tabs
 	addr     string
 	name     string
 }
@@ -107,6 +107,7 @@ func (s *service) close(c *client) {
 		for _, t := range s.tablist {
 			cl.current = t.name
 			t.active = true
+			t.alert = false
 			t.count = 0
 			break
 		}
@@ -124,13 +125,14 @@ func (s *service) move(c *client, name string) {
 
 	t, ok := s.tablist[name]
 	if !ok {
-		t = &tab{
+		t = &tabs{
 			name: name,
 		}
 		s.tablist[name] = t
 	}
 
 	t.active = true
+	t.alert = false
 	t.count = 0
 
 	c.current = name
@@ -150,6 +152,12 @@ func (s *service) checkInactive(c *client) {
 
 	if t, ok := s.tablist[c.current]; ok {
 		t.active = false
+	}
+}
+
+func (svc *service) sendFeed() {
+	for _, cl := range svc.clients {
+		cl.feed <- struct{}{}
 	}
 }
 

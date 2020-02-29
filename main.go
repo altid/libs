@@ -12,7 +12,7 @@ import (
 	"github.com/altid/libs/fs"
 )
 
-//var enableFactotum = flag.Bool("f", false, "Enable client authentication via a plan9 factotum")
+var enableFactotum = flag.Bool("f", false, "Enable client authentication via a plan9 factotum")
 var inpath = flag.String("m", "/tmp/altid", "Path to Altid services")
 var listenPort = flag.Int("p", 564, "Port to listen on")
 var usetls = flag.Bool("t", false, "Use TLS")

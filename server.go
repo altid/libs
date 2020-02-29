@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -11,6 +12,8 @@ import (
 	"sync"
 
 	"aqwari.net/net/styx"
+	"aqwari.net/net/styx/styxauth/factotum"
+	"github.com/altid/libs/auth"
 )
 
 type server struct {
@@ -46,8 +49,14 @@ func (s *server) listenEvents() {
 		switch e.etype {
 		//case streamEvent:
 		case notifyEvent:
-			// TODO(halfwit) Figure out notifications
-			continue
+			t, ok := srv.tablist[e.name]
+			if !ok {
+				addTab(srv, e)
+			}
+
+			if !t.active {
+				t.alert = true
+			}
 		case docEvent:
 			t, ok := srv.tablist[e.name]
 			if !ok {
@@ -70,25 +79,45 @@ func (s *server) listenEvents() {
 				continue
 			}
 
-			for _, cl := range srv.clients {
-				cl.feed <- struct{}{}
-			}
+			srv.sendFeed()
 		}
 	}
 }
 
 func (s *server) start() {
+	var wg sync.WaitGroup
+
 	for _, svc := range s.services {
-		go s.run(svc)
+		wg.Add(1)
+
+		go func(svc *service) {
+			defer wg.Done()
+
+			if e := s.run(svc); e != nil {
+				log.Println(e)
+			}
+		}(svc)
 	}
+
+	wg.Wait()
+	s.ctx.Done()
 }
 
-func (s *server) run(svc *service) {
-	port := fmt.Sprintf(":%d", *listenPort)
+func (s *server) run(svc *service) error {
+	var rpc func() (io.ReadWriteCloser, error)
 
+	if *enableFactotum {
+		rpc = auth.OpenRPC
+	} else {
+		rpc = s.cfg.mockFactotum
+
+	}
+
+	af, aof := factotum.Start(rpc, "p9any")
 	t := &styx.Server{
-		Addr: svc.addr + port,
-		//Auth: auth,
+		Addr:     svc.addr + fmt.Sprintf(":%d", *listenPort),
+		Auth:     af,
+		OpenAuth: aof,
 	}
 
 	if *verbose {
@@ -147,13 +176,15 @@ func (s *server) run(svc *service) {
 	switch *usetls {
 	case true:
 		if e := t.ListenAndServeTLS(*certfile, *keyfile); e != nil {
-			log.Fatal(e)
+			return e
 		}
 	case false:
 		if e := t.ListenAndServe(); e != nil {
-			log.Fatal(e)
+			return e
 		}
 	}
+
+	return nil
 }
 
 func (s *server) getPath(c *client) string {
@@ -161,7 +192,7 @@ func (s *server) getPath(c *client) string {
 }
 
 func addTab(srv *service, e *event) {
-	t := &tab{
+	t := &tabs{
 		count:  1,
 		active: false,
 	}
