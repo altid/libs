@@ -12,8 +12,9 @@ import (
 )
 
 // tabs are a special file type that must track unread across all clients with a state
-type tab struct {
+type tabs struct {
 	name   string
+	alert  bool
 	count  uint16
 	active bool
 }
@@ -48,6 +49,10 @@ func getTabs(msg *message) (interface{}, error) {
 	var b bytes.Buffer
 
 	for name, tab := range msg.svc.tablist {
+		if tab.alert {
+			b.WriteString("!")
+		}
+		
 		fmt.Fprintf(&b, "%s [%d]\n", name, tab.count)
 	}
 
@@ -63,8 +68,8 @@ func getTabsStat(msg *message) (os.FileInfo, error) {
 	return os.Stat(path.Join(*inpath, msg.svc.name, "tabs"))
 }
 
-func listInitialTabs(service string) (map[string]*tab, error) {
-	tablist := make(map[string]*tab)
+func listInitialTabs(service string) (map[string]*tabs, error) {
+	tablist := make(map[string]*tabs)
 	fp := path.Join(*inpath, service, "tabs")
 
 	file, err := os.Open(fp)
@@ -83,6 +88,6 @@ func listInitialTabs(service string) (map[string]*tab, error) {
 		}
 
 		name := strings.TrimSpace(line)
-		tablist[name] = &tab{}
+		tablist[name] = &tabs{}
 	}
 }
