@@ -30,7 +30,7 @@ func newConfig(filename string) (*config, error) {
 }
 
 func (c *config) mockFactotum() (io.ReadWriteCloser, error) {
-	mock, err := auth.MockRPC()
+	mock, err := auth.NewRPC("9pd")
 	if err != nil {
 		return nil, err
 	}
