@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -104,20 +103,12 @@ func (s *server) start() {
 }
 
 func (s *server) run(svc *service) error {
-	var rpc func() (io.ReadWriteCloser, error)
-
-	if *enableFactotum {
-		rpc = auth.OpenRPC
-	} else {
-		rpc = s.cfg.mockFactotum
-
+	t := &styx.Server{
+		Addr: svc.addr + fmt.Sprintf(":%d", *listenPort),
 	}
 
-	af, aof := factotum.Start(rpc, "p9any")
-	t := &styx.Server{
-		Addr:     svc.addr + fmt.Sprintf(":%d", *listenPort),
-		Auth:     af,
-		OpenAuth: aof,
+	if *enableFactotum {
+		t.Auth, t.OpenAuth = factotum.Start(auth.OpenRPC, "p9any")
 	}
 
 	if *verbose {
@@ -134,7 +125,7 @@ func (s *server) run(svc *service) error {
 
 		dirs, err := ioutil.ReadDir(path.Join(*inpath, svc.name))
 		if err != nil {
-			log.Print(err)
+			t.ErrorLog.Printf("%s\n", err)
 			return
 		}
 
