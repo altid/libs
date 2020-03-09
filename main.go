@@ -19,8 +19,8 @@ var usetls = flag.Bool("t", false, "Use TLS")
 var certfile = flag.String("c", "/etc/ssl/certs/altid.pem", "Path to certificate file")
 var keyfile = flag.String("k", "/etc/ssl/private/altid.pem", "Path to key file")
 var username = flag.String("u", "", "Run as user")
-var verbose = flag.Bool("v", false, "Enable verbose logging")
-var debug = flag.Bool("d", false, "Enable debug logging")
+var debug = flag.Bool("d", false, "Debug")
+var chatty = flag.Bool("D", false, "Chatty")
 
 var defaultUID string
 var defaultGID string

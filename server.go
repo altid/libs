@@ -20,6 +20,7 @@ type server struct {
 	ctx      context.Context
 	cfg      *config
 	events   chan *event
+	debug    func(string, ...interface{})
 	sync.Mutex
 }
 
@@ -31,7 +32,14 @@ func newServer(ctx context.Context, cfg *config) (*server, error) {
 		return nil, err
 	}
 
+	dblog := serverDebugLog
+
+	if !*debug {
+		dblog = func(string, ...interface{}) {}
+	}
+
 	s := &server{
+		debug:    dblog,
 		services: services,
 		events:   events,
 		ctx:      ctx,
@@ -111,7 +119,7 @@ func (s *server) run(svc *service) error {
 		t.Auth, t.OpenAuth = factotum.Start(auth.OpenRPC, "p9any")
 	}
 
-	if *verbose {
+	if *chatty {
 		t.TraceLog = log.New(os.Stderr, "", 0)
 	}
 
@@ -125,7 +133,7 @@ func (s *server) run(svc *service) error {
 
 		dirs, err := ioutil.ReadDir(path.Join(*inpath, svc.name))
 		if err != nil {
-			t.ErrorLog.Printf("%s\n", err)
+			log.Printf("initializing styx server: %v", err)
 			return
 		}
 
@@ -153,12 +161,14 @@ func (s *server) run(svc *service) error {
 			tab.count = 0
 		}
 
+		s.debug("starting listener")
 		for sess.Next() {
 			q := sess.Request()
 			c.reading = q.Path()
 			handleReq(s, c, q)
 		}
 
+		s.debug("exiting")
 		delete(svc.clients, uuid)
 		close(c.feed)
 	})
@@ -188,4 +198,9 @@ func addTab(srv *service, e *event) {
 	}
 
 	srv.tablist[e.name] = t
+}
+
+func serverDebugLog(format string, v ...interface{}) {
+	l := log.New(os.Stderr, "", 0)
+	l.Printf(format, v...)
 }

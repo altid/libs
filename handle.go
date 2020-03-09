@@ -26,11 +26,13 @@ func addFileHandler(path string, fh *fileHandler) {
 
 func walk(svc *service, c *client) (os.FileInfo, error) {
 	h, m := handler(svc, c)
+
 	return h.stat(m)
 }
 
 func open(svc *service, c *client) (interface{}, error) {
 	h, m := handler(svc, c)
+
 	return h.fn(m)
 }
 
@@ -53,6 +55,7 @@ func handler(svc *service, c *client) (*fileHandler, *message) {
 func handleReq(s *server, c *client, req styx.Request) {
 	service, ok := s.services[c.target]
 	if !ok {
+		// Todo: server logging
 		req.Rerror("%s", "No such service")
 		return
 	}
