@@ -1,90 +1,158 @@
-// gomobile-compatible library for creating clients
 package client
 
 import (
-	"context"
-	"errors"
-	"os/user"
+	"fmt"
+	"io"
+	"net"
+
+	"github.com/knieriem/g/go9p/user"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 )
 
-const (
-	errInvalidSession = "invalid session"
-)
+// MSIZE - maximum size for a message
+const MSIZE = p.MSIZE
 
-// Client wraps an internal session, allowing us to access its read/write functions
+// Client represents a 9p client session
 type Client struct {
-	ctx   context.Context
-	conns map[string]*session
-	user  string
-	debug int
+	addr   string
+	buffer string
+	clnt   *clnt.Clnt
+	fid    *clnt.Fid
+	afid   *clnt.Fid
 }
 
-// ReadFile - returns the contents of a file and any errors encountered
-func (c *Client) ReadFile(serv, target string, off int64) ([]byte, error) {
-	s, ok := c.conns[serv]
-	if !ok {
-		return nil, errors.New(errInvalidSession)
+// NewClient returns an authenticated client
+func NewClient(addr string) *Client {
+	return &Client{
+		addr: addr,
 	}
-
-	return s.readFile(c.ctx, target, off)
 }
 
-// WriteFile - writes the contents of data to the target file. Most files used are append-only, such as input and ctl
-func (c *Client) WriteFile(serv, target string, data []byte) error {
-	s, ok := c.conns[serv]
-	if !ok {
-		return errors.New(errInvalidSession)
-	}
+func (c *Client) Connect() (err error) {
+	dial := fmt.Sprintf("%s:564", c.addr)
 
-	// TODO(halfwit) chunked writes
-	return s.writeFile(c.ctx, target, data)
-}
-
-// TODO: WriteAt, ReadAt
-
-// ListFiles - Show all toplevel files in the directory
-func (c *Client) ListFiles(serv string) ([]byte, error) {
-	session, ok := c.conns[serv]
-	if !ok {
-		return nil, errors.New(errInvalidSession)
-	}
-
-	return session.readFile(c.ctx, "/", 0)
-}
-
-// NewSession - Adds a session to the client
-func (c *Client) NewSession(serv, addr string) error {
-	s, err := attach(c.ctx, c.user, addr)
-	if err == nil {
+	conn, err := net.Dial("tcp", dial)
+	if err != nil {
 		return err
 	}
 
-	c.conns[serv] = s
+	c.clnt, err = clnt.Connect(conn, p.MSIZE, false)
+	if err != nil {
+		return err
+	}
+
+	return
+}
+
+func (c *Client) Attach() (err error) {
+	c.fid, err = c.clnt.Attach(c.afid, user.Current(), "/")
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-// NewClient - Returns a client with a connection to serv, ready for reading and writing
-func NewClient(debug int, addr, serv string) (*Client, error) {
-	ctx := context.Background()
-	u, err := user.Current()
+func (c *Client) Auth() (err error) {
+	c.afid, err = c.clnt.Auth(user.Current(), "/")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// May not be usable for mobile, but still usable for normal clients
+func (c *Client) Open(path string) (io.ReadWriteCloser, error) {
+	return c.clnt.FOpen(path, p.ORDWR)
+}
+
+func (c *Client) Tabs() ([]byte, error) {
+	nfid := c.clnt.FidAlloc()
+	if _, e := c.clnt.Walk(c.fid, nfid, []string{"tabs"}); e != nil {
+		return nil, e
+	}
+
+	c.fid = nfid
+	if e := c.clnt.Open(nfid, p.OREAD); e != nil {
+		return nil, e
+	}
+
+	return c.clnt.Read(nfid, 0, p.MSIZE)
+}
+
+// Buffer attempts to switch to a named buffer
+func (c *Client) Buffer(name string) (n int, err error) {
+	nfid, err := c.clnt.FWalk("/ctl")
+	if err != nil {
+		return 0, err
+	}
+
+	if e := c.clnt.Open(nfid, p.OAPPEND); e != nil {
+		return 0, e
+	}
+
+	data := fmt.Sprintf("buffer %s\x00", name)
+	return c.clnt.Write(nfid, []byte(data), 0)
+}
+
+// Feed returns a ReadCloser connected to `feed`. It's expected all reads
+// will be read into a buffer with a size of MSIZE
+// It is also expected for Feed to be called in its own thread
+func (c *Client) Feed() (io.ReadCloser, error) {
+	fd, err := c.clnt.FOpen("/feed", p.OREAD)
 	if err != nil {
 		return nil, err
 	}
-	s, err := attach(ctx, u.Username, addr)
-	if err != nil {
-		return nil, err
+
+	data := make(chan []byte)
+	done := make(chan struct{})
+
+	go func() {
+		var off int64
+
+		for {
+			b := make([]byte, p.MSIZE)
+
+			n, err := fd.ReadAt(b, off)
+			if err != nil && err != io.EOF {
+				return
+			}
+
+			if n > 0 {
+				data <- b[:n]
+				off += int64(n)
+			}
+		}
+
+	}()
+
+	f := &feed{
+		data: data,
+		done: done,
 	}
 
-	conns := make(map[string]*session)
-	conns[serv] = s
+	return f, nil
 
-	c := &Client{
-		ctx:   ctx,
-		user:  u.Username,
-		conns: conns,
-		debug: debug,
+}
+
+type feed struct {
+	data chan []byte
+	done chan struct{}
+}
+
+func (f *feed) Read(b []byte) (n int, err error) {
+	select {
+	case in := <-f.data:
+		n = copy(b, in)
+		return
+	case <-f.done:
+		return 0, io.EOF
 	}
+}
 
-	return c, nil
+func (f *feed) Close() error {
+	f.done <- struct{}{}
+	return nil
 }
