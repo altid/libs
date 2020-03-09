@@ -53,6 +53,7 @@ func getDir(msg *message) (interface{}, error) {
 		total: total,
 	}
 
+	msg.svc.debug("listing directory for %s", msg.svc.name)
 	return d, nil
 }
 
