@@ -10,25 +10,28 @@ import (
 	"github.com/lionkov/go9p/p/clnt"
 )
 
+// Track fids instead in a map as we use them
+
 // MSIZE - maximum size for a message
 const MSIZE = p.MSIZE
 
 // Client represents a 9p client session
 type Client struct {
+	fids   map[string]*clnt.Fid
 	addr   string
 	buffer string
 	clnt   *clnt.Clnt
-	fid    *clnt.Fid
-	afid   *clnt.Fid
 }
 
 // NewClient returns an authenticated client
 func NewClient(addr string) *Client {
 	return &Client{
 		addr: addr,
+		fids: make(map[string]*clnt.Fid),
 	}
 }
 
+// Connect performs the network dial for the connection
 func (c *Client) Connect() (err error) {
 	dial := fmt.Sprintf("%s:564", c.addr)
 
@@ -45,38 +48,39 @@ func (c *Client) Connect() (err error) {
 	return
 }
 
+// Attach is called after optionally calling Auth
 func (c *Client) Attach() (err error) {
-	c.fid, err = c.clnt.Attach(c.afid, user.Current(), "/")
+	afid, ok := c.fids["auth"]
+	if !ok {
+		afid = nil
+	}
+
+	root, err := c.clnt.Attach(afid, user.Current(), "/")
 	if err != nil {
 		return err
 	}
 
+	c.fids["root"] = root
+
 	return nil
 }
 
-func (c *Client) Auth() (err error) {
-	c.afid, err = c.clnt.Auth(user.Current(), "/")
+// Auth is optionally called after Connect to authenticate with the server
+func (c *Client) Auth() error {
+	afid, err := c.clnt.Auth(user.Current(), "/")
 	if err != nil {
 		return err
 	}
 
+	c.fids["auth"] = afid
 	return nil
 }
 
-// May not be usable for mobile, but still usable for normal clients
-func (c *Client) Open(path string) (io.ReadWriteCloser, error) {
-	return c.clnt.FOpen(path, p.ORDWR)
-}
-
+// Tabs returns the contents of a servers' tabs file
 func (c *Client) Tabs() ([]byte, error) {
-	nfid := c.clnt.FidAlloc()
-	if _, e := c.clnt.Walk(c.fid, nfid, []string{"tabs"}); e != nil {
-		return nil, e
-	}
-
-	c.fid = nfid
-	if e := c.clnt.Open(nfid, p.OREAD); e != nil {
-		return nil, e
+	nfid, err := c.getFid("tabs", p.OREAD)
+	if err != nil {
+		return nil, err
 	}
 
 	return c.clnt.Read(nfid, 0, p.MSIZE)
@@ -84,13 +88,9 @@ func (c *Client) Tabs() ([]byte, error) {
 
 // Buffer attempts to switch to a named buffer
 func (c *Client) Buffer(name string) (n int, err error) {
-	nfid, err := c.clnt.FWalk("/ctl")
+	nfid, err := c.getFid("ctl", p.OAPPEND)
 	if err != nil {
 		return 0, err
-	}
-
-	if e := c.clnt.Open(nfid, p.OAPPEND); e != nil {
-		return 0, e
 	}
 
 	data := fmt.Sprintf("buffer %s\x00", name)
@@ -101,7 +101,7 @@ func (c *Client) Buffer(name string) (n int, err error) {
 // will be read into a buffer with a size of MSIZE
 // It is also expected for Feed to be called in its own thread
 func (c *Client) Feed() (io.ReadCloser, error) {
-	fd, err := c.clnt.FOpen("/feed", p.OREAD)
+	nfid, err := c.getFid("/feed", p.OREAD)
 	if err != nil {
 		return nil, err
 	}
@@ -110,19 +110,25 @@ func (c *Client) Feed() (io.ReadCloser, error) {
 	done := make(chan struct{})
 
 	go func() {
-		var off int64
+		var off uint64
 
 		for {
-			b := make([]byte, p.MSIZE)
 
-			n, err := fd.ReadAt(b, off)
+			b, err := c.clnt.Read(nfid, off, p.MSIZE)
 			if err != nil && err != io.EOF {
 				return
 			}
 
-			if n > 0 {
-				data <- b[:n]
-				off += int64(n)
+			if len(b) > 0 {
+				data <- b
+				off += uint64(len(b))
+			}
+
+			select {
+			case <-done:
+				break
+			default:
+				continue
 			}
 		}
 
@@ -137,22 +143,19 @@ func (c *Client) Feed() (io.ReadCloser, error) {
 
 }
 
-type feed struct {
-	data chan []byte
-	done chan struct{}
-}
+func (c *Client) getFid(name string, mode uint8) (*clnt.Fid, error) {
+	f, ok := c.fids[name]
+	if !ok {
+		nfid, err := c.clnt.FWalk(name)
+		if err != nil {
+			return nil, err
+		}
 
-func (f *feed) Read(b []byte) (n int, err error) {
-	select {
-	case in := <-f.data:
-		n = copy(b, in)
-		return
-	case <-f.done:
-		return 0, io.EOF
+		c.fids[name] = nfid
+		c.clnt.Open(nfid, mode)
+
+		return nfid, nil
 	}
-}
 
-func (f *feed) Close() error {
-	f.done <- struct{}{}
-	return nil
+	return f, nil
 }
