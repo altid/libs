@@ -43,7 +43,7 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 	buff := bytes.NewBuffer(p)
 
 	command, err := buff.ReadString(' ')
-	if err != nil {
+	if err != nil && err != io.EOF {
 		c.debug("ctl write: client wrote empty command")
 		return 0, errors.New("nil or empty command received")
 	}
@@ -58,6 +58,8 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 
 	value = value[:len(value)-1]
 	c.debug("command issued %s %s", command, value)
+
+	c.data = append(c.data, p...)
 
 	switch command {
 	case "refresh":
