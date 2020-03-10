@@ -98,31 +98,23 @@ func (s *service) watchCommands(cfg *config) {
 			s.chatty(reloadCmd, s.name)
 			s.addr = cfg.getAddress(s.name)
 		case bufferCmd:
-			cl.Lock()
 			s.move(cl, cmd.value)
 			s.chatty(sendEOFCmd, s.name, cl.current)
 			s.sendFeedEOF(cl.uuid)
-			cl.Unlock()
 		case openCmd:
-			cl.Lock()
 			s.open(cl, cmd.value)
 			s.chatty(sendEOFCmd, s.name, cl.current)
 			s.sendFeedEOF(cl.uuid)
-			cl.Unlock()
 		case closeCmd:
-			cl.Lock()
 			s.close(cl)
 			s.chatty(sendEOFCmd, s.name, cl.current)
 			s.sendFeedEOF(cl.uuid)
-			cl.Unlock()
 		case linkCmd:
-			cl.Lock()
 			s.chatty(linkCmd)
 			s.close(cl)
 			s.open(cl, cmd.value)
 			s.chatty(sendEOFCmd, s.name, cl.current)
 			s.sendFeedEOF(cl.uuid)
-			cl.Unlock()
 		}
 	}
 }
