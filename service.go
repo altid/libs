@@ -98,23 +98,31 @@ func (s *service) watchCommands(cfg *config) {
 			s.chatty(reloadCmd, s.name)
 			s.addr = cfg.getAddress(s.name)
 		case bufferCmd:
+			cl.Lock()
 			s.move(cl, cmd.value)
 			s.chatty(sendEOFCmd, s.name, cl.current)
-			cl.sendFeedEOF()
+			s.sendFeedEOF(cl.uuid)
+			cl.Unlock()
 		case openCmd:
+			cl.Lock()
 			s.open(cl, cmd.value)
 			s.chatty(sendEOFCmd, s.name, cl.current)
-			cl.sendFeedEOF()
+			s.sendFeedEOF(cl.uuid)
+			cl.Unlock()
 		case closeCmd:
+			cl.Lock()
 			s.close(cl)
 			s.chatty(sendEOFCmd, s.name, cl.current)
-			cl.sendFeedEOF()
+			s.sendFeedEOF(cl.uuid)
+			cl.Unlock()
 		case linkCmd:
+			cl.Lock()
 			s.chatty(linkCmd)
 			s.close(cl)
 			s.open(cl, cmd.value)
 			s.chatty(sendEOFCmd, s.name, cl.current)
-			cl.sendFeedEOF()
+			s.sendFeedEOF(cl.uuid)
+			cl.Unlock()
 		}
 	}
 }
@@ -149,7 +157,12 @@ func (s *service) close(c *client) {
 }
 
 func (s *service) move(c *client, name string) {
-	defer s.checkInactive(c)
+	old := &client{
+		current: c.current,
+		uuid:    c.uuid,
+	}
+
+	defer s.checkInactive(old)
 
 	if name == "none" {
 		s.chatty(bufferCmd, c.current, "none")
@@ -199,41 +212,43 @@ func (s *service) sendFeed() {
 	}
 }
 
-func (cl *client) sendFeedEOF() {
-	cl.Lock()
-	close(cl.feed)
-	cl.feed = make(chan struct{})
-	cl.Unlock()
+func (s *service) sendFeedEOF(uuid int64) {
+	close(s.clients[uuid].feed)
+	s.clients[uuid].feed = make(chan struct{})
 }
 
 func serviceChatlog(key cmdKey, args ...string) {
 	// Set logger format to match
 	l := log.New(os.Stdout, "", 0)
-	cmd := 'x'
 
+	cmd := '↓'
 	switch key {
 	case bufferCmd:
-		l.Printf("%c buffer change from %s to %s", cmd, args[0], args[1])
+		l.Printf("%c CMD Buffer from=\"%s\" to=\"%s\"", cmd, args[0], args[1])
 	case reloadCmd:
-		l.Printf("%c reload config files on %s", cmd, args[0])
+		l.Printf("%c CMD Reload service=%s", cmd, args[0])
 	case linkCmd:
-		l.Printf("%c link command", cmd)
+		l.Printf("%c CMD Link", cmd)
 	case openCmd:
-		l.Printf("%c open buffer %s", cmd, args[0])
+		l.Printf("%c CMD Open buffer=\"%s\"", cmd, args[0])
 	case closeCmd:
-		l.Printf("%c close buffer %s", cmd, args[0])
+		l.Printf("%c CMD Close buffer=\"%s\"", cmd, args[0])
+	}
+
+	cmd = '!'
+	switch key {
 	case startCmd:
-		l.Printf("%c added service at addr %s: %s", cmd, args[0], args[1])
+		l.Printf("%c INF Start address=%s name=%s", cmd, args[0], args[1])
 	case checkCmd:
 		if args[0] == "found" {
-			log.Printf("%c found listener for %s", cmd, args[1])
+			l.Printf("%c INF Check buffer=\"%s\" active=true", cmd, args[1])
 			return
 		}
-		l.Printf("%c no other listeners on %s", cmd, args[1])
+		l.Printf("%c INF Check buffer=\"%s\" active=false", cmd, args[1])
 	case sendFeedCmd:
-		l.Printf("%c feed send to %s/%s", cmd, args[0], args[1])
+		l.Printf("%c INF Efeed op=event target=\"%s/%s\"", cmd, args[0], args[1])
 	case sendEOFCmd:
-		l.Printf("%c feed close to %s/%s", cmd, args[0], args[1])
+		l.Printf("%c INF Efeed op=eof target=\"%s/%s\"", cmd, args[0], args[1])
 	}
 }
 

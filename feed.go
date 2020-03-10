@@ -5,17 +5,16 @@ import (
 	"io"
 	"os"
 	"path"
-	"time"
 )
 
 // feed files are special in that they're blocking
 type feed struct {
-	tailing  bool
-	path     string
-	buff     string
-	incoming chan struct{}
-	done     chan struct{}
-	debug    func(string, ...interface{})
+	client  *client
+	tailing bool
+	path    string
+	buff    string
+	done    chan struct{}
+	debug   func(string, ...interface{})
 }
 
 func init() {
@@ -46,11 +45,10 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 		return n, nil
 	}
 
-	for range f.incoming {
+	for range f.client.feed {
 		f.debug("feed event on %s", f.buff)
 		n, err = fp.ReadAt(p, off)
 		if err == io.EOF {
-			time.Sleep(time.Millisecond * 150)
 			return n, nil
 		}
 
@@ -71,14 +69,12 @@ func (f *feed) Close() error { return nil }
 func getFeed(msg *message) (interface{}, error) {
 	done := make(chan struct{})
 	f := &feed{
-		path:  path.Join(*inpath, msg.svc.name, msg.buff, "feed"),
-		buff:  path.Join(msg.svc.name, msg.buff),
-		done:  done,
-		debug: msg.svc.debug,
+		client: msg.svc.clients[msg.uuid],
+		path:   path.Join(*inpath, msg.svc.name, msg.buff, "feed"),
+		buff:   path.Join(msg.svc.name, msg.buff),
+		done:   done,
+		debug:  msg.svc.debug,
 	}
-
-	cl := msg.svc.clients[msg.uuid]
-	f.incoming = cl.feed
 
 	f.debug("feed started %s", f.buff)
 	return f, nil
