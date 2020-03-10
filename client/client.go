@@ -97,6 +97,16 @@ func (c *Client) Buffer(name string) (n int, err error) {
 	return c.clnt.Write(nfid, []byte(data), 0)
 }
 
+// Input appends the given data string to input
+func (c *Client) Input(data []byte) (int, error) {
+	nfid, err := c.getFid("input", p.OWRITE)
+	if err != nil {
+		return 0, err
+	}
+
+	return c.clnt.Write(nfid, data, 0)
+}
+
 // Feed returns a ReadCloser connected to `feed`. It's expected all reads
 // will be read into a buffer with a size of MSIZE
 // It is also expected for Feed to be called in its own thread

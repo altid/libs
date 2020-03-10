@@ -1,6 +1,8 @@
 package client
 
-import "io"
+import (
+	"io"
+)
 
 type feed struct {
 	data chan []byte
