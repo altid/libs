@@ -11,6 +11,10 @@ func handleSig(cancel context.CancelFunc, signal string) {
 		cancel()
 	case "suspended":
 		cancel()
+	case "terminated":
+		cancel()
+	case "urgent I/O condition":
+		return
 	default:
 		fmt.Printf("Unhandled signal caught: %s", signal)
 	}
