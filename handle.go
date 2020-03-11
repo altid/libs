@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"aqwari.net/net/styx"
+	"github.com/go9p/styx"
 )
 
 type fileHandler struct {
