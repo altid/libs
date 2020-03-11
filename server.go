@@ -10,9 +10,9 @@ import (
 	"path"
 	"sync"
 
-	"aqwari.net/net/styx"
-	"aqwari.net/net/styx/styxauth/factotum"
 	"github.com/altid/libs/auth"
+	"github.com/go9p/styx"
+	"github.com/go9p/styx/styxauth/factotum"
 )
 
 type server struct {
