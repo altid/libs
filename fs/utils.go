@@ -85,15 +85,18 @@ func symlink(logname, feedname string) error {
 	if _, err := os.Stat(logname); os.IsNotExist(err) {
 		os.MkdirAll(path.Dir(logname), 0755)
 		fp, err := os.Create(logname)
-		defer fp.Close()
 		if err != nil {
 			return err
 		}
+
+		fp.Close()
 	}
+
 	if runtime.GOOS == "plan9" {
 		command := exec.Command("/bin/bind", logname, feedname)
 		return command.Run()
 	}
+
 	return os.Symlink(logname, feedname)
 }
 
@@ -102,6 +105,7 @@ func unlink(feedname string) error {
 		command := exec.Command("/bin/unmount", feedname)
 		return command.Run()
 	}
+
 	return os.Remove(feedname)
 }
 
@@ -122,12 +126,12 @@ func dispatch(c *Control) {
 	// TODO: wrap with waitgroups
 	// If close is requested on a file which is currently being opened, cancel open request
 	// If open is requested on file which already exists, no-op
-	cw, err := c.write.errorwriter()
+	ew, err := c.write.errorwriter()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer cw.Close()
+	defer ew.Close()
 
 	for {
 		select {
@@ -143,9 +147,9 @@ func dispatch(c *Control) {
 					continue
 				}
 
-				err := c.ctl.Open(c, token[1])
-				if err != nil {
-					fmt.Fprintf(cw, "open: %s\n", err)
+				if e := c.ctl.Open(c, token[1]); e != nil {
+					c.debug(ctlError, token[1], e)
+					fmt.Fprintf(ew, "open: %v\n", e)
 				}
 
 			case "close":
@@ -154,9 +158,9 @@ func dispatch(c *Control) {
 				}
 
 				// We need to get to these still somehow
-				err := c.ctl.Close(c, token[1])
-				if err != nil {
-					fmt.Fprintf(cw, "close: %s\n", err)
+				if e := c.ctl.Close(c, token[1]); e != nil {
+					c.debug(ctlError, token[1], e)
+					fmt.Fprintf(ew, "close: %v\n", e)
 				}
 
 			case "link":
@@ -164,20 +168,22 @@ func dispatch(c *Control) {
 					continue
 				}
 
-				err := c.ctl.Link(c, token[1], token[2])
-				if err != nil {
-					fmt.Fprintf(cw, "link: %s\n", err)
+				if e := c.ctl.Link(c, token[1], token[2]); e != nil {
+					c.debug(ctlError, token[1], e)
+					fmt.Fprintf(ew, "link: %v\n", e)
 				}
 
 			default:
 				if len(token) < 3 {
-					fmt.Fprintf(cw, "unknown command issued: %s\n", token[0])
+					c.debug(ctlError, token[0], fmt.Errorf("too few arguments: %s", token))
+					fmt.Fprintf(ew, "unknown command issued: %s\n", token[0])
 					continue
 				}
 
 				msg := strings.Join(token[2:], " ")
 				if e := c.ctl.Default(c, token[0], token[1], msg); e != nil {
-					fmt.Fprintf(cw, "%s: %s\n", token[0], e)
+					c.debug(ctlError, token[0], e)
+					fmt.Fprintf(ew, "%s: %v\n", token[0], e)
 				}
 			}
 		case <-c.done:
