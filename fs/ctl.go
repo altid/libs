@@ -4,6 +4,7 @@ package fs
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"sync"
@@ -273,22 +274,24 @@ func (c *Control) MainWriter(buffer, doctype string) (*WriteCloser, error) {
 }
 
 func ctlLogger(msg ctlMsg, args ...interface{}) {
+	l := log.New(os.Stdout, "ctl ", 0)
+
 	switch msg {
 	case ctlError:
-		fmt.Printf("ctl error: buffer=\"%s\" err=\"%v\"\n", args[0], args[1])
+		l.Printf("error: buffer=\"%s\" err=\"%v\"\n", args[0], args[1])
 	case ctlEvent:
-		fmt.Printf("ctl event: msg=\"%s\"\n", args[0])
+		l.Printf("event: msg=\"%s\"\n", args[0])
 	case ctlCleanup:
-		fmt.Println("ctl cleanup: ending")
+		l.Println("cleanup: ending")
 	case ctlCreate:
-		fmt.Printf("ctl create: buffer=\"%s\" doctype=%s\n", args[0], args[1])
+		l.Printf("create: buffer=\"%s\" doctype=%s\n", args[0], args[1])
 	case ctlDelete:
-		fmt.Printf("ctl delete: buffer=\"%s\"\n", args[0])
+		l.Printf("delete: buffer=\"%s\"\n", args[0])
 	case ctlRemove:
-		fmt.Printf("ctl remove: buffer=\"%s\", filename=\"%s\"\n", args[0], args[1])
+		l.Printf("remove: buffer=\"%s\", filename=\"%s\"\n", args[0], args[1])
 	case ctlStart:
-		fmt.Printf("ctl %s: starting\n", args[0])
+		l.Printf("%s: starting\n", args[0])
 	case ctlNotify:
-		fmt.Printf("ctl notify: buffer=\"%s\" from=\"%s\" msg=\"%s\"\n", args[0], args[1], args[2])
+		l.Printf("notify: buffer=\"%s\" from=\"%s\" msg=\"%s\"\n", args[0], args[1], args[2])
 	}
 }
