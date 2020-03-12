@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sync"
 )
 
 // Controller is our main type for controlling a session
@@ -60,6 +61,7 @@ type Control struct {
 	write writercloser
 	watch watcher
 	debug func(ctlMsg, ...interface{})
+	sync.Mutex
 }
 
 type ctlMsg int

@@ -7,8 +7,9 @@ import (
 )
 
 type tab struct {
-	name string
-	data []byte
+	name    string
+	doctype string
+	data    []byte
 }
 
 type mockctl struct {
@@ -100,11 +101,11 @@ func (tc *mockctl) pushTab(tabname, doctype string) error {
 	}
 
 	t := &tab{
-		name: tabname,
+		name:    tabname,
+		doctype: doctype,
 	}
 
 	tc.tabs = append(tc.tabs, t)
-
 	return nil
 }
 
@@ -150,7 +151,6 @@ func (tc *mockctl) imageWriter(buffer, resource string) (*WriteCloser, error) {
 
 func (tc *mockctl) findTab(buffer string) (*tab, error) {
 	for _, tab := range tc.tabs {
-		fmt.Println(tab.name)
 		if tab.name == buffer {
 			return tab, nil
 		}
