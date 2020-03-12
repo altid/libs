@@ -50,9 +50,8 @@ func TestCtl(t *testing.T) {
 
 	go sendctl(reqs)
 
-	err = c.Listen()
-	if err != nil {
-		t.Error(err)
+	if e := c.Listen(); e != nil {
+		t.Error(e)
 	}
 }
 
@@ -66,17 +65,21 @@ func TestWriters(t *testing.T) {
 	}
 
 	defer c.Cleanup()
+	
+	go func() {
+		reqs <- "open foo"
+		
+		mw, err := c.MainWriter("foo", "feed")
+		if err != nil {
+			t.Error(err)
+		}
 
-	go c.Listen()
-	reqs <- "open foo"
+		mw.Write([]byte("test"))
+		mw.Close()
+		reqs <- "quit"
+	}()
 
-	mw, err := c.MainWriter("foo", "feed")
-	if err != nil {
-		t.Error(err)
+	if e := c.Listen(); e != nil {
+		t.Error(e)
 	}
-
-	mw.Write([]byte("test"))
-	mw.Close()
-
-	reqs <- "quit"
 }

@@ -86,20 +86,11 @@ func MockCtlFile(ctl Controller, reqs chan string, debug bool) (*Control, error)
 	cmds := make(chan string)
 	errs := make(chan error)
 	t := &mockctl{
-		err: errs,
+		err:  errs,
+		reqs: reqs,
+		cmds: cmds,
+		done: done,
 	}
-
-	go func(reqs, cmds chan string, errs chan error) {
-		for cmd := range reqs {
-			if cmd == "quit" {
-				close(errs)
-				close(done)
-				return
-			}
-
-			cmds <- cmd
-		}
-	}(reqs, cmds, errs)
 
 	c := &Control{
 		ctl:   ctl,

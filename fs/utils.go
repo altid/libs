@@ -151,7 +151,6 @@ func dispatch(c *Control) {
 					c.debug(ctlError, token[1], e)
 					fmt.Fprintf(ew, "open: %v\n", e)
 				}
-
 			case "close":
 				if len(token) < 2 {
 					continue

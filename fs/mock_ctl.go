@@ -8,11 +8,13 @@ import (
 
 type tab struct {
 	name string
-	doct string
 	data []byte
 }
 
 type mockctl struct {
+	reqs chan string
+	cmds chan string
+	done chan struct{}
 	err  chan error
 	tabs []*tab
 }
@@ -55,7 +57,20 @@ func (tc *mockctl) remove(name, doctype string) error {
 }
 
 func (tc *mockctl) listen() error {
-	return <-tc.err
+	defer close(tc.err)
+	defer close(tc.done)
+
+	for {
+		select {
+		case cmd := <-tc.reqs:
+			if cmd == "quit" {
+				return nil
+			}
+			tc.cmds <- cmd
+		case err := <-tc.err:
+			return err
+		}
+	}
 }
 
 func (tc *mockctl) start() (context.Context, error) {
@@ -86,7 +101,6 @@ func (tc *mockctl) pushTab(tabname, doctype string) error {
 
 	t := &tab{
 		name: tabname,
-		doct: doctype,
 	}
 
 	tc.tabs = append(tc.tabs, t)
@@ -100,6 +114,7 @@ func (tc *mockctl) errorwriter() (*WriteCloser, error) {
 		fp:     &tab{},
 		buffer: "errors",
 	}
+
 	return w, nil
 }
 func (tc *mockctl) fileWriter(buffer, doctype string) (*WriteCloser, error) {
@@ -135,13 +150,11 @@ func (tc *mockctl) imageWriter(buffer, resource string) (*WriteCloser, error) {
 
 func (tc *mockctl) findTab(buffer string) (*tab, error) {
 	for _, tab := range tc.tabs {
+		fmt.Println(tab.name)
 		if tab.name == buffer {
 			return tab, nil
 		}
 	}
 
-	e := errors.New("no such tab")
-	tc.err <- e
-
-	return nil, e
+	return nil, errors.New("No such tab")
 }
