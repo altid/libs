@@ -142,7 +142,7 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string) (*Cont
 
 // Event appends the given string to the events file of Control's working directory.
 // Strings cannot contain newlines, tabs, spaces, or control characters.
-// Returns "error - invalid string" or nil.
+// Returns "$service: invalid event $eventmsg" or nil.
 func (c *Control) Event(eventmsg string) error {
 	return c.run.event(eventmsg)
 }
