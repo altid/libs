@@ -17,12 +17,12 @@ type Handler interface {
 }
 
 type Input struct {
-	h      Handler
-	r      *reader
-	ew     *os.File
-	rundir string
-	fname  string
-	debug  func(inputMsg, ...interface{})
+	h     Handler
+	r     *reader
+	ew    *os.File
+	buff  string
+	fname string
+	debug func(inputMsg, ...interface{})
 }
 
 type inputMsg int
@@ -61,6 +61,7 @@ func NewInput(h Handler, dir, buffer string, debug bool) (*Input, error) {
 			h:     h,
 			r:     r,
 			fname: inpath,
+			buff:  buffer,
 			debug: func(inputMsg, ...interface{}) {},
 		}
 
@@ -90,7 +91,7 @@ func (i *Input) StartContext(ctx context.Context) {
 	go func() {
 		for msg := range inputs {
 			l := markup.NewLexer(msg)
-			if e := i.h.Handle(i.fname, l); e != nil {
+			if e := i.h.Handle(i.buff, l); e != nil {
 				errors <- e
 			}
 		}
