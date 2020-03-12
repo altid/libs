@@ -177,7 +177,7 @@ func (c *Config) writeToFile() (*Config, error) {
 func GetLogDir(service string) string {
 	conf, err := ndb.Open(getConfDir(service))
 	if err != nil {
-		return logDir(service)
+		return "none"
 	}
 
 	logdir := conf.Search("service", service).Search("log")
@@ -185,17 +185,7 @@ func GetLogDir(service string) string {
 		return path.Join(logdir, service)
 	}
 
-	return logDir(service)
-}
-
-// If we can't get a valid dir it should be fatal
-func logDir(service string) string {
-	userdir, err := fs.UserShareDir()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return path.Join(userdir, "altid", service)
+	return "none"
 }
 
 func getConfDir(service string) string {
