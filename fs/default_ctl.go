@@ -24,23 +24,24 @@ type control struct {
 }
 
 func (c *control) event(eventmsg string) error {
-	err := validateString(eventmsg)
-	if err != nil {
-		return err
-	}
-
 	file := path.Join(c.rundir, "event")
 	if _, err := os.Stat(path.Dir(file)); os.IsNotExist(err) {
 		os.MkdirAll(path.Dir(file), 0755)
 	}
 
+	if e := validateString(file); e != nil {
+		sname := path.Base(c.rundir)
+		return fmt.Errorf("%s: invalid event %s", sname, eventmsg)
+	}
+
 	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
-	defer f.Close()
 	if err != nil {
 		return err
 	}
 
+	defer f.Close()
 	f.WriteString(eventmsg + "\n")
+
 	return nil
 }
 
@@ -150,6 +151,7 @@ func (c *control) remove(buffer, filename string) error {
 	if _, e := os.Stat(doc); os.IsNotExist(e) {
 		return nil
 	}
+
 	c.event(doc)
 	return os.Remove(doc)
 }
