@@ -282,20 +282,20 @@ func (c *Control) MainWriter(buffer, doctype string) (*WriteCloser, error) {
 func ctlLogger(msg ctlMsg, args ...interface{}) {
 	switch msg {
 	case ctlError:
-		fmt.Printf("ctl error: buffer=\"%s\" err=\"%v\"", args[0], args[1])
+		fmt.Printf("ctl error: buffer=\"%s\" err=\"%v\"\n", args[0], args[1])
 	case ctlEvent:
-		fmt.Printf("ctl event: msg=\"%s\"", args[0])
+		fmt.Printf("ctl event: msg=\"%s\"\n", args[0])
 	case ctlCleanup:
-		fmt.Println("ctl cleanup called, ending")
+		fmt.Println("ctl cleanup: ending")
 	case ctlCreate:
-		fmt.Printf("ctl create: buffer=\"%s\" doctype=%s", args[0], args[1])
+		fmt.Printf("ctl create: buffer=\"%s\" doctype=%s\n", args[0], args[1])
 	case ctlDelete:
-		fmt.Printf("ctl delete: buffer=\"%s\"", args[0])
+		fmt.Printf("ctl delete: buffer=\"%s\"\n", args[0])
 	case ctlRemove:
-		fmt.Printf("ctl remove: buffer=\"%s\", filename=\"%s\"", args[0], args[1])
+		fmt.Printf("ctl remove: buffer=\"%s\", filename=\"%s\"\n", args[0], args[1])
 	case ctlStart:
-		fmt.Printf("ctl %s called, starting", args[0])
+		fmt.Printf("ctl %s: starting\n", args[0])
 	case ctlNotify:
-		fmt.Printf("ctl notify: buffer=\"%s\" from=\"%s\" msg=\"%s\"", args[0], args[1], args[2])
+		fmt.Printf("ctl notify: buffer=\"%s\" from=\"%s\" msg=\"%s\"\n", args[0], args[1], args[2])
 	}
 }
