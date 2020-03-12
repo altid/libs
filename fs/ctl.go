@@ -59,13 +59,28 @@ type Control struct {
 	run   runner
 	write writercloser
 	watch watcher
+	debug func(ctlMsg, ...interface{})
 }
+
+type ctlMsg int
+
+const (
+	ctlError ctlMsg = iota
+	ctlEvent
+	ctlCleanup
+	ctlCreate
+	ctlDelete
+	ctlRemove
+	ctlStart
+	ctlNotify
+)
 
 // MockCtlFile returns a type that can be used for testing services
 // it will track in-memory and behave like a file-backed control
 // It will wait for messages on reqs which act as ctl messages
 // By default it writes to Stdout + Stderr with each WriteCloser
-func MockCtlFile(ctl Controller, reqs chan string) (*Control, error) {
+// If debug is true, all logs will be written to stdout
+func MockCtlFile(ctl Controller, reqs chan string, debug bool) (*Control, error) {
 
 	done := make(chan struct{})
 	cmds := make(chan string)
@@ -93,6 +108,11 @@ func MockCtlFile(ctl Controller, reqs chan string) (*Control, error) {
 		run:   t,
 		write: t,
 		watch: watcher{},
+		debug: func(ctlMsg, ...interface{}) {},
+	}
+
+	if debug {
+		c.debug = ctlLogger
 	}
 
 	return c, nil
@@ -103,14 +123,14 @@ func MockCtlFile(ctl Controller, reqs chan string) (*Control, error) {
 // mtpt is the directory to create the file system in
 // service is the subdirectory inside mtpt for the runtime fs
 // This will return an error if a ctl file exists at the given directory, or if doctype is invalid.
-func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string) (*Control, error) {
+func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug bool) (*Control, error) {
 	if doctype != "document" && doctype != "feed" {
 		return nil, fmt.Errorf("unknown doctype: %s", doctype)
 	}
+
 	rundir := path.Join(mtpt, service)
 
-	_, err := os.Stat(path.Join(rundir, "ctl"))
-	if os.IsNotExist(err) {
+	if _, e := os.Stat(path.Join(rundir, "ctl")); os.IsNotExist(e) {
 		var tab []string
 		req := make(chan string)
 		done := make(chan struct{})
@@ -132,6 +152,11 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string) (*Cont
 			ctl:   ctl,
 			write: rtc,
 			watch: watcher{},
+			debug: func(ctlMsg, ...interface{}) {},
+		}
+
+		if debug {
+			c.debug = ctlLogger
 		}
 
 		return c, nil
@@ -144,12 +169,14 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string) (*Cont
 // Strings cannot contain newlines, tabs, spaces, or control characters.
 // Returns "$service: invalid event $eventmsg" or nil.
 func (c *Control) Event(eventmsg string) error {
+	c.debug(ctlEvent, eventmsg)
 	return c.run.event(eventmsg)
 }
 
 // Cleanup removes created symlinks and removes the main dir
 // On plan9, it unbinds any file named 	"document" or "feed", prior to removing the directory itself.
 func (c *Control) Cleanup() {
+	c.debug(ctlCleanup)
 	c.run.cleanup()
 
 }
@@ -159,12 +186,14 @@ func (c *Control) Cleanup() {
 // This logged file will persist across reboots
 // Calling CreateBuffer on a directory that already exists will return nil
 func (c *Control) CreateBuffer(name, doctype string) error {
+	c.debug(ctlCreate, name, doctype)
 	return c.run.createBuffer(name, doctype)
 }
 
 // DeleteBuffer unlinks a document/buffer, and cleanly removes the directory
 // Will return an error if it's unable to unlink on plan9, or if the remove fails.
 func (c *Control) DeleteBuffer(name, doctype string) error {
+	c.debug(ctlDelete, name)
 	return c.run.deleteBuffer(name, doctype)
 }
 
@@ -175,6 +204,7 @@ func (c *Control) HasBuffer(name, doctype string) bool {
 
 // Remove removes a buffer from the runtime dir. If the buffer doesn't exist, this is a no-op
 func (c *Control) Remove(buffer, filename string) error {
+	c.debug(ctlRemove, buffer, filename)
 	return c.run.remove(buffer, filename)
 }
 
@@ -185,6 +215,7 @@ func (c *Control) Remove(buffer, filename string) error {
 func (c *Control) Listen() error {
 	go sigwatch(c)
 	go dispatch(c)
+	c.debug(ctlStart, "listen")
 	return c.run.listen()
 }
 
@@ -193,6 +224,7 @@ func (c *Control) Listen() error {
 func (c *Control) Start() (context.Context, error) {
 	go sigwatch(c)
 	go dispatch(c)
+	c.debug(ctlStart, "start")
 	return c.run.start()
 }
 
@@ -207,6 +239,7 @@ func (c *Control) Start() (context.Context, error) {
 //     }
 //     fs.Notification(ntfy.Parse())
 func (c *Control) Notification(buff, from, msg string) error {
+	c.debug(ctlNotify, buff, from, msg)
 	return c.run.notification(buff, from, msg)
 }
 
@@ -244,4 +277,25 @@ func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
 // MainWriter returns a WriteCloser attached to a buffers feed/document function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file
 func (c *Control) MainWriter(buffer, doctype string) (*WriteCloser, error) {
 	return c.write.fileWriter(buffer, doctype)
+}
+
+func ctlLogger(msg ctlMsg, args ...interface{}) {
+	switch msg {
+	case ctlError:
+		fmt.Printf("ctl error: buffer=\"%s\" err=\"%v\"", args[0], args[1])
+	case ctlEvent:
+		fmt.Printf("ctl event: msg=\"%s\"", args[0])
+	case ctlCleanup:
+		fmt.Println("ctl cleanup called, ending")
+	case ctlCreate:
+		fmt.Printf("ctl create: buffer=\"%s\" doctype=%s", args[0], args[1])
+	case ctlDelete:
+		fmt.Printf("ctl delete: buffer=\"%s\"", args[0])
+	case ctlRemove:
+		fmt.Printf("ctl remove: buffer=\"%s\", filename=\"%s\"", args[0], args[1])
+	case ctlStart:
+		fmt.Printf("ctl %s called, starting", args[0])
+	case ctlNotify:
+		fmt.Printf("ctl notify: buffer=\"%s\" from=\"%s\" msg=\"%s\"", args[0], args[1], args[2])
+	}
 }

@@ -22,11 +22,20 @@ type Input struct {
 	ew     *os.File
 	rundir string
 	fname  string
+	debug  func(inputMsg, ...interface{})
 }
+
+type inputMsg int
+
+const (
+	inputnorm inputMsg = iota
+	inputerr
+)
 
 // NewInput takes a Handler and the name of a buffer.
 // This function returns an Input, or nil as well as any errors encountered
-func NewInput(h Handler, dir, buffer string) (*Input, error) {
+// If debug is true, it will write to stdout for all messages/errors received
+func NewInput(h Handler, dir, buffer string, debug bool) (*Input, error) {
 	// make directory for input on path
 	if e := os.MkdirAll(dir, 0755); e != nil {
 		return nil, e
@@ -52,7 +61,13 @@ func NewInput(h Handler, dir, buffer string) (*Input, error) {
 			h:     h,
 			r:     r,
 			fname: inpath,
+			debug: func(inputMsg, ...interface{}) {},
 		}
+
+		if debug {
+			i.debug = inputLogging
+		}
+
 		return i, nil
 	}
 
@@ -67,14 +82,16 @@ func (i *Input) Start() {
 
 // StartContext is a variant of Start which takes a context for cancellation
 func (i *Input) StartContext(ctx context.Context) {
-	inputMsg := make(chan []byte)
-	errorMsg := make(chan error)
+	inputs := make(chan []byte)
+	errors := make(chan error)
+
+	i.debug(inputnorm, i.fname, "starting input")
 
 	go func() {
-		for msg := range inputMsg {
+		for msg := range inputs {
 			l := markup.NewLexer(msg)
 			if e := i.h.Handle(i.fname, l); e != nil {
-				errorMsg <- e
+				errors <- e
 			}
 		}
 	}()
@@ -82,15 +99,18 @@ func (i *Input) StartContext(ctx context.Context) {
 	go func() {
 		scanner := bufio.NewScanner(i.r)
 		defer i.ew.Close()
-		defer close(inputMsg)
+		defer close(inputs)
 
 		for scanner.Scan() {
 			select {
 			case <-ctx.Done():
+				i.debug(inputnorm, i.fname, "closing input")
 				return
-			case err := <-errorMsg:
+			case err := <-errors:
+				i.debug(inputerr, i.fname, err)
 				fmt.Fprintf(i.ew, "input error on %s: %v", i.fname, err)
-			case inputMsg <- scanner.Bytes():
+			case inputs <- scanner.Bytes():
+				i.debug(inputnorm, i.fname, scanner.Bytes())
 			}
 		}
 
@@ -98,4 +118,13 @@ func (i *Input) StartContext(ctx context.Context) {
 			fmt.Fprintf(i.ew, "input error on %s: %v", i.fname, e)
 		}
 	}()
+}
+
+func inputLogging(msg inputMsg, args ...interface{}) {
+	switch msg {
+	case inputnorm:
+		fmt.Printf("input: chan=\"%s\" msg=\"%s\"\n", args[0], args[1])
+	case inputerr:
+		fmt.Printf("input: chan=\"%s\", err=\"%v\"\n", args[0], args[1])
+	}
 }
