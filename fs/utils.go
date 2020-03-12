@@ -7,12 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"regexp"
 	"runtime"
 	"strings"
 )
-
-var valid *regexp.Regexp = regexp.MustCompile("[^ -~]+")
 
 // UserShareDir returns the default root directory to use for user-specific application data. Users should create their own application-specific subdirectory within this one and use that.
 // On Unix systems, it returns $XDG_DATA_HOME as specified by https://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html if non-empty, else $HOME/.local/share. On Darwin, it returns $HOME/Library. On Windows, it returns %LocalAppData%. On Plan 9, it returns $home/lib.
@@ -108,10 +105,11 @@ func unlink(feedname string) error {
 	return os.Remove(feedname)
 }
 
-func validateString(test string) error {
-	if valid.MatchString(test) {
-		return errors.New("error - invalid string")
+func validateString(path string) error {
+	if _, e := os.Stat(path); e != nil {
+		return e
 	}
+
 	return nil
 }
 
