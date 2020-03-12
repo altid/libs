@@ -48,15 +48,18 @@ func (c *control) event(eventmsg string) error {
 func (c *control) cleanup() {
 	if runtime.GOOS == "plan9" {
 		glob := path.Join(c.rundir, "*", c.doctype)
+
 		files, err := filepath.Glob(glob)
 		if err != nil {
 			log.Print(err)
 		}
+
 		for _, f := range files {
 			command := exec.Command("/bin/unmount", f)
 			log.Print(command.Run())
 		}
 	}
+
 	os.RemoveAll(c.rundir)
 }
 
@@ -68,7 +71,7 @@ func (c *control) createBuffer(name, doctype string) error {
 	fp := path.Join(c.rundir, name)
 	d := path.Join(fp, doctype)
 
-	if _, e := os.Stat(fp); !os.IsNotExist(e) {
+	if _, e := os.Stat(fp); e != nil && !os.IsNotExist(e) {
 		return e
 	}
 
@@ -220,10 +223,6 @@ func (c *control) popTab(tabname string) error {
 }
 
 func (c *control) pushTab(tabname string) error {
-	err := validateString(tabname)
-	if err != nil {
-		return err
-	}
 	for n := range c.tabs {
 		if c.tabs[n] == tabname {
 			return fmt.Errorf("entry already exists: %s", tabname)
@@ -237,11 +236,13 @@ func (c *control) pushTab(tabname string) error {
 func tabs(c *control) error {
 	// Create truncates and opens file in a single step, utilize this.
 	file := path.Join(c.rundir, "tabs")
+
 	f, err := os.Create(file)
-	defer f.Close()
 	if err != nil {
 		return err
 	}
+
+	defer f.Close()
 	f.WriteString(strings.Join(c.tabs, "\n") + "\n")
 	c.event(file)
 
