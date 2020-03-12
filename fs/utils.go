@@ -136,57 +136,64 @@ func dispatch(c *Control) {
 	for {
 		select {
 		case line := <-c.req:
-			token := strings.Fields(line)
-			if len(token) < 1 {
-				continue
-			}
-
-			switch token[0] {
-			case "open":
-				if len(token) < 2 {
-					continue
-				}
-
-				if e := c.ctl.Open(c, token[1]); e != nil {
-					c.debug(ctlError, token[1], e)
-					fmt.Fprintf(ew, "open: %v\n", e)
-				}
-			case "close":
-				if len(token) < 2 {
-					continue
-				}
-
-				// We need to get to these still somehow
-				if e := c.ctl.Close(c, token[1]); e != nil {
-					c.debug(ctlError, token[1], e)
-					fmt.Fprintf(ew, "close: %v\n", e)
-				}
-
-			case "link":
-				if len(token) < 2 {
-					continue
-				}
-
-				if e := c.ctl.Link(c, token[1], token[2]); e != nil {
-					c.debug(ctlError, token[1], e)
-					fmt.Fprintf(ew, "link: %v\n", e)
-				}
-
-			default:
-				if len(token) < 3 {
-					c.debug(ctlError, token[0], fmt.Errorf("too few arguments: %s", token))
-					fmt.Fprintf(ew, "unknown command issued: %s\n", token[0])
-					continue
-				}
-
-				msg := strings.Join(token[2:], " ")
-				if e := c.ctl.Default(c, token[0], token[1], msg); e != nil {
-					c.debug(ctlError, token[0], e)
-					fmt.Fprintf(ew, "%s: %v\n", token[0], e)
-				}
-			}
+			run(c, ew, line)
 		case <-c.done:
 			return
+		}
+	}
+}
+
+func run(c *Control, ew *WriteCloser, line string) {
+	c.Lock()
+	defer c.Unlock()
+
+	token := strings.Fields(line)
+	if len(token) < 1 {
+		return
+	}
+
+	switch token[0] {
+	case "open":
+		if len(token) < 2 {
+			return
+		}
+
+		if e := c.ctl.Open(c, token[1]); e != nil {
+			c.debug(ctlError, token[1], e)
+			fmt.Fprintf(ew, "open: %v\n", e)
+		}
+	case "close":
+		if len(token) < 2 {
+			return
+		}
+
+		// We need to get to these still somehow
+		if e := c.ctl.Close(c, token[1]); e != nil {
+			c.debug(ctlError, token[1], e)
+			fmt.Fprintf(ew, "close: %v\n", e)
+		}
+
+	case "link":
+		if len(token) < 2 {
+			return
+		}
+
+		if e := c.ctl.Link(c, token[1], token[2]); e != nil {
+			c.debug(ctlError, token[1], e)
+			fmt.Fprintf(ew, "link: %v\n", e)
+		}
+
+	default:
+		if len(token) < 3 {
+			c.debug(ctlError, token[0], fmt.Errorf("too few arguments: %s", token))
+			fmt.Fprintf(ew, "unknown command issued: %s\n", token[0])
+			return
+		}
+
+		msg := strings.Join(token[2:], " ")
+		if e := c.ctl.Default(c, token[0], token[1], msg); e != nil {
+			c.debug(ctlError, token[0], e)
+			fmt.Fprintf(ew, "%s: %v\n", token[0], e)
 		}
 	}
 }
