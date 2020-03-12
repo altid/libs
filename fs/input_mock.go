@@ -26,7 +26,7 @@ func (i *mockinput) stop(ctx context.Context) {
 
 func (i *mockinput) Read(b []byte) (n int, err error) {
 	for line := range i.reqs {
-		n = copy(b, []byte(line))
+		n = copy(b, []byte(line+"\n"))
 		return
 	}
 
