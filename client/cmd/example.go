@@ -30,6 +30,8 @@ func main() {
 			return
 		}
 
+		defer f.Close()
+
 		for {
 			b := make([]byte, client.MSIZE)
 
