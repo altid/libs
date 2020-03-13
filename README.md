@@ -1,8 +1,11 @@
-## Go Libs
+## Libs
+
+This is a collection of libraries used to create Altid services, servers, and clients
+in a canonical way.
 
 ### Overview
 
-[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs)
+The main documentation can be found at [![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs)
 
 ### Build Status
  - ![Auth passing badge](https://github.com/altid/libs/workflows/auth/badge.svg) 
