@@ -12,11 +12,10 @@ import (
 type mock struct {
 	afid  io.ReadWriteCloser
 	addr  string
-	data  chan string
-	reqs  chan string
-	in    chan string
 	debug func(CmdType, ...interface{})
 }
+
+func (c *mock) cleanup() {}
 
 func (c *mock) connect(debug int) error {
 	if debug > 0 {

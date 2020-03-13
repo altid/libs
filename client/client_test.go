@@ -36,10 +36,29 @@ func TestFeed(t *testing.T) {
 
 func TestCommands(t *testing.T) {
 	mc := NewMockClient("none")
-	mc.Connect(1)
-	mc.Attach()
-	mc.Auth()
-	mc.Input([]byte("Some text"))
-	mc.Ctl(CmdOpen, "chicken")
-	mc.Ctl(CmdClose, "chicken")
+	defer mc.Cleanup()
+
+	if e := mc.Connect(1); e != nil {
+		t.Error(e)
+	}
+
+	if e := mc.Attach(); e != nil {
+		t.Error(e)
+	}
+
+	if e := mc.Auth(); e != nil {
+		t.Error(e)
+	}
+
+	if _, e := mc.Input([]byte("Some text")); e != nil {
+		t.Error(e)
+	}
+	
+	if _, e := mc.Open("chicken"); e != nil {
+		t.Error(e)
+	}
+
+	if _, e := mc.Close("chicken"); e != nil {
+		t.Error(e)
+	}
 }

@@ -43,6 +43,7 @@ type Client struct {
 var ErrBadArgs = errors.New("Too few/incorrect arguments")
 
 type runner interface {
+	cleanup()
 	connect(int) error
 	attach() error
 	auth() error
@@ -78,6 +79,10 @@ func NewMockClient(addr string) *Client {
 	return &Client{
 		run: dmc,
 	}
+}
+
+func (c *Client) Cleanup() {
+	c.run.cleanup()
 }
 
 // Connect performs the network dial for the connection
