@@ -4,14 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 
-	"github.com/knieriem/g/go9p/user"
 	"github.com/lionkov/go9p/p"
-	"github.com/lionkov/go9p/p/clnt"
 )
-
-// Track fids instead in a map as we use them
 
 // MSIZE - maximum size for a message
 const MSIZE = p.MSIZE
@@ -27,67 +22,77 @@ const (
 	CmdClose
 	CmdLink
 	CmdRefresh
+	CmdConnect
+	CmdAttach
+	CmdAuth
+	CmdTabs
+	CmdTitle
+	CmdStatus
+	CmdAside
+	CmdNotify
+	CmdInput
+	CmdFeed
 )
+
+// Client represents a 9p client session
+type Client struct {
+	run runner
+}
 
 // ErrBadArgs is returned from Ctl when incorrect arguments are provided
 var ErrBadArgs = errors.New("Too few/incorrect arguments")
 
-// Client represents a 9p client session
-type Client struct {
-	afid   *clnt.Fid
-	root   *clnt.Fid
-	addr   string
-	buffer string
-	clnt   *clnt.Clnt
+type runner interface {
+	connect(int) error
+	attach() error
+	auth() error
+	ctl(CmdType, ...string) (int, error) // Just call write at the end in nested types
+	tabs() ([]byte, error)
+	title() ([]byte, error)
+	status() ([]byte, error)
+	aside() ([]byte, error)
+	input([]byte) (int, error)
+	notifications() ([]byte, error)
+	feed() (io.ReadCloser, error)
 }
 
-// NewClient returns an authenticated client
+// NewClient returns a client ready to connect to addr
 func NewClient(addr string) *Client {
-	return &Client{
+	dmc := &client{
 		addr: addr,
+	}
+
+	return &Client{
+		run: dmc,
+	}
+}
+
+// NewMockClient returns a client for testing
+// Feed, if called, will be populated with data from google's GoFuzz every 100ms
+func NewMockClient(addr string) *Client {
+	dmc := &mock{
+		addr:  addr,
+		debug: func(CmdType, ...interface{}) {},
+	}
+
+	return &Client{
+		run: dmc,
 	}
 }
 
 // Connect performs the network dial for the connection
 func (c *Client) Connect(debug int) (err error) {
-	dial := fmt.Sprintf("%s:564", c.addr)
-
-	conn, err := net.Dial("tcp", dial)
-	if err != nil {
-		return err
-	}
-
-	c.clnt, err = clnt.Connect(conn, p.MSIZE, false)
-	if err != nil {
-		return err
-	}
-
-	c.clnt.Debuglevel = debug
-
-	return
+	return c.run.connect(debug)
 }
 
 // Attach is called after optionally calling Auth
 func (c *Client) Attach() (err error) {
-	root, err := c.clnt.Attach(c.afid, user.Current(), "/")
-	if err != nil {
-		return err
-	}
-
-	c.root = root
-
-	return nil
+	return c.run.attach()
 }
 
 // Auth is optionally called after Connect to authenticate with the server
 func (c *Client) Auth() error {
-	afid, err := c.clnt.Auth(user.Current(), "/")
-	if err != nil {
-		return err
-	}
-
-	c.afid = afid
-	return nil
+	return c.run.auth()
 }
 
 // Ctl sends the given arguments and named command to the connected Ctl file
@@ -98,154 +103,76 @@ func (c *Client) Auth() error {
 // Ctl(cmdClose, bufferName)
 // Ctl(cmdLink, toBuffer, fromBuffer)
 func (c *Client) Ctl(cmd CmdType, args ...string) (int, error) {
-	nfid := c.clnt.FidAlloc()
-	_, err := c.clnt.Walk(c.root, nfid, []string{"ctl"})
-	if err != nil {
-		return 0, err
-	}
-
-	c.clnt.Open(nfid, p.OAPPEND)
-	defer c.clnt.Clunk(nfid)
-
-	var data string
-	switch cmd {
-	case CmdBuffer:
-		if len(args) > 1 {
-			return 0, ErrBadArgs
-		}
-
-		data = fmt.Sprintf("buffer %s\x00", args[0])
-	case CmdOpen:
-		if len(args) > 1 {
-			return 0, ErrBadArgs
-		}
-
-		data = fmt.Sprintf("open %s\x00", args[0])
-	case CmdClose:
-		if len(args) > 1 {
-			return 0, ErrBadArgs
-		}
-
-		data = fmt.Sprintf("close %s\x00", args[0])
-	case CmdLink:
-		if len(args) != 2 {
-			return 0, ErrBadArgs
-		}
-
-		data = fmt.Sprintf("link %s %s\x00", args[0], args[1])
-	}
-	return c.clnt.Write(nfid, []byte(data), 0)
+	return c.run.ctl(cmd, args...)
 }
 
 // Tabs returns the contents of the `tabs` file for the server
 func (c *Client) Tabs() ([]byte, error) {
-	return getNamedFile(c, "tabs")
+	return c.run.tabs()
 }
 
 // Title returns the contents of the `title` file for a given buffer
 func (c *Client) Title() ([]byte, error) {
-	return getNamedFile(c, "title")
+	return c.run.title()
 }
 
 // Status returns the contents of the `status` file for a given buffer
 func (c *Client) Status() ([]byte, error) {
-	return getNamedFile(c, "status")
+	return c.run.status()
 }
 
 // Aside returns the contents of the `aside` file for a given buffer
 func (c *Client) Aside() ([]byte, error) {
-	return getNamedFile(c, "aside")
+	return c.run.aside()
 }
 
 // Input appends the given data string to input
 func (c *Client) Input(data []byte) (int, error) {
-	nfid := c.clnt.FidAlloc()
-	_, err := c.clnt.Walk(c.root, nfid, []string{"input"})
-	if err != nil {
-		return 0, err
-	}
-
-	c.clnt.Open(nfid, p.OAPPEND)
-	defer c.clnt.Clunk(nfid)
-
-	return c.clnt.Write(nfid, data, 0)
+	return c.run.input(data)
 }
 
 // Notifications returns and clears any pending notifications
 func (c *Client) Notifications() ([]byte, error) {
-	nfid := c.clnt.FidAlloc()
-	_, err := c.clnt.Walk(c.root, nfid, []string{"notification"})
-	if err != nil {
-		return nil, err
-	}
-
-	c.clnt.Open(nfid, p.OREAD)
-	defer c.clnt.Remove(nfid)
-	//defer c.clnt.Clunk(nfid)
-
-	return c.clnt.Read(nfid, 0, p.MSIZE)
+	return c.run.notifications()
 }
 
 // Feed returns a ReadCloser connected to `feed`. It's expected all reads
 // will be read into a buffer with a size of MSIZE
 // It is also expected for Feed to be called in its own thread
 func (c *Client) Feed() (io.ReadCloser, error) {
-	nfid := c.clnt.FidAlloc()
-
-	_, err := c.clnt.Walk(c.root, nfid, []string{"feed"})
-	if err != nil {
-		return nil, err
-	}
-
-	c.clnt.Open(nfid, p.OREAD)
-
-	data := make(chan []byte)
-	done := make(chan struct{})
-
-	go func() {
-		var off uint64
-		defer c.clnt.Clunk(nfid)
-
-		for {
-
-			b, err := c.clnt.Read(nfid, off, p.MSIZE)
-			if err != nil {
-				return
-			}
-
-			if len(b) > 0 {
-				data <- b
-				off += uint64(len(b))
-			}
-
-			select {
-			case <-done:
-				return
-			default:
-				continue
-			}
-		}
-
-	}()
-
-	f := &feed{
-		data: data,
-		done: done,
-	}
-
-	return f, nil
-
+	return c.run.feed()
 }
 
-func getNamedFile(c *Client, name string) ([]byte, error) {
-	nfid := c.clnt.FidAlloc()
-	_, err := c.clnt.Walk(c.root, nfid, []string{name})
-	if err != nil {
-		return nil, err
+func runClientCtl(cmd CmdType, args ...string) ([]byte, error) {
+	var data string
+	switch cmd {
+	case CmdBuffer:
+		if len(args) != 1 {
+			return nil, ErrBadArgs
+		}
+
+		data = fmt.Sprintf("buffer %s\x00", args[0])
+	case CmdOpen:
+		if len(args) != 1 {
+			return nil, ErrBadArgs
+		}
+
+		data = fmt.Sprintf("open %s\x00", args[0])
+	case CmdClose:
+		if len(args) != 1 {
+			return nil, ErrBadArgs
+		}
+
+		data = fmt.Sprintf("close %s\x00", args[0])
+	case CmdLink:
+		if len(args) != 2 {
+			return nil, ErrBadArgs
+		}
+
+		data = fmt.Sprintf("link %s %s\x00", args[0], args[1])
+	default:
+		return nil, ErrBadArgs
 	}
 
-	c.clnt.Open(nfid, p.OREAD)
-	defer c.clnt.Clunk(nfid)
-
-	return c.clnt.Read(nfid, 0, p.MSIZE)
+	return []byte(data), nil
 }
