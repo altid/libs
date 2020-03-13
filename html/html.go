@@ -3,6 +3,7 @@ package html
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -33,14 +34,23 @@ type ImgHandler interface {
 	Img(string) error
 }
 
-// NewHTMLCleaner accepts a WriteCloser and a type which satisfies the p.Handler interface
-// Nav will be called for each <a> tag found in a <nav> section
-// Img will be called whenever an <img> tag is found
-func NewHTMLCleaner(w io.WriteCloser, p Handler) *HTMLCleaner {
-	return &HTMLCleaner{
+// NewHTMLCleaner returns a usable HTMLCleaner struct
+// if either w or p are nil it will return an error
+func NewHTMLCleaner(w io.WriteCloser, p Handler) (*HTMLCleaner, error) {
+	if w == nil {
+		return nil, errors.New("nil WriteCloser")
+	}
+
+	if p == nil {
+		return nil, errors.New("nil Handler")
+	}
+
+	h := &HTMLCleaner{
 		w: w,
 		p: p,
 	}
+
+	return h, nil
 }
 
 // Parse - This assumes properly formatted html, and will return an error from the underlying html tokenizer if encountered
