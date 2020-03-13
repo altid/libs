@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -14,6 +15,22 @@ import (
 
 // MSIZE - maximum size for a message
 const MSIZE = p.MSIZE
+
+// CmdType is the type of argument supplied to Ctl
+type CmdType int
+
+// CmdTypes here are passed along to Ctl
+// The arguments allowed are described in Ctl
+const (
+	CmdBuffer CmdType = iota
+	CmdOpen
+	CmdClose
+	CmdLink
+	CmdRefresh
+)
+
+// ErrBadArgs is returned from Ctl when incorrect arguments are provided
+var ErrBadArgs = errors.New("Too few/incorrect arguments")
 
 // Client represents a 9p client session
 type Client struct {
@@ -73,22 +90,14 @@ func (c *Client) Auth() error {
 	return nil
 }
 
-// Tabs returns the contents of a servers' tabs file
-func (c *Client) Tabs() ([]byte, error) {
-	nfid := c.clnt.FidAlloc()
-	_, err := c.clnt.Walk(c.root, nfid, []string{"tabs"})
-	if err != nil {
-		return nil, err
-	}
-
-	c.clnt.Open(nfid, p.OREAD)
-	defer c.clnt.Clunk(nfid)
-
-	return c.clnt.Read(nfid, 0, p.MSIZE)
-}
-
-// Buffer attempts to switch to a named buffer
-func (c *Client) Buffer(name string) (int, error) {
+// Ctl sends the given arguments and named command to the connected Ctl file
+// The arguments expected differ for each type, and will result in an error
+// The usage is as follows:
+// Ctl(CmdBuffer, bufferName)
+// Ctl(CmdOpen, bufferName)
+// Ctl(cmdClose, bufferName)
+// Ctl(cmdLink, toBuffer, fromBuffer)
+func (c *Client) Ctl(cmd CmdType, args ...string) (int, error) {
 	nfid := c.clnt.FidAlloc()
 	_, err := c.clnt.Walk(c.root, nfid, []string{"ctl"})
 	if err != nil {
@@ -98,8 +107,54 @@ func (c *Client) Buffer(name string) (int, error) {
 	c.clnt.Open(nfid, p.OAPPEND)
 	defer c.clnt.Clunk(nfid)
 
-	data := fmt.Sprintf("buffer %s\x00", name)
+	var data string
+	switch cmd {
+	case CmdBuffer:
+		if len(args) > 1 {
+			return 0, ErrBadArgs
+		}
+
+		data = fmt.Sprintf("buffer %s\x00", args[0])
+	case CmdOpen:
+		if len(args) > 1 {
+			return 0, ErrBadArgs
+		}
+
+		data = fmt.Sprintf("open %s\x00", args[0])
+	case CmdClose:
+		if len(args) > 1 {
+			return 0, ErrBadArgs
+		}
+
+		data = fmt.Sprintf("close %s\x00", args[0])
+	case CmdLink:
+		if len(args) != 2 {
+			return 0, ErrBadArgs
+		}
+
+		data = fmt.Sprintf("link %s %s\x00", args[0], args[1])
+	}
 	return c.clnt.Write(nfid, []byte(data), 0)
+}
+
+// Tabs returns the contents of the `tabs` file for the server
+func (c *Client) Tabs() ([]byte, error) {
+	return getNamedFile(c, "tabs")
+}
+
+// Title returns the contents of the `title` file for a given buffer
+func (c *Client) Title() ([]byte, error) {
+	return getNamedFile(c, "title")
+}
+
+// Status returns the contents of the `status` file for a given buffer
+func (c *Client) Status() ([]byte, error) {
+	return getNamedFile(c, "status")
+}
+
+// Aside returns the contents of the `aside` file for a given buffer
+func (c *Client) Aside() ([]byte, error) {
+	return getNamedFile(c, "aside")
 }
 
 // Input appends the given data string to input
@@ -114,6 +169,21 @@ func (c *Client) Input(data []byte) (int, error) {
 	defer c.clnt.Clunk(nfid)
 
 	return c.clnt.Write(nfid, data, 0)
+}
+
+// Notifications returns and clears any pending notifications
+func (c *Client) Notifications() ([]byte, error) {
+	nfid := c.clnt.FidAlloc()
+	_, err := c.clnt.Walk(c.root, nfid, []string{"notification"})
+	if err != nil {
+		return nil, err
+	}
+
+	c.clnt.Open(nfid, p.OREAD)
+	defer c.clnt.Remove(nfid)
+	//defer c.clnt.Clunk(nfid)
+
+	return c.clnt.Read(nfid, 0, p.MSIZE)
 }
 
 // Feed returns a ReadCloser connected to `feed`. It's expected all reads
@@ -167,3 +237,15 @@ func (c *Client) Feed() (io.ReadCloser, error) {
 
 }
 
+func getNamedFile(c *Client, name string) ([]byte, error) {
+	nfid := c.clnt.FidAlloc()
+	_, err := c.clnt.Walk(c.root, nfid, []string{name})
+	if err != nil {
+		return nil, err
+	}
+
+	c.clnt.Open(nfid, p.OREAD)
+	defer c.clnt.Clunk(nfid)
+
+	return c.clnt.Read(nfid, 0, p.MSIZE)
+}
