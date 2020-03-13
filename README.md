@@ -11,7 +11,7 @@ The main documentation for the Go libraries can be found on the link below:
 
 The main documentation for Flutter libraries can be found at the link below:
 
-[![Flutter](https://img.shields.io/pub/v/altid_lib)](https://img.shields.io/pub/v/altid_lib)
+[![Flutter](https://img.shields.io/pub/v/altid_lib)](https://pub.dev/packages/altid_lib)
 
 ### How To Get
 
