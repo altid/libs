@@ -1,5 +1,4 @@
-// common auth functions for services, servers, and clients in Altid
-// includes support for interacting with a local factotum
+// common auth functions for services, servers, and clients in Altid. Includes support for interacting with a local factotum
 package auth
 
 import (
