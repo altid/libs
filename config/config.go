@@ -98,6 +98,8 @@ func (c *Config) Password() (string, error) {
 	return pass, nil
 }
 
+// SSLCert returns a tls.Certificate based on successfully finding
+// a cert and key file listen in the configuration
 func (c *Config) SSLCert() (tls.Certificate, error) {
 	cert, err := c.Search("cert")
 	if err != nil {
@@ -128,6 +130,7 @@ func (c *Config) Search(key string) (string, error) {
 	return "", errors.New(ErrNoSuchKey)
 }
 
+// MustSearch returns a value or an empty string, if not found
 func (c *Config) MustSearch(key string) string {
 	val, err := c.Search(key)
 	if err != nil {
@@ -137,6 +140,7 @@ func (c *Config) MustSearch(key string) string {
 	return val
 }
 
+// Log returns the configured Log, or "none"
 func (c *Config) Log() string {
 	dir, err := c.Search("log")
 	if err != nil {
@@ -173,7 +177,7 @@ func (c *Config) writeToFile() (*Config, error) {
 }
 
 // GetLogDir returns a canonical directory for a user log, searching first altid/config
-// If no entry is found or the file is missing, it will return a default path depending on the current operating system. Refer to UserShareDir documentation for what that is for your system
+// If no entry is found or the file is missing, it will return "none"
 func GetLogDir(service string) string {
 	conf, err := ndb.Open(getConfDir(service))
 	if err != nil {
