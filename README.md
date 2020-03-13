@@ -1,14 +1,35 @@
 ## Go Libs
-[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs) ![Build passing badge](https://github.com/altid/libs/workflows/Test/badge.svg)
 
-- auth: helper library for authentication
+### Overview
 
-- fs:  creation and management of Altid services
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs)
 
-- markup: tool to work with Altid's specific markup
+### auth
+helper library for authentication 
 
-- html: parsing library with integration for Altid markup
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs/auth) ![Auth passing badge](https://github.com/altid/libs/workflows/Auth/badge.svg) 
 
-- config: fs config management utilities
+### fs
+creation and management of Altid services 
+  
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs/fs) ![Fs passing badge](https://github.com/altid/libs/workflows/Fs/badge.svg)
 
-- client: libs for creating clients in Go
+### markup
+tool to work with Altid's specific markup 
+  
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs/markup) ![Markup passing badge](https://github.com/altid/libs/workflows/Markup/badge.svg)
+
+### html
+parsing library with integration for Altid markup 
+  
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs/html) ![Html passing badge](https://github.com/altid/libs/workflows/Html/badge.svg)
+
+### config
+fs config management utilities 
+  
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs/config) ![Config passing badge](https://github.com/altid/libs/workflows/Config/badge.svg)
+
+### client
+libs for creating clients in Go 
+  
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs/client) ![Client passing badge](https://github.com/altid/libs/workflows/Client/badge.svg)
