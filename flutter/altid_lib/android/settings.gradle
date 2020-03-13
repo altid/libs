@@ -1,1 +1,3 @@
 rootProject.name = 'altid_lib'
+include ':client'
+project(':client').projectDir = file('client')
