@@ -32,6 +32,6 @@ jobs:
       run: go build -v .
       working-directory: auth
 
-    - name: Run Tests
+    - name: Tests
       run: go test -v .
       working-directory: auth
