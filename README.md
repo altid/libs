@@ -1,7 +1,6 @@
 ## Go Libs
 
 ### Overview
-A list of all libraries can be found here
 
 [![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs)
 
