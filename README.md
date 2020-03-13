@@ -1,5 +1,5 @@
 ## Go Libs
-[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs)
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs) ![Build passing badge](https://github.com/altid/libs/workflows/Go/badge.svg)
 
 - auth: helper library for authentication
 
