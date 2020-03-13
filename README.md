@@ -35,3 +35,4 @@ The Flutter library is currently not supported
  - ![Html passing badge](https://github.com/altid/libs/workflows/html/badge.svg)
  - ![Config passing badge](https://github.com/altid/libs/workflows/config/badge.svg)
  - ![Client passing badge](https://github.com/altid/libs/workflows/client/badge.svg)
+ - ![Flutter passing badge](https://github.com/altid/libs/workflows/flutter/badge.svg)
