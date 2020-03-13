@@ -36,6 +36,10 @@ func (c *client) connect(debug int) (err error) {
 	return
 }
 
+func (c *client) cleanup() {
+	c.clnt.Unmount()
+}
+
 func (c *client) attach() error {
 	root, err := c.clnt.Attach(c.afid, user.Current(), "/")
 	if err != nil {
