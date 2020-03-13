@@ -1,7 +1,13 @@
-library altid_lib;
+import 'dart:async';
 
-/// A Calculator.
-class Calculator {
-  /// Returns [value] plus 1.
-  int addOne(int value) => value + 1;
+import 'package:flutter/services.dart';
+
+class AltidLib {
+  static const MethodChannel _channel =
+      const MethodChannel('altid_lib');
+
+  static Future<String> get platformVersion async {
+    final String version = await _channel.invokeMethod('getPlatformVersion');
+    return version;
+  }
 }

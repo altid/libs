@@ -7,4 +7,4 @@ version:
   revision: 9437639590adaa91e3df31cd9ce85133e401cd51
   channel: dev
 
-project_type: plugin
+project_type: app
