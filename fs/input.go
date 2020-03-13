@@ -87,7 +87,8 @@ func NewInput(h Handler, dir, buffer string, debug bool) (*Input, error) {
 	return nil, fmt.Errorf("Input file already exist at %s", inpath)
 }
 
-// NewMockInput returns a faked input file for testing, using reqs instead of a real file
+// NewMockInput returns a faked input file for testing
+// All writes to `reqs` will trigger the Handler internally
 func NewMockInput(h Handler, buffer string, debug bool, reqs chan string) (*Input, error) {
 
 	mci := &mockinput{
