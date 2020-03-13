@@ -1,4 +1,4 @@
-name: Html
+name: html
 on:
   push:
     paths:

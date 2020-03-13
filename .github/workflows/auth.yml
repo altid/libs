@@ -1,4 +1,4 @@
-name: Auth
+name: auth
 on:
   push:
     paths:
