@@ -15,11 +15,17 @@ The main documentation for Flutter libraries can be found at the link below:
 
 ### How To Get
 
+#### Golang
+
 If you have a working Go toolchain, simply issue the following
 
 ```bash
 go get -u github.com/altid/libs
 ```
+
+#### Flutter
+
+The Flutter library is currently not supported
 
 ### Build Status
 
