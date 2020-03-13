@@ -1,4 +1,4 @@
-name: Test
+name: Html
 on:
   push:
     paths:
@@ -32,6 +32,6 @@ jobs:
       run: go build -v .
       working-directory: html 
 
-    - name: Test
+    - name: Tests
       run: go test -v .
       working-directory: html
