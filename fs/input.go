@@ -162,7 +162,7 @@ func (i *Input) Stop() {
 	i.run.stop(i.ctx)
 }
 
-// Errs returns any errors encountered during input's runtime
+// Errs returns a list of any errors encountered during input's runtime
 func (i *Input) Errs() []error {
 	return i.run.errs()
 }
