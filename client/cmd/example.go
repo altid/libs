@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -12,10 +13,30 @@ import (
 	"github.com/altid/libs/client"
 )
 
-func main() {
-	cl := client.NewClient(os.Args[1])
+var debug = flag.Bool("d", false, "enable debug output")
+var addr = flag.String("s", "127.0.0.1", "address to connect to")
 
-	if e := cl.Connect(0); e != nil {
+func main() {
+	flag.Parse()
+
+	if flag.Lookup("h") != nil {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	cl := client.NewClient(*addr)
+
+	withDebug := 0
+	if *debug {
+		withDebug = 1
+	}
+
+	if e := cl.Connect(withDebug); e != nil {
+		log.Fatal(e)
+	}
+
+	// calling auth on a server without authentication will always succeed
+	if e := cl.Auth(); e != nil {
 		log.Fatal(e)
 	}
 
@@ -33,6 +54,7 @@ func main() {
 		defer f.Close()
 
 		for {
+			// Ensure your buffer is MSIZE
 			b := make([]byte, client.MSIZE)
 
 			_, err := f.Read(b)
