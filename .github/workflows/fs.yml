@@ -1,4 +1,4 @@
-name: Fs
+name: fs
 on:
   push:
     paths:
