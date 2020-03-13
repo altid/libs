@@ -95,15 +95,24 @@ func (c *Client) Auth() error {
 	return c.run.auth()
 }
 
-// Ctl sends the given arguments and named command to the connected Ctl file
-// The arguments expected differ for each type, and will result in an error
-// The usage is as follows:
-// Ctl(CmdBuffer, bufferName)
-// Ctl(CmdOpen, bufferName)
-// Ctl(cmdClose, bufferName)
-// Ctl(cmdLink, toBuffer, fromBuffer)
-func (c *Client) Ctl(cmd CmdType, args ...string) (int, error) {
-	return c.run.ctl(cmd, args...)
+// Buffer changes the active buffer to the named buffer, or returns an error
+func (c *Client) Buffer(name string) (int, error) {
+	return c.run.ctl(CmdBuffer, name)
+}
+
+// Open attempts to open the named buffer
+func (c *Client) Open(name string) (int, error) {
+	return c.run.ctl(CmdOpen, name)
+}
+
+// Close attempts to close the named buffer
+func (c *Client) Close(name string) (int, error) {
+	return c.run.ctl(CmdClose, name)
+}
+
+// Link updates the current buffer to point to the `to`
+func (c *Client) Link(from, to string) (int, error) {
+	return c.run.ctl(CmdLink, from, to)
 }
 
 // Tabs returns the contents of the `tabs` file for the server

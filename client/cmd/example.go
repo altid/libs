@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 
 var debug = flag.Bool("d", false, "enable debug output")
 var addr = flag.String("s", "127.0.0.1", "address to connect to")
+var errBadArgs = errors.New("Incorrect arguments to command")
 
 func main() {
 	flag.Parse()
@@ -83,7 +85,11 @@ func main() {
 		case "/quit":
 			os.Exit(0)
 		case "/buffer":
-			if _, err := cl.Ctl(client.CmdBuffer, args[1]); err != nil {
+			if len(args) != 2 {
+				log.Print(errBadArgs)
+				continue
+			}
+			if _, err := cl.Buffer(args[1]); err != nil {
 				log.Println(err)
 				continue
 			}
@@ -99,12 +105,33 @@ func main() {
 
 			fmt.Printf("%s", t)
 		case "/open":
-			if _, err := cl.Ctl(client.CmdOpen, args[1]); err != nil {
+			if len(args) != 2 {
+				log.Print(errBadArgs)
+				continue
+			}
+			if _, err := cl.Open(args[1]); err != nil {
 				log.Println(err)
 			}
 		case "/close":
-			if _, err := cl.Ctl(client.CmdClose, args[1]); err != nil {
+			if len(args) != 2 {
+				log.Print(errBadArgs)
+				continue
+			}
+			if _, err := cl.Close(args[1]); err != nil {
 				log.Println(err)
+				continue
+			}
+
+			time.Sleep(time.Millisecond * 200)
+			go getFeed()
+		case "/link":
+			if len(args) != 3 {
+				log.Println(errBadArgs)
+				continue
+			}
+			if _, err := cl.Link(args[1], args[2]); err != nil {
+				log.Println(err)
+				continue
 			}
 
 			time.Sleep(time.Millisecond * 200)
