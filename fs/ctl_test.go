@@ -39,7 +39,7 @@ func TestCtl(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &testctrl{}
 
-	c, err := MockCtlFile(ctl, reqs, true)
+	c, err := MockCtlFile(ctl, reqs, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -57,7 +57,7 @@ func TestWriters(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &testctrl{}
 
-	c, err := MockCtlFile(ctl, reqs, true)
+	c, err := MockCtlFile(ctl, reqs, false)
 	if err != nil {
 		t.Error(err)
 	}

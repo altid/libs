@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 )
 
@@ -75,6 +76,10 @@ func (tc *mockctl) remove(name, doctype string) error {
 func (tc *mockctl) listen() error {
 	defer close(tc.err)
 	defer close(tc.done)
+
+	if e := printCtlFile(tc.cmdlist, os.Stdout); e != nil {
+		return e
+	}
 
 	for {
 		select {

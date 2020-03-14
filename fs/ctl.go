@@ -81,6 +81,40 @@ const (
 	ctlDefault
 )
 
+//TODO(halfiwt) i18n
+var defaultCommands = []*Command{
+	&Command{
+		Name:        "open",
+		Args:        []string{"<buffer>"},
+		Heading:     DefaultGroup,
+		Description: "Open and change buffers to a given service",
+	},
+	&Command{
+		Name:        "close",
+		Args:        []string{"<buffer>"},
+		Heading:     DefaultGroup,
+		Description: "Close a buffer and return to the last opened previously",
+	},
+	&Command{
+		Name:        "buffer",
+		Args:        []string{"<buffer>"},
+		Heading:     DefaultGroup,
+		Description: "Change to the named buffer",
+	},
+	&Command{
+		Name:        "link",
+		Args:        []string{"<to>", "<from>"},
+		Heading:     DefaultGroup,
+		Description: "Overwrite the current <to> buffer with <from>, switching to from after. This destroys <to>",
+	},
+	&Command{
+		Name:        "quit",
+		Args:        []string{},
+		Heading:     DefaultGroup,
+		Description: "Exits the service",
+	},
+}
+
 // MockCtlFile returns a type that can be used for testing services
 // it will track in-memory and behave like a file-backed control
 // It will wait for messages on reqs which act as ctl messages
@@ -111,6 +145,8 @@ func MockCtlFile(ctl Controller, reqs chan string, debug bool) (*Control, error)
 	if debug {
 		c.debug = ctlLogger
 	}
+
+	c.SetCommands(defaultCommands...)
 
 	return c, nil
 }
@@ -155,6 +191,8 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug 
 		if debug {
 			c.debug = ctlLogger
 		}
+
+		c.SetCommands(defaultCommands...)
 
 		return c, nil
 	}
