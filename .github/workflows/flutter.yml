@@ -2,7 +2,7 @@ name: flutter
 on:
   push:
     paths:
-      - 'flutter/altid_lib/**'
+      - 'flutter/altid_client/**'
 jobs:
   
   build:
@@ -19,8 +19,8 @@ jobs:
           channel: 'stable'
       - name: Get dependencies
         run: flutter pub get
-        working-directory: flutter/altid_lib
+        working-directory: flutter/altid_client
         
       - name: Tests
         run: flutter test
-        working-directory: flutter/altid_lib
+        working-directory: flutter/altid_client
