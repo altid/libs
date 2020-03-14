@@ -27,7 +27,7 @@ func TestInput(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &inputTestCtrl{}
 
-	i, err := NewMockInput(ctl, "foo", true, reqs)
+	i, err := NewMockInput(ctl, "foo", false, reqs)
 	if err != nil {
 		t.Error(err)
 	}
