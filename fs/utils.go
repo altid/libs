@@ -191,6 +191,7 @@ func run(c *Control, ew *WriteCloser, line string) {
 			return
 		}
 
+		c.debug(ctlDefault, cmd)
 		if e := c.ctl.Default(c, cmd); e != nil {
 			c.debug(ctlError, token[0], e)
 			fmt.Fprintf(ew, "%s: %v\n", token[0], e)

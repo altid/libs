@@ -1,7 +1,8 @@
 package fs
 
 import (
-	"fmt"
+	"errors"
+	"strings"
 )
 
 // ComGroup is a logical grouping of commands
@@ -35,12 +36,37 @@ func (a cmdList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a cmdList) Less(i, j int) bool { return a[i].Heading < a[j].Heading }
 
 func buildCommand(cmd string, cmdlist []*Command) (*Command, error) {
+	var name string
+	var args []string
 
-	return nil, nil
+	items := strings.Fields(cmd)
+	name = items[0]
+
+	if len(items) > 1 {
+		args = items[1:]
+	}
+
+	for _, comm := range cmdlist {
+		if comm.Name == name {
+			return newCommand(comm, args), nil
+		}
+
+		for _, alias := range comm.Alias {
+			if alias == name {
+				return newCommand(comm, args), nil
+			}
+		}
+	}
+
+	return nil, errors.New("command not supported")
 }
 
-func printCmdList(cmdlist []*Command) {
-	for _, cmd := range cmdlist {
-		fmt.Printf("%s %d\n", cmd.Name, cmd.Heading)
+func newCommand(comm *Command, args []string) *Command {
+	return &Command{
+		Name:        comm.Name,
+		Description: comm.Description,
+		Heading:     comm.Heading,
+		Args:        args,
+		Alias:       comm.Alias,
 	}
 }

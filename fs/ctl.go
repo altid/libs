@@ -78,6 +78,7 @@ const (
 	ctlRemove
 	ctlStart
 	ctlNotify
+	ctlDefault
 )
 
 // MockCtlFile returns a type that can be used for testing services
@@ -323,5 +324,13 @@ func ctlLogger(msg ctlMsg, args ...interface{}) {
 		l.Printf("%s: starting\n", args[0])
 	case ctlNotify:
 		l.Printf("notify: buffer=\"%s\" from=\"%s\" msg=\"%s\"\n", args[0], args[1], args[2])
+	case ctlDefault:
+		cmd := args[0].(*Command)
+		switch cmd.Heading {
+		case ActionGroup:
+			l.Printf("%s group=\"action\" arguments=\"%s\"\n", cmd.Name, cmd.Args)
+		case MediaGroup:
+			l.Printf("%s group=\"media\" arguments=\"%s\"\n", cmd.Name, cmd.Args)
+		}
 	}
 }

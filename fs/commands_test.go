@@ -24,6 +24,9 @@ func TestCommands(t *testing.T) {
 	}
 
 	time.AfterFunc(time.Second*10, func() {
+		reqs <- "foo test"
+		reqs <- "bar test this"
+		reqs <- "baz test this"
 		reqs <- "quit"
 	})
 
