@@ -44,10 +44,20 @@ func main() {
 		log.Fatal(e)
 	}
 
+	getDocument := func() {
+		f, err := cl.Document()
+		if err != nil {
+			log.Println("Unable to find a feed or document for this buffer")
+			return
+		}
+
+		fmt.Printf("%s\n", f)
+	}
+
 	getFeed := func() {
 		f, err := cl.Feed()
 		if err != nil {
-			log.Print(err)
+			getDocument()
 			return
 		}
 

@@ -95,6 +95,10 @@ func (c *client) aside() ([]byte, error) {
 	return getNamedFile(c, "aside")
 }
 
+func (c *client) document() ([]byte, error) {
+	return getNamedFile(c, "document")
+}
+
 func (c *client) input(data []byte) (int, error) {
 	nfid := c.clnt.FidAlloc()
 	_, err := c.clnt.Walk(c.root, nfid, []string{"input"})
