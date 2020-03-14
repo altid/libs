@@ -10,6 +10,7 @@ import (
 )
 
 // ComGroup is a logical grouping of commands
+// To add a ComGroup, please do so in a PR
 type ComGroup int
 
 const (
