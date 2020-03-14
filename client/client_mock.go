@@ -66,6 +66,15 @@ func (c *mock) status() ([]byte, error) {
 	return []byte("status"), nil
 }
 
+func (c *mock) document() ([]byte, error) {
+	b := make([]byte, 4096)
+	fuzz := fuzz.New()
+
+	fuzz.Fuzz(&b)
+	c.debug(CmdDocument, b)
+	return b, nil
+}
+
 func (c *mock) aside() ([]byte, error) {
 	c.debug(CmdAside)
 	return []byte("aside"), nil
@@ -138,5 +147,7 @@ func mockLogging(cmd int, args ...interface{}) {
 		l.Println("notification data=nil")
 	case CmdFeed:
 		l.Printf("feed data=\"%s\"\n", args[0])
+	case CmdDocument:
+		l.Printf("document data=\"%s\"\n", args[0])
 	}
 }

@@ -28,6 +28,7 @@ const (
 	CmdNotify
 	CmdInput
 	CmdFeed
+	CmdDocument
 )
 
 // Client represents a 9p client session
@@ -51,6 +52,7 @@ type runner interface {
 	input([]byte) (int, error)
 	notifications() ([]byte, error)
 	feed() (io.ReadCloser, error)
+	document() ([]byte, error)
 }
 
 // NewClient returns a client ready to connect to addr
@@ -75,6 +77,12 @@ func NewMockClient(addr string) *Client {
 	return &Client{
 		run: dmc,
 	}
+}
+
+// Document returns the contents of a document file on the host
+// if it exists, or an error
+func (c *Client) Document() ([]byte, error) {
+	return c.run.document()
 }
 
 // Cleanup closes the underlying connection
