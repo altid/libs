@@ -25,6 +25,14 @@ type control struct {
 	done    chan struct{}
 }
 
+type controlrunner struct {
+	ctx     context.Context
+	scanner *bufio.Scanner
+	done    chan struct{}
+	req     chan string
+	cancel  context.CancelFunc
+}
+
 func (c *control) event(eventmsg string) error {
 	file := path.Join(c.rundir, "event")
 	if _, err := os.Stat(path.Dir(file)); os.IsNotExist(err) {
@@ -135,51 +143,31 @@ func (c *control) hasBuffer(name, doctype string) bool {
 
 	return true
 }
+
 func (c *control) listen() error {
-	if e := os.MkdirAll(c.rundir, 0755); e != nil {
-		return e
-	}
+	ctx, cancel := context.WithCancel(context.Background())
 
-	cfile := path.Join(c.rundir, "ctl")
-
-	ctl, err := os.Create(cfile)
+	cr, err := newControlRunner(ctx, cancel, c)
 	if err != nil {
 		return err
 	}
 
-	if e := printCtlFile(c.cmdlist, ctl); e != nil {
-		return e
-	}
+	cr.listen()
 
-	ctl.Close()
-
-	b, err := ioutil.ReadFile(cfile)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%s\n", b)
-
-	r, err := newReader(cfile)
-	if err != nil {
-		return err
-	}
-
-	c.event(cfile)
-	scanner := bufio.NewScanner(r)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "quit" {
-			close(c.done)
-			break
-		}
-
-		c.req <- line
-	}
-
-	close(c.req)
 	return nil
+}
+
+func (c *control) start() (context.Context, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	cr, err := newControlRunner(ctx, cancel, c)
+	if err != nil {
+		return nil, err
+	}
+
+	go cr.listen()
+
+	return ctx, nil
 }
 
 func (c *control) remove(buffer, filename string) error {
@@ -191,51 +179,6 @@ func (c *control) remove(buffer, filename string) error {
 
 	c.event(doc)
 	return os.Remove(doc)
-}
-
-func (c *control) start() (context.Context, error) {
-	if e := os.MkdirAll(c.rundir, 0755); e != nil {
-		return nil, e
-	}
-
-	cfile := path.Join(c.rundir, "ctl")
-	c.event(cfile)
-
-	ctl, err := os.Create(cfile)
-	if err != nil {
-		return nil, err
-	}
-
-	if e := printCtlFile(c.cmdlist, ctl); e != nil {
-		return nil, e
-	}
-
-	ctl.Close()
-
-	r, err := newReader(cfile)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		defer close(c.req)
-		scanner := bufio.NewScanner(r)
-
-		for scanner.Scan() {
-			line := scanner.Text()
-			if line == "quit" {
-				cancel()
-				close(c.done)
-				break
-			}
-
-			c.req <- line
-		}
-	}()
-
-	return ctx, nil
 }
 
 func (c *control) notification(buff, from, msg string) error {
@@ -347,4 +290,59 @@ func (c *control) fileWriter(buffer, doctype string) (*WriteCloser, error) {
 func (c *control) imageWriter(buffer, resource string) (*WriteCloser, error) {
 	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
 	return c.fileWriter(buffer, path.Join("images", resource))
+}
+
+func newControlRunner(ctx context.Context, cancel context.CancelFunc, c *control) (*controlrunner, error) {
+	if e := os.MkdirAll(c.rundir, 0755); e != nil {
+		return nil, e
+	}
+
+	cfile := path.Join(c.rundir, "ctl")
+	c.event(cfile)
+
+	ctl, err := os.Create(cfile)
+	if err != nil {
+		return nil, err
+	}
+
+	if e := printCtlFile(c.cmdlist, ctl); e != nil {
+		return nil, e
+	}
+
+	ctl.Close()
+
+	r, err := newReader(cfile)
+	if err != nil {
+		return nil, err
+	}
+
+	cr := &controlrunner{
+		scanner: bufio.NewScanner(r),
+		req:     c.req,
+		ctx:     ctx,
+		cancel:  cancel,
+		done:    c.done,
+	}
+
+	return cr, nil
+}
+
+func (c *controlrunner) listen() {
+	defer close(c.req)
+
+	for c.scanner.Scan() {
+		select {
+		case <-c.ctx.Done():
+			break
+		default:
+			line := c.scanner.Text()
+			if line == "quit" {
+				c.cancel()
+				close(c.done)
+				break
+			}
+
+			c.req <- line
+		}
+	}
 }
