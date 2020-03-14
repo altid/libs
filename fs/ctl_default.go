@@ -53,6 +53,7 @@ func (c *control) setCommand(cmd ...*Command) error {
 	}
 
 	sort.Sort(cmdList(c.cmdlist))
+
 	return nil
 }
 
@@ -141,6 +142,24 @@ func (c *control) listen() error {
 
 	cfile := path.Join(c.rundir, "ctl")
 
+	ctl, err := os.Create(cfile)
+	if err != nil {
+		return err
+	}
+
+	if e := printCtlFile(c.cmdlist, ctl); e != nil {
+		return e
+	}
+
+	ctl.Close()
+
+	b, err := ioutil.ReadFile(cfile)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s\n", b)
+
 	r, err := newReader(cfile)
 	if err != nil {
 		return err
@@ -181,6 +200,17 @@ func (c *control) start() (context.Context, error) {
 
 	cfile := path.Join(c.rundir, "ctl")
 	c.event(cfile)
+
+	ctl, err := os.Create(cfile)
+	if err != nil {
+		return nil, err
+	}
+
+	if e := printCtlFile(c.cmdlist, ctl); e != nil {
+		return nil, e
+	}
+
+	ctl.Close()
 
 	r, err := newReader(cfile)
 	if err != nil {

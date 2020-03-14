@@ -20,7 +20,7 @@ type reader struct {
 
 func newReader(name string) (*reader, error) {
 	os.MkdirAll(path.Dir(name), 0755)
-	f, err := os.OpenFile(name, os.O_CREATE|os.O_RDONLY, 0755)
+	f, err := os.OpenFile(name, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return &reader{}, err
 	}
