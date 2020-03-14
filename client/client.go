@@ -11,13 +11,9 @@ import (
 // MSIZE - maximum size for a message
 const MSIZE = p.MSIZE
 
-// CmdType is the type of argument supplied to Ctl
-type CmdType int
-
-// CmdTypes here are passed along to Ctl
-// The arguments allowed are described in Ctl
+// Used internally
 const (
-	CmdBuffer CmdType = iota
+	CmdBuffer int = iota
 	CmdOpen
 	CmdClose
 	CmdLink
@@ -47,7 +43,7 @@ type runner interface {
 	connect(int) error
 	attach() error
 	auth() error
-	ctl(CmdType, ...string) (int, error) // Just call write at the end in nested types
+	ctl(int, ...string) (int, error) // Just call write at the end in nested types
 	tabs() ([]byte, error)
 	title() ([]byte, error)
 	status() ([]byte, error)
@@ -73,7 +69,7 @@ func NewClient(addr string) *Client {
 func NewMockClient(addr string) *Client {
 	dmc := &mock{
 		addr:  addr,
-		debug: func(CmdType, ...interface{}) {},
+		debug: func(int, ...interface{}) {},
 	}
 
 	return &Client{
@@ -81,6 +77,7 @@ func NewMockClient(addr string) *Client {
 	}
 }
 
+// Cleanup closes the underlying connection
 func (c *Client) Cleanup() {
 	c.run.cleanup()
 }
@@ -157,7 +154,35 @@ func (c *Client) Feed() (io.ReadCloser, error) {
 	return c.run.feed()
 }
 
-func runClientCtl(cmd CmdType, args ...string) ([]byte, error) {
+// FeedIterator allows you to step through lines of feed with Next()
+// Useful for gomobile, etc
+type FeedIterator struct {
+	rc io.ReadCloser
+}
+
+// FeedIterator returns a new FeedIterator ready to go
+func (c *Client) FeedIterator() (*FeedIterator, error) {
+	f, err := c.run.feed()
+	if err != nil {
+		return nil, err
+	}
+
+	return &FeedIterator{f}, nil
+}
+
+// Next will return the next slice of bytes, or an error
+// After an error, future calls to Next() will panic
+func (f *FeedIterator) Next() ([]byte, error) {
+	b := make([]byte, MSIZE)
+	if _, err := f.rc.Read(b); err != nil {
+		defer f.rc.Close()
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func runClientCtl(cmd int, args ...string) ([]byte, error) {
 	var data string
 	switch cmd {
 	case CmdBuffer:
