@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"sort"
 )
 
 type tab struct {
@@ -13,11 +15,12 @@ type tab struct {
 }
 
 type mockctl struct {
-	reqs chan string
-	cmds chan string
-	done chan struct{}
-	err  chan error
-	tabs []*tab
+	cmdlist []*Command
+	reqs    chan string
+	cmds    chan string
+	done    chan struct{}
+	err     chan error
+	tabs    []*tab
 }
 
 func (t *tab) Write(p []byte) (n int, err error) {
@@ -33,6 +36,19 @@ func (tc *mockctl) cleanup() {}
 
 func (tc *mockctl) event(ev string) error {
 	return nil
+}
+
+func (tc *mockctl) setCommand(cmd ...*Command) error {
+	for _, comm := range cmd {
+		tc.cmdlist = append(tc.cmdlist, comm)
+	}
+
+	sort.Sort(cmdList(tc.cmdlist))
+	return nil
+}
+
+func (tc *mockctl) buildCommand(cmd string) (*Command, error) {
+	return buildCommand(cmd, tc.cmdlist)
 }
 
 func (tc *mockctl) createBuffer(name, doctype string) error {
@@ -60,6 +76,10 @@ func (tc *mockctl) remove(name, doctype string) error {
 func (tc *mockctl) listen() error {
 	defer close(tc.err)
 	defer close(tc.done)
+
+	if e := printCtlFile(tc.cmdlist, os.Stdout); e != nil {
+		return e
+	}
 
 	for {
 		select {

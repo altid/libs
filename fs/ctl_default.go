@@ -11,10 +11,12 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 )
 
 type control struct {
+	cmdlist []*Command
 	rundir  string
 	logdir  string
 	doctype string
@@ -43,6 +45,20 @@ func (c *control) event(eventmsg string) error {
 	f.WriteString(eventmsg + "\n")
 
 	return nil
+}
+
+func (c *control) setCommand(cmd ...*Command) error {
+	for _, comm := range cmd {
+		c.cmdlist = append(c.cmdlist, comm)
+	}
+
+	sort.Sort(cmdList(c.cmdlist))
+
+	return nil
+}
+
+func (c *control) buildCommand(cmd string) (*Command, error) {
+	return buildCommand(cmd, c.cmdlist)
 }
 
 func (c *control) cleanup() {
@@ -126,6 +142,24 @@ func (c *control) listen() error {
 
 	cfile := path.Join(c.rundir, "ctl")
 
+	ctl, err := os.Create(cfile)
+	if err != nil {
+		return err
+	}
+
+	if e := printCtlFile(c.cmdlist, ctl); e != nil {
+		return e
+	}
+
+	ctl.Close()
+
+	b, err := ioutil.ReadFile(cfile)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s\n", b)
+
 	r, err := newReader(cfile)
 	if err != nil {
 		return err
@@ -166,6 +200,17 @@ func (c *control) start() (context.Context, error) {
 
 	cfile := path.Join(c.rundir, "ctl")
 	c.event(cfile)
+
+	ctl, err := os.Create(cfile)
+	if err != nil {
+		return nil, err
+	}
+
+	if e := printCtlFile(c.cmdlist, ctl); e != nil {
+		return nil, e
+	}
+
+	ctl.Close()
 
 	r, err := newReader(cfile)
 	if err != nil {
