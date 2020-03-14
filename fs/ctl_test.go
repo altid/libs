@@ -2,21 +2,19 @@ package fs
 
 import (
 	"testing"
-
-	"github.com/altid/libs/fs"
 )
 
 type ctrl struct{}
 
-func (c *ctrl) Open(ctl *fs.Control, buf string) error {
+func (c *ctrl) Open(ctl *Control, buf string) error {
 	return ctl.CreateBuffer(buf, "test")
 }
 
-func (c *ctrl) Close(ctl *fs.Control, buf string) error {
+func (c *ctrl) Close(ctl *Control, buf string) error {
 	return ctl.DeleteBuffer(buf, "test")
 }
 
-func (c *ctrl) Link(ctl *fs.Control, to, from string) error {
+func (c *ctrl) Link(ctl *Control, to, from string) error {
 	if e := ctl.DeleteBuffer(from, "test"); e != nil {
 		return e
 	}
@@ -24,7 +22,7 @@ func (c *ctrl) Link(ctl *fs.Control, to, from string) error {
 	return ctl.CreateBuffer(to, "test")
 }
 
-func (c *ctrl) Default(ctl *fs.Control, cmd, from, msg string) error {
+func (c *ctrl) Default(ctl *Control, cmd, from, msg string) error {
 	return nil
 }
 
@@ -41,7 +39,7 @@ func TestCtl(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &ctrl{}
 
-	c, err := fs.MockCtlFile(ctl, reqs, true)
+	c, err := MockCtlFile(ctl, reqs, true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -59,7 +57,7 @@ func TestWriters(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &ctrl{}
 
-	c, err := fs.MockCtlFile(ctl, reqs, true)
+	c, err := MockCtlFile(ctl, reqs, true)
 	if err != nil {
 		t.Error(err)
 	}

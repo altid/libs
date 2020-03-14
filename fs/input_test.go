@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/altid/libs/fs"
 	"github.com/altid/libs/markup"
 )
 
@@ -28,7 +27,7 @@ func TestInput(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &inputTestCtrl{}
 
-	i, err := fs.NewMockInput(ctl, "foo", true, reqs)
+	i, err := NewMockInput(ctl, "foo", true, reqs)
 	if err != nil {
 		t.Error(err)
 	}
