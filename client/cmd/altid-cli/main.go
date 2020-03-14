@@ -37,10 +37,8 @@ func main() {
 		log.Fatal(e)
 	}
 
-	// calling auth on a server without authentication will always succeed
-	if e := cl.Auth(); e != nil {
-		log.Fatal(e)
-	}
+	// Ideally we would call auth here, but it is currently
+	// not well supported
 
 	if e := cl.Attach(); e != nil {
 		log.Fatal(e)
