@@ -12,7 +12,7 @@ import (
 type mock struct {
 	afid  io.ReadWriteCloser
 	addr  string
-	debug func(CmdType, ...interface{})
+	debug func(int, ...interface{})
 }
 
 func (c *mock) cleanup() {}
@@ -40,7 +40,7 @@ func (c *mock) auth() error {
 }
 
 // We want to eventually create and track tabs internally to the library
-func (c *mock) ctl(cmd CmdType, args ...string) (int, error) {
+func (c *mock) ctl(cmd int, args ...string) (int, error) {
 	data, err := runClientCtl(cmd, args...)
 	if err != nil {
 		return 0, err
@@ -111,7 +111,7 @@ func (c *mock) feed() (io.ReadCloser, error) {
 	return f, nil
 }
 
-func mockLogging(cmd CmdType, args ...interface{}) {
+func mockLogging(cmd int, args ...interface{}) {
 	l := log.New(os.Stdout, "client ", 0)
 
 	switch cmd {

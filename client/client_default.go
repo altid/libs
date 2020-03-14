@@ -62,7 +62,7 @@ func (c *client) auth() error {
 	return nil
 }
 
-func (c *client) ctl(cmd CmdType, args ...string) (int, error) {
+func (c *client) ctl(cmd int, args ...string) (int, error) {
 	nfid := c.clnt.FidAlloc()
 	_, err := c.clnt.Walk(c.root, nfid, []string{"ctl"})
 	if err != nil {
