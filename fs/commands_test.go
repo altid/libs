@@ -19,7 +19,7 @@ func TestCommands(t *testing.T) {
 	cmdlist = append(cmdlist, testMakeCmd("bar", []string{"<1>", "<2>"}, MediaGroup, []string{}))
 	cmdlist = append(cmdlist, testMakeCmd("baz", []string{"<2>", "<1>"}, ActionGroup, []string{}))
 	cmdlist = append(cmdlist, testMakeCmd("banana", []string{}, MediaGroup, []string{}))
-	cmdlist = append(cmdlist, testMakeCmd("nocomm", []string{}, ActionGroup, []string{"yacomm"}))
+	cmdlist = append(cmdlist, testMakeCmd("nocomm", []string{"<an action>"}, ActionGroup, []string{"yacomm", "maybecomm"}))
 
 	if e := c.SetCommands(cmdlist...); e != nil {
 		t.Error(e)
