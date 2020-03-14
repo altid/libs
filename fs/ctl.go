@@ -3,6 +3,7 @@ package fs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -15,7 +16,7 @@ import (
 // Close is called when a control message starting with 'close or 'part' is written to the ctl file
 // Link is called when a control message starting with 'link' is written to the ctl file
 // Default is called when any other control message is written to the ctl file.
-// Client messages to Default must come in the order, `cmd buffer msg...`, and to that effect any other formats behavior is undefined.
+// If a client attempts to write an invalid control message, it will return a generic error
 // When Open is called, a file will be created with a path of `mountpoint/msg/document (or feed)`, containing initially a file named what you've set doctype to.. Calls to open are expected to populate that file, as well as create any supplementary files needed, such as title, aside, status, input, etc
 // When Link is called, the content of the current buffer is expected to change, and the name of the current tab will be removed, replaced with msg
 // The main document or feed file is also symlinked into the given log directory, under service/msgs, so for example, an expensive parse would only have to be completed once for a given request, even across seperate runs; or a chat log could have history from previous sessions accessible.
@@ -24,7 +25,7 @@ type Controller interface {
 	Open(c *Control, msg string) error
 	Close(c *Control, msg string) error
 	Link(c *Control, from, msg string) error
-	Default(c *Control, cmd, from, msg string) error
+	Default(c *Control, cmd *Command) error
 }
 
 // SigHandler - Optional interface to provide fine grained control for catching signals.
@@ -36,6 +37,8 @@ type SigHandler interface {
 
 type runner interface {
 	cleanup()
+	setCommand(cmd ...*Command) error
+	buildCommand(string) (*Command, error)
 	event(string) error
 	createBuffer(string, string) error
 	deleteBuffer(string, string) error
@@ -54,9 +57,8 @@ type writercloser interface {
 
 // Control type can be used to manage a running ctl file session
 type Control struct {
-	req  chan string
-	done chan struct{}
-
+	req   chan string
+	done  chan struct{}
 	ctl   Controller
 	run   runner
 	write writercloser
@@ -209,6 +211,7 @@ func (c *Control) Remove(buffer, filename string) error {
 func (c *Control) Listen() error {
 	go sigwatch(c)
 	go dispatch(c)
+
 	c.debug(ctlStart, "listen")
 	return c.run.listen()
 }
@@ -218,8 +221,35 @@ func (c *Control) Listen() error {
 func (c *Control) Start() (context.Context, error) {
 	go sigwatch(c)
 	go dispatch(c)
+
 	c.debug(ctlStart, "start")
 	return c.run.start()
+}
+
+// SetCommands allows services to add additional commands
+// Any client command encountered which matches will send
+// The resulting command down to RunCommand
+// Commands must include at least a name and a heading
+// Running SetCommands after calling Start or Listen will have no effect
+func (c *Control) SetCommands(cmd ...*Command) error {
+	for _, comm := range cmd {
+		if comm.Name == "" {
+			return errors.New("command requires Name")
+		}
+
+		switch comm.Heading {
+		case DefaultGroup, MediaGroup, ActionGroup:
+			continue
+		default:
+			return errors.New("Unsupported or nil Heading set")
+		}
+	}
+
+	if e := c.run.setCommand(cmd...); e != nil {
+		return e
+	}
+
+	return nil
 }
 
 // Notification appends the content of msg to a buffers notification file

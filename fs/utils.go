@@ -184,14 +184,14 @@ func run(c *Control, ew *WriteCloser, line string) {
 		}
 
 	default:
-		if len(token) < 3 {
-			c.debug(ctlError, token[0], fmt.Errorf("too few arguments: %s", token))
-			fmt.Fprintf(ew, "unknown command issued: %s\n", token[0])
+		cmd, err := c.run.buildCommand(line)
+		if err != nil {
+			c.debug(ctlError, token[0], errors.New("unsupported command"))
+			fmt.Fprintf(ew, "unsupported command")
 			return
 		}
 
-		msg := strings.Join(token[2:], " ")
-		if e := c.ctl.Default(c, token[0], token[1], msg); e != nil {
+		if e := c.ctl.Default(c, cmd); e != nil {
 			c.debug(ctlError, token[0], e)
 			fmt.Fprintf(ew, "%s: %v\n", token[0], e)
 		}

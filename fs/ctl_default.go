@@ -11,10 +11,12 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 )
 
 type control struct {
+	cmdlist []*Command
 	rundir  string
 	logdir  string
 	doctype string
@@ -43,6 +45,19 @@ func (c *control) event(eventmsg string) error {
 	f.WriteString(eventmsg + "\n")
 
 	return nil
+}
+
+func (c *control) setCommand(cmd ...*Command) error {
+	for _, comm := range cmd {
+		c.cmdlist = append(c.cmdlist, comm)
+	}
+
+	sort.Sort(cmdList(c.cmdlist))
+	return nil
+}
+
+func (c *control) buildCommand(cmd string) (*Command, error) {
+	return buildCommand(cmd, c.cmdlist)
 }
 
 func (c *control) cleanup() {
