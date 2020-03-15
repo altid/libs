@@ -53,7 +53,7 @@ func TestCommands(t *testing.T) {
 	if _, e := mc.Input([]byte("Some text")); e != nil {
 		t.Error(e)
 	}
-	
+
 	if _, e := mc.Open("chicken"); e != nil {
 		t.Error(e)
 	}

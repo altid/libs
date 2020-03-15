@@ -34,7 +34,7 @@ var (
 )
 
 // Color represents a color markdown element
-// Valid values for code are any [markup constants], or color strings in hexidecimal form.
+// Valid values for code are any [markup constants], or color strings in hexadecimal form.
 // #000000 to #FFFFFF, as well as #000 to #FFF. No alpha channel support currently exists.
 type Color struct {
 	code string
