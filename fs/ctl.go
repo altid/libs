@@ -1,4 +1,3 @@
-// canonically create and manage Altid services
 package fs
 
 import (
