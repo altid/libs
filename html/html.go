@@ -84,7 +84,7 @@ func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 				case tags[atom.H6]:
 					fmt.Fprintf(c.w, "###### ")
 				}
-				url, msg := parseUrl(z, t)
+				url, msg := parseURL(z, t)
 				fmt.Fprintf(c.w, "[%s](%s)", url, msg)
 				continue
 			}
@@ -165,9 +165,11 @@ func endToken(t atom.Atom) string {
 func parseToken(t html.Token, m map[atom.Atom]bool) string {
 	// NOTE(halfwit): This is rather messy right now, and will need a revisit
 	var dst bytes.Buffer
+
 	if m[atom.Script] || m[atom.Head] {
 		return ""
 	}
+
 	switch {
 	case m[atom.H1]:
 		dst.WriteString("# ")
@@ -195,7 +197,10 @@ func parseToken(t html.Token, m map[atom.Atom]bool) string {
 	case m[atom.Li]:
 		dst.WriteString(" - ")
 	}
+
 	d := t.Data
+
+	// If all we had is whitespace, don't return anything
 	if strings.TrimSpace(d) == "" {
 		return ""
 	}
@@ -206,7 +211,7 @@ func parseToken(t html.Token, m map[atom.Atom]bool) string {
 
 // TODO: Give back triple, containing link, url, image
 // Switch on image == ""
-func parseUrl(z *html.Tokenizer, t html.Token) (link, url string) {
+func parseURL(z *html.Tokenizer, t html.Token) (link, url string) {
 	for _, attr := range t.Attr {
 		if attr.Key == "href" {
 			url = attr.Val
@@ -264,7 +269,7 @@ func parseNav(z *html.Tokenizer, t html.Token) chan *markup.Url {
 				if t.DataAtom != atom.A {
 					continue
 				}
-				link, url := parseUrl(z, t)
+				link, url := parseURL(z, t)
 				m <- &markup.Url{
 					Link: []byte(link),
 					Msg:  []byte(url),
