@@ -35,17 +35,17 @@ func TestColor(t *testing.T) {
 }
 
 func TestUrl(t *testing.T) {
-	c, err := markup.NewUrl(path, id)
+	c, err := markup.NewURL(path, id)
 	if err != nil || c.String() != fmt.Sprintf("[%s](%s)", id, path) {
 		t.Error("failed to parse URL")
 	}
 
-	c, err = markup.NewUrl(path, none)
+	c, err = markup.NewURL(path, none)
 	if err != nil || c.String() != fmt.Sprintf("[%s](%s)", path, path) {
 		t.Error("failed to parse URL")
 	}
 
-	_, err = markup.NewUrl(none, none)
+	_, err = markup.NewURL(none, none)
 	if err == nil {
 		t.Error("parsing error - invalid code in NewUrl")
 	}

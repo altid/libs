@@ -1,4 +1,4 @@
-// helper library for parsing HTML for Altid markup
+// Package html helper library for parsing HTML for Altid markup
 package html
 
 import (
@@ -15,28 +15,31 @@ import (
 
 var empty struct{}
 
-// HTMLCleaner wraps the underlying WriteCloser, and handles parsing HTML into Altid-flavoured markdown, to the underlying writer.
-type HTMLCleaner struct {
+// Cleaner wraps the underlying WriteCloser, and handles parsing HTML into Altid-flavoured markdown, to the underlying writer.
+type Cleaner struct {
 	w io.WriteCloser
 	p Handler
 }
 
+// Handler will be called to satisfy both <nav> and <img> elements
 type Handler interface {
 	NavHandler
 	ImgHandler
 }
 
+// NavHandler is called when the parser encounters a <nav> element
 type NavHandler interface {
-	Nav(*markup.Url) error
+	Nav(*markup.URL) error
 }
 
+// ImgHandler is called when the parser encounters an <img> element
 type ImgHandler interface {
 	Img(string) error
 }
 
-// NewHTMLCleaner returns a usable HTMLCleaner struct
+// NewCleaner returns a usable Cleaner struct
 // if either w or p are nil it will return an error
-func NewHTMLCleaner(w io.WriteCloser, p Handler) (*HTMLCleaner, error) {
+func NewCleaner(w io.WriteCloser, p Handler) (*Cleaner, error) {
 	if w == nil {
 		return nil, errors.New("nil WriteCloser")
 	}
@@ -45,7 +48,7 @@ func NewHTMLCleaner(w io.WriteCloser, p Handler) (*HTMLCleaner, error) {
 		return nil, errors.New("nil Handler")
 	}
 
-	h := &HTMLCleaner{
+	h := &Cleaner{
 		w: w,
 		p: p,
 	}
@@ -56,7 +59,7 @@ func NewHTMLCleaner(w io.WriteCloser, p Handler) (*HTMLCleaner, error) {
 // Parse - This assumes properly formatted html, and will return an error from the underlying html tokenizer if encountered
 // Parse writes properly formatted Altid markup to the underlying writer, translating many elements into their markdown form. This will be considered lossy, as the token metadata is ignored in all cases.
 // This will return any errors encountered, and EOF on success
-func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
+func (c *Cleaner) Parse(r io.ReadCloser) error {
 	z := html.NewTokenizer(r)
 	tags := make(map[atom.Atom]bool)
 	for {
@@ -129,17 +132,17 @@ func (c *HTMLCleaner) Parse(r io.ReadCloser) error {
 }
 
 // Write calls the underlying WriteCloser's Write method. It does not modify the contents of `msg`
-func (c *HTMLCleaner) Write(msg []byte) (n int, err error) {
+func (c *Cleaner) Write(msg []byte) (n int, err error) {
 	return c.w.Write(msg)
 }
 
 // WriteString is the same as Write, except it accepts a string instead of bytes.
-func (c *HTMLCleaner) WriteString(msg string) (n int, err error) {
+func (c *Cleaner) WriteString(msg string) (n int, err error) {
 	return io.WriteString(c.w, msg)
 }
 
 // Close calls the underlying WriteCloser's Close method.
-func (c *HTMLCleaner) Close() {
+func (c *Cleaner) Close() {
 	c.w.Close()
 }
 
@@ -255,8 +258,8 @@ func parseImage(token html.Token) (image, alt string) {
 	return
 }
 
-func parseNav(z *html.Tokenizer, t html.Token) chan *markup.Url {
-	m := make(chan *markup.Url)
+func parseNav(z *html.Tokenizer, t html.Token) chan *markup.URL {
+	m := make(chan *markup.URL)
 	go func() {
 		defer close(m)
 		for {
@@ -270,7 +273,7 @@ func parseNav(z *html.Tokenizer, t html.Token) chan *markup.Url {
 					continue
 				}
 				link, url := parseURL(z, t)
-				m <- &markup.Url{
+				m <- &markup.URL{
 					Link: []byte(link),
 					Msg:  []byte(url),
 				}
