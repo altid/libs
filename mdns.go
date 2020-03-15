@@ -16,7 +16,7 @@ func registerMDNS(srv map[string]*service) error {
 		if err != nil {
 			return err
 		}
-		
+
 		mdnsEntries = append(mdnsEntries, entry)
 	}
 
