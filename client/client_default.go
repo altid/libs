@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 
+	"github.com/altid/libs/fs"
 	"github.com/knieriem/g/go9p/user"
 	"github.com/lionkov/go9p/p"
 	"github.com/lionkov/go9p/p/clnt"
@@ -123,6 +124,16 @@ func (c *client) notifications() ([]byte, error) {
 	defer c.clnt.Remove(nfid)
 
 	return c.clnt.Read(nfid, 0, p.MSIZE)
+}
+
+func (c *client) getCommands() ([]*fs.Command, error) {
+	_, err := getNamedFile(c, "ctl")
+	if err != nil {
+		return nil, err
+	}
+	// Parse into Command struct
+
+	return nil, nil
 }
 
 func (c *client) feed() (io.ReadCloser, error) {

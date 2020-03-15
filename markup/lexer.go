@@ -49,7 +49,7 @@ func NewLexer(src []byte) *Lexer {
 
 func NewStringLexer(src string) *Lexer {
 	return &Lexer{
-		src: []byte(src),
+		src:   []byte(src),
 		items: make(chan Item, 2),
 		state: lexText,
 	}
@@ -602,6 +602,6 @@ func (l *Lexer) acceptRun(valid string) {
 		if strings.IndexByte(valid, l.nextChar()) < 0 {
 			l.backup()
 			return
-		}	
+		}
 	}
 }

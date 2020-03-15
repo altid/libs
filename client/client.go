@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/altid/libs/fs"
 	"github.com/lionkov/go9p/p"
 )
 
@@ -44,7 +45,7 @@ type runner interface {
 	connect(int) error
 	attach() error
 	auth() error
-	ctl(int, ...string) (int, error) // Just call write at the end in nested types
+	ctl(int, ...string) (int, error)
 	tabs() ([]byte, error)
 	title() ([]byte, error)
 	status() ([]byte, error)
@@ -53,6 +54,7 @@ type runner interface {
 	notifications() ([]byte, error)
 	feed() (io.ReadCloser, error)
 	document() ([]byte, error)
+	getCommands() ([]*fs.Command, error)
 }
 
 // NewClient returns a client ready to connect to addr
@@ -77,6 +79,11 @@ func NewMockClient(addr string) *Client {
 	return &Client{
 		run: dmc,
 	}
+}
+
+// GetCommands returns a list of available commands for the connected service
+func (c Client) GetCommands() ([]*fs.Command, error) {
+	return c.run.getCommands()
 }
 
 // Document returns the contents of a document file on the host

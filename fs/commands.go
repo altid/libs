@@ -28,7 +28,7 @@ const (
 const commandTemplate = `{{range .}}	{{.Name}}{{if .Alias}}{{range .Alias}}|{{.}}{{end}}{{end}}{{if .Args}}	{{range .Args}}{{.}} {{end}}{{end}}{{if .Description}}	# {{.Description}}{{end}}
 {{end}}`
 
-// Command represents an avaliable command to a service
+// Command represents an available command to a service
 type Command struct {
 	Name        string
 	Description string

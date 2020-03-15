@@ -67,7 +67,7 @@ func TestWriters(t *testing.T) {
 	go func() {
 		// `reqs <- "open foo"` is a race condition, but on a real client there will always
 		// be an Open called before MainWriter (generally you call MainWriter in your client's Open method);
-		// So we explicitely call c.CreateBuffer to avoid in the mock client tests
+		// So we explicitly call c.CreateBuffer to avoid in the mock client tests
 		c.CreateBuffer("foo", "feed")
 		mw, err := c.MainWriter("foo", "feed")
 		if err != nil {
