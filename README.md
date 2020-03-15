@@ -2,6 +2,8 @@
 
 9pd is an Altid server, used to connect to clients over the 9p protocol.
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/altid/9pd)](https://goreportcard.com/report/github.com/altid/9pd)
+
 `go install github.com/altid/9p-server
 
 ## Usage
