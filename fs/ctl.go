@@ -19,7 +19,7 @@ import (
 // If a client attempts to write an invalid control message, it will return a generic error
 // When Open is called, a file will be created with a path of `mountpoint/msg/document (or feed)`, containing initially a file named what you've set doctype to.. Calls to open are expected to populate that file, as well as create any supplementary files needed, such as title, aside, status, input, etc
 // When Link is called, the content of the current buffer is expected to change, and the name of the current tab will be removed, replaced with msg
-// The main document or feed file is also symlinked into the given log directory, under service/msgs, so for example, an expensive parse would only have to be completed once for a given request, even across seperate runs; or a chat log could have history from previous sessions accessible.
+// The main document or feed file is also symlinked into the given log directory, under service/msgs, so for example, an expensive parse would only have to be completed once for a given request, even across separate runs; or a chat log could have history from previous sessions accessible.
 // The message provided to all three functions is all of the message, less 'open', 'join', 'close', or 'part'.
 type Controller interface {
 	Open(c *Control, msg string) error
@@ -83,31 +83,31 @@ const (
 
 //TODO(halfiwt) i18n
 var defaultCommands = []*Command{
-	&Command{
+	{
 		Name:        "open",
 		Args:        []string{"<buffer>"},
 		Heading:     DefaultGroup,
 		Description: "Open and change buffers to a given service",
 	},
-	&Command{
+	{
 		Name:        "close",
 		Args:        []string{"<buffer>"},
 		Heading:     DefaultGroup,
 		Description: "Close a buffer and return to the last opened previously",
 	},
-	&Command{
+	{
 		Name:        "buffer",
 		Args:        []string{"<buffer>"},
 		Heading:     DefaultGroup,
 		Description: "Change to the named buffer",
 	},
-	&Command{
+	{
 		Name:        "link",
 		Args:        []string{"<to>", "<from>"},
 		Heading:     DefaultGroup,
 		Description: "Overwrite the current <to> buffer with <from>, switching to from after. This destroys <to>",
 	},
-	&Command{
+	{
 		Name:        "quit",
 		Args:        []string{},
 		Heading:     DefaultGroup,
@@ -255,7 +255,7 @@ func (c *Control) Listen() error {
 	return c.run.listen()
 }
 
-// Start is like listen, but occurs in a seperate go routine, returning flow to the calling process once the ctl file is instantiated.
+// Start is like listen, but occurs in a separate go routine, returning flow to the calling process once the ctl file is instantiated.
 // This provides a context.Context that can be used for cancellations
 func (c *Control) Start() (context.Context, error) {
 	go sigwatch(c)
