@@ -93,17 +93,7 @@ func printCtlFile(cmdlist []*Command, to io.WriteCloser) error {
 	for n, comm := range cmdlist {
 		// 0, 0 and comm.Heading != curr; we want to set a heading
 		if comm.Heading != curr {
-			switch curr {
-			case ActionGroup:
-				to.Write([]byte("emotes:\n"))
-			case DefaultGroup:
-				to.Write([]byte("general:\n"))
-			case MediaGroup:
-				to.Write([]byte("media:\n"))
-			default:
-				log.Fatal("Group not implemented")
-			}
-
+			cmdHeading(to, curr)
 			for j, subcomm := range cmdlist[last:] {
 				if subcomm.Heading != comm.Heading {
 					if n+j > last {
@@ -122,20 +112,24 @@ func printCtlFile(cmdlist []*Command, to io.WriteCloser) error {
 
 	// We have one Grouping remaining, print
 	if last < len(cmdlist) {
-		switch cmdlist[last].Heading {
-		case ActionGroup:
-			to.Write([]byte("emotes:\n"))
-		case DefaultGroup:
-			to.Write([]byte("general:\n"))
-		case MediaGroup:
-			to.Write([]byte("media:\n"))
-		default:
-			log.Fatal("Group not implemented")
-		}
+		cmdHeading(to, cmdlist[last].Heading)
 		if e := tp.Execute(to, cmdlist[last:]); e != nil {
 			return e
 		}
 	}
 
 	return nil
+}
+
+func cmdHeading(to io.WriteCloser, heading ComGroup) {
+	switch heading {
+	case ActionGroup:
+		to.Write([]byte("emotes:\n"))
+	case DefaultGroup:
+		to.Write([]byte("general:\n"))
+	case MediaGroup:
+		to.Write([]byte("media:\n"))
+	default:
+		log.Fatal("Group not implemented")
+	}
 }
