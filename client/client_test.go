@@ -30,7 +30,7 @@ func TestFeed(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 5)
 	f.Close()
 }
 

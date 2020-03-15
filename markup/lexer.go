@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 )
 
+// The various types of text tokens
 const (
 	NormalText byte = iota
 	ColorCode
@@ -14,8 +15,8 @@ const (
 	ColorTextUnderline
 	ColorTextStrike
 	ColorTextEmphasis
-	UrlLink
-	UrlText
+	URLLink
+	URLText
 	ImagePath
 	ImageText
 	ImageLink
@@ -39,6 +40,7 @@ type Lexer struct {
 	state stateFn
 }
 
+// NewLexer takes in a byte array and returns a ready to run Lexer
 func NewLexer(src []byte) *Lexer {
 	return &Lexer{
 		src:   src,
@@ -47,6 +49,7 @@ func NewLexer(src []byte) *Lexer {
 	}
 }
 
+// NewStringLexer takes in a string and returns a ready to run Lexer
 func NewStringLexer(src string) *Lexer {
 	return &Lexer{
 		src:   []byte(src),
@@ -68,7 +71,7 @@ func (l *Lexer) Bytes() []byte {
 			return dst.Bytes()
 		case ColorCode, ImagePath:
 			continue
-		case UrlLink, ImageLink:
+		case URLLink, ImageLink:
 			dst.WriteString(" (")
 			dst.Write(i.Data)
 			dst.WriteString(") ")
@@ -76,7 +79,7 @@ func (l *Lexer) Bytes() []byte {
 			dst.Write(i.Data)
 		}
 	}
-	return dst.Bytes()
+
 }
 
 // String is the same as Bytes, but returns a string
@@ -92,7 +95,7 @@ type Item struct {
 	Data     []byte
 }
 
-// Next() returns the next Item from the tokenizer
+// Next returns the next Item from the tokenizer
 // If ItemType is EOF, any subsequent calls to Next() will panic
 func (l *Lexer) Next() Item {
 	for {
@@ -135,7 +138,7 @@ func lexText(l *Lexer) stateFn {
 		case '%':
 			return lexMaybeColor
 		case '[':
-			return lexMaybeUrl
+			return lexMaybeURL
 		case '!':
 			return lexMaybeImage
 		case '*':
@@ -240,7 +243,6 @@ func lexBold(l *Lexer) stateFn {
 			return lexText
 		}
 	}
-	return lexText
 }
 
 func lexMaybeColor(l *Lexer) stateFn {
@@ -418,7 +420,7 @@ func lexColorCode(l *Lexer) stateFn {
 	return lexText
 }
 
-func lexMaybeUrl(l *Lexer) stateFn {
+func lexMaybeURL(l *Lexer) stateFn {
 	l.ignore()
 	switch l.nextChar() {
 	case EOF:
@@ -427,31 +429,31 @@ func lexMaybeUrl(l *Lexer) stateFn {
 	case '!':
 		return lexImageLinkText
 	default:
-		return lexUrlText
+		return lexURLText
 	}
 }
 
-func lexUrlText(l *Lexer) stateFn {
+func lexURLText(l *Lexer) stateFn {
 	for {
 		if l.peek() == ']' {
-			l.emit(ImageText)
+			l.emit(URLText)
 		}
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
 			return nil
 		case ']':
-			return lexUrlLink
+			return lexURLLink
 		}
 	}
 }
 
-func lexUrlLink(l *Lexer) stateFn {
+func lexURLLink(l *Lexer) stateFn {
 	l.acceptRun("](")
 	l.ignore()
 	for {
 		if l.peek() == ')' {
-			l.emit(UrlLink)
+			l.emit(URLLink)
 		}
 		switch l.nextChar() {
 		case EOF:
