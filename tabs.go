@@ -52,7 +52,7 @@ func getTabs(msg *message) (interface{}, error) {
 		if tab.alert {
 			b.WriteString("!")
 		}
-		
+
 		fmt.Fprintf(&b, "%s [%d]\n", name, tab.count)
 	}
 

@@ -10,9 +10,8 @@ import (
 	"path"
 	"sync"
 
-	"github.com/altid/libs/auth"
 	"github.com/go9p/styx"
-	"github.com/go9p/styx/styxauth/factotum"
+	//"github.com/go9p/styx/styxauth/factotum"
 )
 
 type server struct {
@@ -115,9 +114,9 @@ func (s *server) run(svc *service) error {
 		Addr: svc.addr + fmt.Sprintf(":%d", *listenPort),
 	}
 
-	if *enableFactotum {
-		t.Auth, t.OpenAuth = factotum.Start(auth.OpenRPC, "p9any")
-	}
+	//if *enableFactotum {
+	//	t.Auth, t.OpenAuth = factotum.Start(auth.OpenRPC, "p9any")
+	//}
 
 	if *chatty {
 		t.TraceLog = log.New(os.Stderr, "", 0)
