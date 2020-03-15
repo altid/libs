@@ -23,5 +23,4 @@ This in turn calls the Open function of a Handler, as described below.
 
 Any errors encountered in the lifetime of a service will be logged to `errors`, and any events on any buffers will be logged to `events`
 */
-
 package fs

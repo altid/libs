@@ -1,4 +1,4 @@
-// manage and create configs for Altid services
+// Package config manage and create configs for Altid services
 package config
 
 import (
@@ -15,6 +15,7 @@ import (
 	"github.com/mischief/ndb"
 )
 
+// Errors
 const (
 	ErrNoConfigure  = "unable to find or create config for this service"
 	ErrNoSuchKey    = "no such key"

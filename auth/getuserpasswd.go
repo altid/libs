@@ -11,11 +11,12 @@ import (
 	"strings"
 )
 
+// UserPasswd is return from a successful Getuserpasswd
 type UserPasswd struct {
 	User, Password string
 }
 
-// Get a password. params i.e. proto=pass service=ssh role=client server=%s user=%s
+// Getuserpasswd - get a password. params i.e. proto=pass service=ssh role=client server=%s user=%s
 func Getuserpasswd(params string, args ...interface{}) (*UserPasswd, error) {
 	var buf [4096]byte
 	f, e := openRPC()
@@ -68,11 +69,9 @@ retry1:
 	default:
 		return nil, errors.New(s)
 	}
-
-	return nil, nil
 }
 
-// find our rsa public keys
+// Listkeys find our rsa public keys
 func Listkeys() ([]rsa.PublicKey, error) {
 	var keys []rsa.PublicKey
 
@@ -121,8 +120,4 @@ func Listkeys() ([]rsa.PublicKey, error) {
 	}
 
 	return keys, nil
-}
-
-// Get a private key. params i.e. proto=rsa service=ssh role=client
-func Getkey(params string, args ...interface{}) {
 }

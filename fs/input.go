@@ -22,6 +22,7 @@ type inputter interface {
 	stop(context.Context)
 }
 
+// Input allows an Altid service to listen for writes to a file named input for a given buffer
 type Input struct {
 	h     Handler
 	r     io.ReadCloser

@@ -8,23 +8,27 @@ import (
 	"strconv"
 )
 
-type AuthRpc struct {
+// RPC wraps an rpc session
+type RPC struct {
 	F   io.ReadWriteCloser
 	Arg []byte
-	Ai  *AuthInfo
+	Ai  *Info
 }
 
-type AuthInfo struct {
+// Info is returned after a successful authentication
+type Info struct {
 	Cuid   string
 	Suid   string
 	Cap    string
 	Secret []byte
 }
 
-type AuthRet int
+// Ret is a reply from an RPC session
+type Ret int
 
+// All of the potential replies from an RPC
 const (
-	ARok AuthRet = iota /* rpc return values */
+	ARok Ret = iota /* rpc return values */
 	ARdone
 	ARerror
 	ARneedkey
@@ -35,10 +39,10 @@ const (
 	ARrpcfailure
 	ARphase
 
-	AuthRpcMax = 4096
+	RPCMax = 4096
 )
 
-var artab = map[string]AuthRet{
+var artab = map[string]Ret{
 	"ok":       ARok,
 	"done":     ARdone,
 	"error":    ARerror,
@@ -76,8 +80,8 @@ func garray(buf []byte) ([]byte, []byte) {
 	return buf[n:], buf[:n]
 }
 
-func convM2AI(buf []byte) *AuthInfo {
-	ai := new(AuthInfo)
+func convM2AI(buf []byte) *Info {
+	ai := new(Info)
 
 	buf, ai.Cuid = gstring(buf)
 	buf, ai.Suid = gstring(buf)
@@ -87,8 +91,9 @@ func convM2AI(buf []byte) *AuthInfo {
 	return ai
 }
 
-func (rpc *AuthRpc) GetInfo() error {
-	if r, msg := rpc.Rpc("authinfo", ""); r != ARok {
+// GetInfo attempts to retreive an AuthInfo from an RPC
+func (rpc *RPC) GetInfo() error {
+	if r, msg := rpc.Run("authinfo", ""); r != ARok {
 		return errors.New(msg)
 	}
 	ai := convM2AI(rpc.Arg)
@@ -100,8 +105,9 @@ func (rpc *AuthRpc) GetInfo() error {
 	return nil
 }
 
-func (rpc *AuthRpc) Rpc(overb string, arg string) (AuthRet, string) {
-	if len(overb)+1+len(arg) > AuthRpcMax {
+// Run initiates an RPC interaction
+func (rpc *RPC) Run(overb string, arg string) (Ret, string) {
+	if len(overb)+1+len(arg) > RPCMax {
 		return ARtoobig, "rpc too big"
 	}
 
@@ -109,12 +115,13 @@ func (rpc *AuthRpc) Rpc(overb string, arg string) (AuthRet, string) {
 		return ARrpcfailure, "write: " + err.Error()
 	}
 
-	ibuf := make([]byte, AuthRpcMax)
-	if n, err := rpc.F.Read(ibuf); err != nil {
+	ibuf := make([]byte, RPCMax)
+	n, err := rpc.F.Read(ibuf)
+	if err != nil {
 		return ARrpcfailure, "read: " + err.Error()
-	} else {
-		ibuf = ibuf[:n]
 	}
+
+	ibuf = ibuf[:n]
 
 	var iverb string
 	if i := bytes.IndexByte(ibuf, ' '); i > 0 {
@@ -138,9 +145,9 @@ func (rpc *AuthRpc) Rpc(overb string, arg string) (AuthRet, string) {
 	case ARerror:
 		if string(rpc.Arg) == "" {
 			return ARerror, "unspecified rpc error"
-		} else {
-			return ARerror, string(rpc.Arg)
 		}
+
+		return ARerror, string(rpc.Arg)
 	case ARneedkey:
 		return ARneedkey, string(ibuf)
 	case ARbadkey:
@@ -150,16 +157,15 @@ func (rpc *AuthRpc) Rpc(overb string, arg string) (AuthRet, string) {
 	default:
 		return ar, fmt.Sprintf("unknown rpc type %d", ar)
 	}
-	panic("can't happen")
 }
 
-func fauth_proxy(rw io.ReadWriter, rpc *AuthRpc, params string) (*AuthInfo, error) {
-	if r, msg := rpc.Rpc("start", params); r != ARok {
+func fauthProxy(rw io.ReadWriter, rpc *RPC, params string) (*Info, error) {
+	if r, msg := rpc.Run("start", params); r != ARok {
 		return nil, errors.New("fauth_proxy start: " + msg)
 	}
 
 	for {
-		switch r, msg := rpc.Rpc("read", ""); r {
+		switch r, msg := rpc.Run("read", ""); r {
 		case ARdone:
 			if err := rpc.GetInfo(); err != nil {
 				return nil, err
@@ -170,12 +176,12 @@ func fauth_proxy(rw io.ReadWriter, rpc *AuthRpc, params string) (*AuthInfo, erro
 				return nil, errors.New("write: " + err.Error())
 			}
 		case ARphase:
-			var r AuthRet
+			var r Ret
 			var msg string
 			n := 0
-			buf := make([]byte, AuthRpcMax)
+			buf := make([]byte, RPCMax)
 			for {
-				r, msg = rpc.Rpc("write", string(buf[:n]))
+				r, msg = rpc.Run("write", string(buf[:n]))
 				if r != ARtoosmall {
 					break
 				}
@@ -184,7 +190,7 @@ func fauth_proxy(rw io.ReadWriter, rpc *AuthRpc, params string) (*AuthInfo, erro
 				if err != nil {
 					return nil, errors.New("phase atoi: " + err.Error() + ": " + string(rpc.Arg))
 				}
-				if i > AuthRpcMax {
+				if i > RPCMax {
 					break
 				}
 
@@ -205,29 +211,30 @@ func fauth_proxy(rw io.ReadWriter, rpc *AuthRpc, params string) (*AuthInfo, erro
 			return nil, errors.New("rpc: " + msg)
 		}
 	}
-
-	return nil, errors.New("fauth_proxy stub")
 }
 
+// OpenRPC returns an open file descriptor to an RPC
 func OpenRPC() (io.ReadWriteCloser, error) {
 	return openRPC()
 }
 
-func Proxy(rw io.ReadWriter, format string, a ...interface{}) (*AuthInfo, error) {
+// Proxy will proxy an RPC session through the local factotum
+func Proxy(rw io.ReadWriter, format string, a ...interface{}) (*Info, error) {
 	f, err := openRPC()
 	if err != nil {
 		return nil, errors.New("openRPC: " + err.Error())
 	}
 	defer f.Close()
 
-	rpc := &AuthRpc{
+	rpc := &RPC{
 		F: f,
 	}
 
 	keyspec := fmt.Sprintf(format, a...)
-	return fauth_proxy(rw, rpc, keyspec)
+	return fauthProxy(rw, rpc, keyspec)
 }
 
+// RsaSign uses the factotum sign sha1, returning the bytes or an error
 func RsaSign(sha1 []byte) (signed []byte, err error) {
 	f, err := openRPC()
 	if err != nil {
@@ -236,17 +243,17 @@ func RsaSign(sha1 []byte) (signed []byte, err error) {
 
 	defer f.Close()
 
-	rpc := &AuthRpc{
+	rpc := &RPC{
 		F: f,
 	}
 
-	if ar, str := rpc.Rpc("start", "role=sign proto=rsa"); ar != ARok {
+	if ar, str := rpc.Run("start", "role=sign proto=rsa"); ar != ARok {
 		return nil, errors.New("start: " + str)
 	}
-	if ar, str := rpc.Rpc("write", string(sha1)); ar != ARok {
+	if ar, str := rpc.Run("write", string(sha1)); ar != ARok {
 		return nil, errors.New("write: " + str)
 	}
-	if ar, str := rpc.Rpc("read", ""); ar != ARok || rpc.Arg == nil || len(rpc.Arg) <= 0 {
+	if ar, str := rpc.Run("read", ""); ar != ARok || rpc.Arg == nil || len(rpc.Arg) <= 0 {
 		return nil, errors.New("read: " + str)
 	}
 
