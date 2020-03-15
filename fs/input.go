@@ -126,7 +126,7 @@ func (i *Input) StartContext(ctx context.Context) {
 	i.ctx = ctx
 
 	go func() {
-		for msg := range inputs {		
+		for msg := range inputs {
 			l := markup.NewLexer(msg)
 			if e := i.h.Handle(i.buff, l); e != nil {
 				errors <- e

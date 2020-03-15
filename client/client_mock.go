@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/altid/libs/fs"
 	fuzz "github.com/google/gofuzz"
 )
 
@@ -37,6 +38,11 @@ func (c *mock) auth() error {
 	// TODO(halfwit): We want to flag in factotum use and hand it an afid
 	c.debug(CmdAuth, true)
 	return nil
+}
+
+func (c *mock) getCommands() ([]*fs.Command, error) {
+	// TODO(halfwit): Mock up a general: list
+	return nil, nil
 }
 
 // We want to eventually create and track tabs internally to the library

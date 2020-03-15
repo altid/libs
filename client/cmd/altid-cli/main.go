@@ -1,15 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"flag"
-	"fmt"
-	"io"
 	"log"
 	"os"
-	"strings"
-	"time"
 
 	"github.com/altid/libs/client"
 )
@@ -59,151 +54,18 @@ func main() {
 		log.Fatal(e)
 	}
 
-	getDocument := func() {
-		f, err := cl.Document()
-		if err != nil {
-			log.Println("Unable to find a feed or document for this buffer")
-			return
-		}
+	l := newListener(cl)
+	go l.listen()
 
-		fmt.Printf("%s\n", f)
-	}
-
-	getFeed := func() {
-		f, err := cl.Feed()
-		if err != nil {
-			getDocument()
-			return
-		}
-
-		defer f.Close()
-
-		for {
-			// Ensure your buffer is MSIZE
-			b := make([]byte, client.MSIZE)
-
-			_, err := f.Read(b)
-			if err != nil && err != io.EOF {
-				log.Print(err)
-				return
-			}
-
-			fmt.Printf("%s", b)
-		}
-	}
-
-	go getFeed()
-
-	rd := bufio.NewReader(os.Stdin)
-
+	// Main loop
 	for {
-		line, err := rd.ReadString('\n')
-		if err != nil && err != io.EOF {
+		select {
+		case <-l.done:
 			break
-		}
-
-		args := strings.Fields(line)
-
-		switch args[0] {
-		case "/help":
-			fmt.Print(usage)
-		case "/quit":
-			os.Exit(0)
-		case "/buffer":
-			if len(args) != 2 {
-				log.Print(errBadArgs)
-				continue
-			}
-			if _, err := cl.Buffer(args[1]); err != nil {
-				log.Println(err)
-				continue
-			}
-
-			time.Sleep(time.Millisecond * 200)
-			go getFeed()
-		case "/tabs":
-			t, err := cl.Tabs()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			fmt.Printf("%s", t)
-		case "/open":
-			if len(args) != 2 {
-				log.Print(errBadArgs)
-				continue
-			}
-			if _, err := cl.Open(args[1]); err != nil {
-				log.Println(err)
-			}
-
-			time.Sleep(time.Millisecond * 200)
-			go getFeed()
-		case "/close":
-			if len(args) != 2 {
-				log.Print(errBadArgs)
-				continue
-			}
-			if _, err := cl.Close(args[1]); err != nil {
-				log.Println(err)
-				continue
-			}
-
-			time.Sleep(time.Millisecond * 200)
-			go getFeed()
-		// TODO(halfwit): We want to track the current buffer
-		// and only send the `from` field internally
-		case "/link":
-			if len(args) != 3 {
-				log.Println(errBadArgs)
-				continue
-			}
-			if _, err := cl.Link(args[1], args[2]); err != nil {
-				log.Println(err)
-				continue
-			}
-
-			time.Sleep(time.Millisecond * 200)
-			go getFeed()
-		case "/title":
-			t, err := cl.Title()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			fmt.Printf("%s", t)
-		case "/status":
-			t, err := cl.Status()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			fmt.Printf("%s", t)
-		case "/aside":
-			t, err := cl.Aside()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			fmt.Printf("%s", t)
-		case "/notify":
-			t, err := cl.Notifications()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			fmt.Printf("%s", t)
-		default:
-			if line[0] == '/' {
-				//cl.Ctl([]byte(line[1:]))
-				continue
-			}
-			cl.Input([]byte(line))
+		case p := <-l.data:
+			os.Stdout.Write(p)
+		case e := <-l.err:
+			log.Println(e)
 		}
 	}
 }
