@@ -1,4 +1,3 @@
-// escape and parse markdown elements
 package markup
 
 import (
@@ -8,6 +7,7 @@ import (
 	"strings"
 )
 
+// Available markup colour codes, feel free to PR your favourite
 const (
 	White      = "white"
 	Black      = "black"
@@ -45,7 +45,7 @@ type Color struct {
 // Returns error if color code is invalid
 func NewColor(code string, msg []byte) (*Color, error) {
 	if !validateColorCode(code) {
-		return nil, fmt.Errorf("Invalid color code %s\n", code)
+		return nil, fmt.Errorf("invalid color code %s", code)
 	}
 	color := &Color{
 		code: code,
@@ -58,25 +58,25 @@ func (c *Color) String() string {
 	return fmt.Sprintf("%%[%s](%s)", escape(c.msg), c.code)
 }
 
-// Url represents a link markdown element
-type Url struct {
+// URL represents a link markdown element
+type URL struct {
 	Link []byte
 	Msg  []byte
 }
 
-// NewUrl returns a Url
+// NewURL returns a URL, or an error if encountered
 // If `msg` is empty, the contents of `link` will be used
 // If `link` is empty, an error will be returned
 // There are no assumptions about what link points to
 // But before a beta release there may be a schema imposed
-func NewUrl(link, msg []byte) (*Url, error) {
+func NewURL(link, msg []byte) (*URL, error) {
 	if len(link) == 0 {
-		return nil, fmt.Errorf("No link provided for %s\n", msg)
+		return nil, fmt.Errorf("no link provided for %s", msg)
 	}
 	if len(msg) == 0 {
 		msg = link
 	}
-	url := &Url{
+	url := &URL{
 		Link: link,
 		Msg:  msg,
 	}
@@ -84,7 +84,7 @@ func NewUrl(link, msg []byte) (*Url, error) {
 }
 
 // The form will be "[msg](link)"
-func (u *Url) String() string {
+func (u *URL) String() string {
 	return fmt.Sprintf("[%s](%s)", u.Msg, u.Link)
 }
 
@@ -101,10 +101,10 @@ type Image struct {
 // If either `img` or `alt` are empty, one will be substituted for the other
 func NewImage(path, msg, alt []byte) (*Image, error) {
 	if len(alt) == 0 && len(msg) == 0 {
-		return nil, fmt.Errorf("No img or alt provided for path %s\n", path)
+		return nil, fmt.Errorf("no img or alt provided for path %s", path)
 	}
 	if len(path) == 0 {
-		return nil, fmt.Errorf("No path provided for image")
+		return nil, fmt.Errorf("no path provided for image")
 	}
 	if len(alt) == 0 {
 		alt = msg
@@ -129,7 +129,7 @@ type Cleaner struct {
 	w io.WriteCloser
 }
 
-// Returns a Cleaner
+// NewCleaner returns a Cleaner
 func NewCleaner(w io.WriteCloser) *Cleaner {
 	return &Cleaner{
 		w: w,
@@ -152,22 +152,22 @@ func (c *Cleaner) WriteEscaped(msg []byte) (n int, err error) {
 	return c.w.Write(escape(msg))
 }
 
-// Variant of WriteEscaped which accepts a string as input
+// WriteStringEscaped is a variant of WriteEscaped which accepts a string as input
 func (c *Cleaner) WriteStringEscaped(msg string) (n int, err error) {
 	return io.WriteString(c.w, EscapeString(msg))
 }
 
-// Variant of Write which accepts a format specifier
+// Writef is a variant of Write which accepts a format specifier
 func (c *Cleaner) Writef(format string, args ...interface{}) (n int, err error) {
 	return fmt.Fprintf(c.w, format, args...)
 }
 
-// Variant of WriteEscaped which accepts a format specifier
+// WritefEscaped is a variant of WriteEscaped which accepts a format specifier
 func (c *Cleaner) WritefEscaped(format string, args ...interface{}) (n int, err error) {
 	return doWritef(c.w, format, args...)
 }
 
-// Variant of WriteEscaped which adds an nth-nested markdown list element to the underlying WriteCloser
+// WriteList is a variant of WriteEscaped which adds an nth-nested markdown list element to the underlying WriteCloser
 func (c *Cleaner) WriteList(depth int, msg []byte) (n int, err error) {
 	spaces := strings.Repeat("	", depth)
 	if depth > 0 {
@@ -176,7 +176,7 @@ func (c *Cleaner) WriteList(depth int, msg []byte) (n int, err error) {
 	return fmt.Fprintf(c.w, "%s%s", spaces, escape(msg))
 }
 
-// Variant of WriteList which accepts a format specifier
+// WritefList is a variant of WriteList which accepts a format specifier
 func (c *Cleaner) WritefList(depth int, format string, args ...interface{}) (n int, err error) {
 	spaces := strings.Repeat("	", depth)
 	if depth > 0 {
@@ -185,13 +185,13 @@ func (c *Cleaner) WritefList(depth int, format string, args ...interface{}) (n i
 	return doWritef(c.w, spaces+format, args...)
 }
 
-// Variant of WriteEscaped which writes an nth degree markdown header element to the underlying WriteCloser
+// WriteHeader is a variant of WriteEscaped which writes an nth degree markdown header element to the underlying WriteCloser
 func (c *Cleaner) WriteHeader(degree int, msg []byte) (n int, err error) {
 	hashes := strings.Repeat("#", degree)
 	return fmt.Fprintf(c.w, "%s%s", hashes, escape(msg))
 }
 
-// Variant of WriteHeader which accepts a format specifier
+// WritefHeader is a variant of WriteHeader which accepts a format specifier
 func (c *Cleaner) WritefHeader(degree int, format string, args ...interface{}) (n int, err error) {
 	hashes := strings.Repeat("#", degree)
 	return doWritef(c.w, hashes+format, args...)
