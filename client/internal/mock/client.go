@@ -1,4 +1,4 @@
-package client
+package mock
 
 import (
 	"io"
@@ -6,46 +6,55 @@ import (
 	"os"
 	"time"
 
+	"github.com/altid/libs/client/internal/feed"
+	"github.com/altid/libs/client/internal/util"
 	"github.com/altid/libs/fs"
 	fuzz "github.com/google/gofuzz"
 )
 
-type mock struct {
+type Client struct {
 	afid  io.ReadWriteCloser
 	addr  string
 	debug func(int, ...interface{})
 }
 
-func (c *mock) cleanup() {}
+func NewClient(addr string) *Client {
+	return &Client{
+		addr:  addr,
+		debug: func(int, ...interface{}) {},
+	}
+}
 
-func (c *mock) connect(debug int) error {
+func (c *Client) Cleanup() {}
+
+func (c *Client) Connect(debug int) error {
 	if debug > 0 {
 		c.debug = mockLogging
 	}
 
-	c.debug(CmdConnect, c.addr)
+	c.debug(util.CmdConnect, c.addr)
 	return nil
 }
 
 // Test the afid here
-func (c *mock) attach() error {
+func (c *Client) Attach() error {
 	// Read on RPC for
-	c.debug(CmdAttach, true)
+	c.debug(util.CmdAttach, true)
 	return nil
 }
 
-func (c *mock) auth() error {
+func (c *Client) Auth() error {
 	// TODO(halfwit): We want to flag in factotum use and hand it an afid
-	c.debug(CmdAuth, true)
+	c.debug(util.CmdAuth, true)
 	return nil
 }
 
-func (c *mock) command(cmd *fs.Command) error {
-	c.debug(CmdComm, cmd)
+func (c *Client) Command(cmd *fs.Command) error {
+	c.debug(util.CmdComm, cmd)
 	return nil
 }
 
-func (c *mock) getCommands() ([]*fs.Command, error) {
+func (c *Client) GetCommands() ([]*fs.Command, error) {
 	d := []*fs.Command{
 		{
 			Name:        "open",
@@ -82,8 +91,8 @@ func (c *mock) getCommands() ([]*fs.Command, error) {
 }
 
 // We want to eventually create and track tabs internally to the library
-func (c *mock) ctl(cmd int, args ...string) (int, error) {
-	data, err := runClientCtl(cmd, args...)
+func (c *Client) Ctl(cmd int, args ...string) (int, error) {
+	data, err := util.RunClientCtl(cmd, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -92,47 +101,47 @@ func (c *mock) ctl(cmd int, args ...string) (int, error) {
 	return 0, nil
 }
 
-func (c *mock) tabs() ([]byte, error) {
-	//c.debug(CmdTabs, c.tablist)
+func (c *Client) Tabs() ([]byte, error) {
+	//c.debug(util.CmdTabs, c.tablist)
 	return nil, nil
 }
 
-func (c *mock) title() ([]byte, error) {
-	//c.debug(CmdTitle, c.current)
+func (c *Client) Title() ([]byte, error) {
+	//c.debug(util.CmdTitle, c.current)
 	//return c.current, nil
 	return nil, nil
 }
 
-func (c *mock) status() ([]byte, error) {
-	c.debug(CmdStatus)
+func (c *Client) Status() ([]byte, error) {
+	c.debug(util.CmdStatus)
 	return []byte("status"), nil
 }
 
-func (c *mock) document() ([]byte, error) {
+func (c *Client) Document() ([]byte, error) {
 	b := make([]byte, 4096)
 	fuzz := fuzz.New()
 
 	fuzz.Fuzz(&b)
-	c.debug(CmdDocument, b)
+	c.debug(util.CmdDocument, b)
 	return b, nil
 }
 
-func (c *mock) aside() ([]byte, error) {
-	c.debug(CmdAside)
+func (c *Client) Aside() ([]byte, error) {
+	c.debug(util.CmdAside)
 	return []byte("aside"), nil
 }
 
-func (c *mock) input(data []byte) (int, error) {
-	c.debug(CmdInput, data)
+func (c *Client) Input(data []byte) (int, error) {
+	c.debug(util.CmdInput, data)
 	return len(data), nil
 }
 
-func (c *mock) notifications() ([]byte, error) {
-	c.debug(CmdNotify)
+func (c *Client) Notifications() ([]byte, error) {
+	c.debug(util.CmdNotify)
 	return []byte("notifications"), nil
 }
 
-func (c *mock) feed() (io.ReadCloser, error) {
+func (c *Client) Feed() (io.ReadCloser, error) {
 	data := make(chan []byte)
 	done := make(chan struct{})
 
@@ -147,16 +156,16 @@ func (c *mock) feed() (io.ReadCloser, error) {
 				return
 			default:
 				fuzz.Fuzz(&b)
-				c.debug(CmdFeed, b)
+				c.debug(util.CmdFeed, b)
 				data <- b
 				time.Sleep(time.Millisecond * 100)
 			}
 		}
 	}()
 
-	f := &feed{
-		data: data,
-		done: done,
+	f := &feed.Feed{
+		Data: data,
+		Done: done,
 	}
 
 	return f, nil
@@ -166,33 +175,33 @@ func mockLogging(cmd int, args ...interface{}) {
 	l := log.New(os.Stdout, "client ", 0)
 
 	switch cmd {
-	case CmdConnect:
+	case util.CmdConnect:
 		l.Printf("connect addr=\"%s\"\n", args[0])
-	case CmdAttach:
+	case util.CmdAttach:
 		l.Printf("attach success=%t\n", args[0])
-	case CmdAuth:
+	case util.CmdAuth:
 		l.Printf("auth success=%t\n", args[0])
-	case CmdBuffer, CmdOpen, CmdClose, CmdLink:
+	case util.CmdBuffer, util.CmdOpen, util.CmdClose, util.CmdLink:
 		l.Printf("cmd %s", args[0])
 		l.Println()
-	case CmdComm:
+	case util.CmdComm:
 		m := args[0].(*fs.Command)
 		l.Printf("%s from=\"%s\" args=\"%s\"\n", m.Name, m.From, m.Args)
-	case CmdTabs:
+	case util.CmdTabs:
 		l.Printf("tabs list=\"%s\"\n", args[0])
-	case CmdTitle:
+	case util.CmdTitle:
 		l.Printf("title data=\"%s\"\n", args[0])
-	case CmdStatus:
+	case util.CmdStatus:
 		l.Println("status data=nil")
-	case CmdAside:
+	case util.CmdAside:
 		l.Println("aside data=nil")
-	case CmdInput:
+	case util.CmdInput:
 		l.Printf("input data=\"%s\"\n", args[0])
-	case CmdNotify:
+	case util.CmdNotify:
 		l.Println("notification data=nil")
-	case CmdFeed:
+	case util.CmdFeed:
 		l.Printf("feed data=\"%s\"\n", args[0])
-	case CmdDocument:
+	case util.CmdDocument:
 		l.Printf("document data=\"%s\"\n", args[0])
 	}
 }

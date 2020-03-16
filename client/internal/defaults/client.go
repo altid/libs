@@ -1,17 +1,19 @@
-package client
+package defaults
 
 import (
 	"fmt"
 	"io"
 	"net"
 
+	"github.com/altid/libs/client/internal/feed"
+	"github.com/altid/libs/client/internal/util"
 	"github.com/altid/libs/fs"
 	"github.com/knieriem/g/go9p/user"
 	"github.com/lionkov/go9p/p"
 	"github.com/lionkov/go9p/p/clnt"
 )
 
-type client struct {
+type Client struct {
 	afid   *clnt.Fid
 	root   *clnt.Fid
 	addr   string
@@ -19,7 +21,13 @@ type client struct {
 	clnt   *clnt.Clnt
 }
 
-func (c *client) connect(debug int) (err error) {
+func NewClient(addr string) *Client {
+	return &Client{
+		addr: addr,
+	}
+}
+
+func (c *Client) Connect(debug int) (err error) {
 	dial := fmt.Sprintf("%s:564", c.addr)
 
 	conn, err := net.Dial("tcp", dial)
@@ -37,11 +45,11 @@ func (c *client) connect(debug int) (err error) {
 	return
 }
 
-func (c *client) cleanup() {
+func (c *Client) Cleanup() {
 	c.clnt.Unmount()
 }
 
-func (c *client) attach() error {
+func (c *Client) Attach() error {
 	root, err := c.clnt.Attach(c.afid, user.Current(), "/")
 	if err != nil {
 		return err
@@ -52,7 +60,7 @@ func (c *client) attach() error {
 	return nil
 }
 
-func (c *client) auth() error {
+func (c *Client) Auth() error {
 	// TODO(halfwit): We want to flag in factotum use and hand it the afid
 	afid, err := c.clnt.Auth(user.Current(), "/")
 	if err != nil {
@@ -63,12 +71,12 @@ func (c *client) auth() error {
 	return nil
 }
 
-func (c *client) command(cmd *fs.Command) error {
+func (c *Client) Command(cmd *fs.Command) error {
 	// TODO(halfwit) Send off named command
 	return nil
 }
 
-func (c *client) ctl(cmd int, args ...string) (int, error) {
+func (c *Client) Ctl(cmd int, args ...string) (int, error) {
 	nfid := c.clnt.FidAlloc()
 	_, err := c.clnt.Walk(c.root, nfid, []string{"ctl"})
 	if err != nil {
@@ -77,7 +85,7 @@ func (c *client) ctl(cmd int, args ...string) (int, error) {
 	c.clnt.Open(nfid, p.OAPPEND)
 	defer c.clnt.Clunk(nfid)
 
-	data, err := runClientCtl(cmd, args...)
+	data, err := util.RunClientCtl(cmd, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -85,27 +93,27 @@ func (c *client) ctl(cmd int, args ...string) (int, error) {
 	return c.clnt.Write(nfid, data, 0)
 }
 
-func (c *client) tabs() ([]byte, error) {
+func (c *Client) Tabs() ([]byte, error) {
 	return getNamedFile(c, "tabs")
 }
 
-func (c *client) title() ([]byte, error) {
+func (c *Client) Title() ([]byte, error) {
 	return getNamedFile(c, "title")
 }
 
-func (c *client) status() ([]byte, error) {
+func (c *Client) Status() ([]byte, error) {
 	return getNamedFile(c, "status")
 }
 
-func (c *client) aside() ([]byte, error) {
+func (c *Client) Aside() ([]byte, error) {
 	return getNamedFile(c, "aside")
 }
 
-func (c *client) document() ([]byte, error) {
+func (c *Client) Document() ([]byte, error) {
 	return getNamedFile(c, "document")
 }
 
-func (c *client) input(data []byte) (int, error) {
+func (c *Client) Input(data []byte) (int, error) {
 	nfid := c.clnt.FidAlloc()
 	_, err := c.clnt.Walk(c.root, nfid, []string{"input"})
 	if err != nil {
@@ -118,7 +126,7 @@ func (c *client) input(data []byte) (int, error) {
 	return c.clnt.Write(nfid, data, 0)
 }
 
-func (c *client) notifications() ([]byte, error) {
+func (c *Client) Notifications() ([]byte, error) {
 	nfid := c.clnt.FidAlloc()
 	_, err := c.clnt.Walk(c.root, nfid, []string{"notification"})
 	if err != nil {
@@ -131,7 +139,7 @@ func (c *client) notifications() ([]byte, error) {
 	return c.clnt.Read(nfid, 0, p.MSIZE)
 }
 
-func (c *client) getCommands() ([]*fs.Command, error) {
+func (c *Client) GetCommands() ([]*fs.Command, error) {
 	b, err := getNamedFile(c, "ctl")
 	if err != nil {
 		return nil, err
@@ -140,7 +148,7 @@ func (c *client) getCommands() ([]*fs.Command, error) {
 	return fs.ParseCommands(b)
 }
 
-func (c *client) feed() (io.ReadCloser, error) {
+func (c *Client) Feed() (io.ReadCloser, error) {
 	nfid := c.clnt.FidAlloc()
 
 	_, err := c.clnt.Walk(c.root, nfid, []string{"feed"})
@@ -179,16 +187,16 @@ func (c *client) feed() (io.ReadCloser, error) {
 
 	}()
 
-	f := &feed{
-		data: data,
-		done: done,
+	f := &feed.Feed{
+		Data: data,
+		Done: done,
 	}
 
 	return f, nil
 
 }
 
-func getNamedFile(c *client, name string) ([]byte, error) {
+func getNamedFile(c *Client, name string) ([]byte, error) {
 	nfid := c.clnt.FidAlloc()
 	_, err := c.clnt.Walk(c.root, nfid, []string{name})
 	if err != nil {
