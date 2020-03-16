@@ -37,7 +37,7 @@ func (t *tab) Close() error {
 
 func NewControl(errs chan error, reqs, cmds chan string, done chan struct{}) *Control {
 	return &Control{
-		err: errs,
+		err:  errs,
 		reqs: reqs,
 		cmds: cmds,
 		done: done,

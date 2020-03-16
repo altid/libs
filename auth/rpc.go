@@ -91,7 +91,7 @@ func convM2AI(buf []byte) *Info {
 	return ai
 }
 
-// GetInfo attempts to retreive an AuthInfo from an RPC
+// GetInfo attempts to retrieve an AuthInfo from an RPC
 func (rpc *RPC) GetInfo() error {
 	if r, msg := rpc.Run("authinfo", ""); r != ARok {
 		return errors.New(msg)

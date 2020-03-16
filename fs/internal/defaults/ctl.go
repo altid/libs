@@ -39,13 +39,13 @@ type controlrunner struct {
 }
 
 func NewControl(r, l, d string, t []string, req chan string, done chan struct{}) *Control {
-	return &Control {
-		rundir: r,
-		logdir: l,
+	return &Control{
+		rundir:  r,
+		logdir:  l,
 		doctype: d,
-		tabs: t,
-		req: req,
-		done: done,
+		tabs:    t,
+		req:     req,
+		done:    done,
 	}
 }
 

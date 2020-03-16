@@ -8,6 +8,7 @@ import (
 // To add a ComGroup, please do so in a PR
 type ComGroup int
 
+// Currently supported ComGroups
 const (
 	DefaultGroup ComGroup = iota
 	ActionGroup
@@ -22,10 +23,6 @@ type Command struct {
 	Args        []string
 	Alias       []string
 	From        string
-}
-
-func ParseCommands(b []byte) ([]*Command, error) {
-	return nil, nil
 }
 
 // Conversion functions for our internal command type
