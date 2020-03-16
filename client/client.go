@@ -52,7 +52,7 @@ func NewMockClient(addr string) *Client {
 }
 
 // GetCommands returns a list of available commands for the connected service
-func (c Client) GetCommands() ([]*fs.Command, error) {
+func (c *Client) GetCommands() ([]*fs.Command, error) {
 	return c.run.GetCommands()
 }
 
