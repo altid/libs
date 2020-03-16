@@ -24,6 +24,10 @@ type Command struct {
 	From        string
 }
 
+func ParseCommands(b []byte) ([]*Command, error) {
+
+}
+
 // Conversion functions for our internal command type
 func setCommands(r runner, cmds ...*Command) error {
 	// Parse into command structure and set

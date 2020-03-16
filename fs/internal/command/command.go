@@ -66,11 +66,6 @@ type Command struct {
 	From        string
 }
 
-// ParseCommands will return an array of Commands or any errors encountered
-func ParseCommands(b []byte) ([]*Command, error) {
-	return nil, nil
-}
-
 type CmdList []*Command
 
 func (a CmdList) Len() int           { return len(a) }
