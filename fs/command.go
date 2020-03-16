@@ -25,7 +25,7 @@ type Command struct {
 }
 
 func ParseCommands(b []byte) ([]*Command, error) {
-
+	return nil, nil
 }
 
 // Conversion functions for our internal command type
