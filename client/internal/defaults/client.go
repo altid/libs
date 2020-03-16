@@ -140,12 +140,12 @@ func (c *Client) Notifications() ([]byte, error) {
 }
 
 func (c *Client) GetCommands() ([]*fs.Command, error) {
-	b, err := getNamedFile(c, "ctl")
+	_, err := getNamedFile(c, "ctl")
 	if err != nil {
 		return nil, err
 	}
 	// TODO(halfwit) Parse into Command struct
-	return fs.ParseCommands(b)
+	return nil, nil
 }
 
 func (c *Client) Feed() (io.ReadCloser, error) {
