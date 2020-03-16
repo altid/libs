@@ -15,7 +15,7 @@ A service in Altid has the following structure on disk:
 		[...]
 
 
-All buffer management occurs through writes to the ctl file. To open a buffer, for example, you write 
+All buffer management occurs through writes to the ctl file. To open a buffer, for example, you write
 
 	open mybuffer > /path/to/service/ctl
 
