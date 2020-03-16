@@ -1,4 +1,4 @@
-package fs
+package command
 
 import (
 	"errors"
@@ -14,16 +14,44 @@ import (
 type ComGroup int
 
 const (
-	// DefaultGroup includes normal commands
-	// `Open`, `Close`, `Buffer`, `Link`, `Quit`
 	DefaultGroup ComGroup = iota
-	// ActionGroup is for chat emotes
 	ActionGroup
-	// MediaGroup is for media control
-	// Such as `play`, `pause` and can be used in a client
-	// to make media control clusters
 	MediaGroup
 )
+
+//TODO(halfiwt) i18n
+var DefaultCommands = []*Command{
+	{
+		Name:        "open",
+		Args:        []string{"<buffer>"},
+		Heading:     DefaultGroup,
+		Description: "Open and change buffers to a given service",
+	},
+	{
+		Name:        "close",
+		Args:        []string{"<buffer>"},
+		Heading:     DefaultGroup,
+		Description: "Close a buffer and return to the last opened previously",
+	},
+	{
+		Name:        "buffer",
+		Args:        []string{"<buffer>"},
+		Heading:     DefaultGroup,
+		Description: "Change to the named buffer",
+	},
+	{
+		Name:        "link",
+		Args:        []string{"<to>", "<from>"},
+		Heading:     DefaultGroup,
+		Description: "Overwrite the current <to> buffer with <from>, switching to from after. This destroys <to>",
+	},
+	{
+		Name:        "quit",
+		Args:        []string{},
+		Heading:     DefaultGroup,
+		Description: "Exits the service",
+	},
+}
 
 const commandTemplate = `{{range .}}	{{.Name}}{{if .Alias}}{{range .Alias}}|{{.}}{{end}}{{end}}{{if .Args}}	{{range .Args}}{{.}} {{end}}{{end}}{{if .Description}}	# {{.Description}}{{end}}
 {{end}}`
@@ -35,33 +63,36 @@ type Command struct {
 	Heading     ComGroup
 	Args        []string
 	Alias       []string
+	From        string
 }
 
-type cmdList []*Command
+type CmdList []*Command
 
-func (a cmdList) Len() int           { return len(a) }
-func (a cmdList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a cmdList) Less(i, j int) bool { return a[i].Heading < a[j].Heading }
+func (a CmdList) Len() int           { return len(a) }
+func (a CmdList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a CmdList) Less(i, j int) bool { return a[i].Heading < a[j].Heading }
 
-func buildCommand(cmd string, cmdlist []*Command) (*Command, error) {
+func BuildFrom(cmd string, cmdlist []*Command) (*Command, error) {
 	var name string
+	var from string
 	var args []string
 
 	items := strings.Fields(cmd)
 	name = items[0]
 
-	if len(items) > 1 {
-		args = items[1:]
+	if len(items) > 2 {
+		from = items[1]
+		args = items[2:]
 	}
 
 	for _, comm := range cmdlist {
 		if comm.Name == name {
-			return newCommand(comm, args)
+			return newFrom(comm, from, args)
 		}
 
 		for _, alias := range comm.Alias {
 			if alias == name {
-				return newCommand(comm, args)
+				return newFrom(comm, from, args)
 			}
 		}
 	}
@@ -69,7 +100,7 @@ func buildCommand(cmd string, cmdlist []*Command) (*Command, error) {
 	return nil, errors.New("command not supported")
 }
 
-func newCommand(comm *Command, args []string) (*Command, error) {
+func newFrom(comm *Command, from string, args []string) (*Command, error) {
 	if len(comm.Args) != len(args) && len(comm.Args) > 0 {
 		return nil, fmt.Errorf("expected %d arguments: received %d", len(comm.Args), len(args))
 	}
@@ -80,11 +111,12 @@ func newCommand(comm *Command, args []string) (*Command, error) {
 		Heading:     comm.Heading,
 		Args:        args,
 		Alias:       comm.Alias,
+		From:        from,
 	}
 	return c, nil
 }
 
-func printCtlFile(cmdlist []*Command, to io.WriteCloser) error {
+func PrintCtlFile(cmdlist []*Command, to io.WriteCloser) error {
 	var last int
 
 	curr := cmdlist[0].Heading

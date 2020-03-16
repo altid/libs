@@ -1,4 +1,4 @@
-package fs
+package defaults
 
 import (
 	"bufio"
@@ -13,10 +13,15 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/altid/libs/fs/internal/command"
+	"github.com/altid/libs/fs/internal/reader"
+	"github.com/altid/libs/fs/internal/util"
+	"github.com/altid/libs/fs/internal/writer"
 )
 
-type control struct {
-	cmdlist []*Command
+type Control struct {
+	cmdlist []*command.Command
 	rundir  string
 	logdir  string
 	doctype string
@@ -33,7 +38,18 @@ type controlrunner struct {
 	cancel  context.CancelFunc
 }
 
-func (c *control) event(eventmsg string) error {
+func NewControl(r, l, d string, t []string, req chan string, done chan struct{}) *Control {
+	return &Control {
+		rundir: r,
+		logdir: l,
+		doctype: d,
+		tabs: t,
+		req: req,
+		done: done,
+	}
+}
+
+func (c *Control) Event(eventmsg string) error {
 	file := path.Join(c.rundir, "event")
 	if _, err := os.Stat(path.Dir(file)); os.IsNotExist(err) {
 		os.MkdirAll(path.Dir(file), 0755)
@@ -55,21 +71,21 @@ func (c *control) event(eventmsg string) error {
 	return nil
 }
 
-func (c *control) setCommand(cmd ...*Command) error {
+func (c *Control) SetCommands(cmd ...*command.Command) error {
 	for _, comm := range cmd {
 		c.cmdlist = append(c.cmdlist, comm)
 	}
 
-	sort.Sort(cmdList(c.cmdlist))
+	sort.Sort(command.CmdList(c.cmdlist))
 
 	return nil
 }
 
-func (c *control) buildCommand(cmd string) (*Command, error) {
-	return buildCommand(cmd, c.cmdlist)
+func (c *Control) BuildCommand(cmd string) (*command.Command, error) {
+	return command.BuildFrom(cmd, c.cmdlist)
 }
 
-func (c *control) cleanup() {
+func (c *Control) Cleanup() {
 	if runtime.GOOS == "plan9" {
 		glob := path.Join(c.rundir, "*", c.doctype)
 
@@ -87,7 +103,7 @@ func (c *control) cleanup() {
 	os.RemoveAll(c.rundir)
 }
 
-func (c *control) createBuffer(name, doctype string) error {
+func (c *Control) CreateBuffer(name, doctype string) error {
 	if name == "" {
 		return fmt.Errorf("no buffer name given")
 	}
@@ -118,13 +134,13 @@ func (c *control) createBuffer(name, doctype string) error {
 
 	logfile := path.Join(c.logdir, name)
 
-	return symlink(logfile, d)
+	return util.Symlink(logfile, d)
 }
 
-func (c *control) deleteBuffer(name, doctype string) error {
+func (c *Control) DeleteBuffer(name, doctype string) error {
 	if c.logdir != "none" {
 		d := path.Join(c.rundir, name, doctype)
-		if e := unlink(d); e != nil {
+		if e := util.Unlink(d); e != nil {
 			return e
 		}
 	}
@@ -134,7 +150,7 @@ func (c *control) deleteBuffer(name, doctype string) error {
 	return c.popTab(name)
 }
 
-func (c *control) hasBuffer(name, doctype string) bool {
+func (c *Control) HasBuffer(name, doctype string) bool {
 	d := path.Join(c.rundir, name, doctype)
 
 	if _, e := os.Stat(d); os.IsNotExist(e) {
@@ -144,7 +160,7 @@ func (c *control) hasBuffer(name, doctype string) bool {
 	return true
 }
 
-func (c *control) listen() error {
+func (c *Control) Listen() error {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cr, err := newControlRunner(ctx, cancel, c)
@@ -157,7 +173,7 @@ func (c *control) listen() error {
 	return nil
 }
 
-func (c *control) start() (context.Context, error) {
+func (c *Control) Start() (context.Context, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cr, err := newControlRunner(ctx, cancel, c)
@@ -170,18 +186,18 @@ func (c *control) start() (context.Context, error) {
 	return ctx, nil
 }
 
-func (c *control) remove(buffer, filename string) error {
+func (c *Control) Remove(buffer, filename string) error {
 	doc := path.Join(c.rundir, buffer, filename)
 	// Don't try to delete that which isn't there
 	if _, e := os.Stat(doc); os.IsNotExist(e) {
 		return nil
 	}
 
-	c.event(doc)
+	c.Event(doc)
 	return os.Remove(doc)
 }
 
-func (c *control) notification(buff, from, msg string) error {
+func (c *Control) Notification(buff, from, msg string) error {
 	nfile := path.Join(c.rundir, buff, "notification")
 	if _, e := os.Stat(path.Dir(nfile)); os.IsNotExist(e) {
 		os.MkdirAll(path.Dir(nfile), 0755)
@@ -194,13 +210,13 @@ func (c *control) notification(buff, from, msg string) error {
 
 	defer f.Close()
 
-	c.event(nfile)
+	c.Event(nfile)
 	fmt.Fprintf(f, "%s\n%s\n", from, msg)
 
 	return nil
 }
 
-func (c *control) popTab(tabname string) error {
+func (c *Control) popTab(tabname string) error {
 	for n := range c.tabs {
 		if c.tabs[n] == tabname {
 			c.tabs = append(c.tabs[:n], c.tabs[n+1:]...)
@@ -210,7 +226,7 @@ func (c *control) popTab(tabname string) error {
 	return fmt.Errorf("entry not found: %s", tabname)
 }
 
-func (c *control) pushTab(tabname string) error {
+func (c *Control) pushTab(tabname string) error {
 	for n := range c.tabs {
 		if c.tabs[n] == tabname {
 			return fmt.Errorf("entry already exists: %s", tabname)
@@ -221,7 +237,7 @@ func (c *control) pushTab(tabname string) error {
 	return tabs(c)
 }
 
-func tabs(c *control) error {
+func tabs(c *Control) error {
 	// Create truncates and opens file in a single step, utilize this.
 	file := path.Join(c.rundir, "tabs")
 
@@ -232,12 +248,12 @@ func tabs(c *control) error {
 
 	defer f.Close()
 	f.WriteString(strings.Join(c.tabs, "\n") + "\n")
-	c.event(file)
+	c.Event(file)
 
 	return nil
 }
 
-func (c *control) errorwriter() (*WriteCloser, error) {
+func (c *Control) Errorwriter() (*writer.WriteCloser, error) {
 	ep := path.Join(c.rundir, "errors")
 
 	fp, err := os.OpenFile(ep, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
@@ -246,16 +262,12 @@ func (c *control) errorwriter() (*WriteCloser, error) {
 		return nil, err
 	}
 
-	w := &WriteCloser{
-		c:      c,
-		fp:     fp,
-		buffer: "errors",
-	}
+	w := writer.New(c.Event, fp, "errors")
 
 	return w, nil
 }
 
-func (c *control) fileWriter(buffer, doctype string) (*WriteCloser, error) {
+func (c *Control) FileWriter(buffer, doctype string) (*writer.WriteCloser, error) {
 	doc := path.Join(c.rundir, buffer, doctype)
 	if doctype == "feed" {
 		fp, err := os.OpenFile(doc, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
@@ -263,11 +275,8 @@ func (c *control) fileWriter(buffer, doctype string) (*WriteCloser, error) {
 
 			return nil, err
 		}
-		w := &WriteCloser{
-			fp:     fp,
-			c:      c,
-			buffer: doc,
-		}
+
+		w := writer.New(c.Event, fp, doc)
 
 		return w, nil
 	}
@@ -278,40 +287,36 @@ func (c *control) fileWriter(buffer, doctype string) (*WriteCloser, error) {
 		return nil, err
 	}
 
-	w := &WriteCloser{
-		fp:     fp,
-		c:      c,
-		buffer: doc,
-	}
+	w := writer.New(c.Event, fp, doc)
 
 	return w, nil
 }
 
-func (c *control) imageWriter(buffer, resource string) (*WriteCloser, error) {
+func (c *Control) ImageWriter(buffer, resource string) (*writer.WriteCloser, error) {
 	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
-	return c.fileWriter(buffer, path.Join("images", resource))
+	return c.FileWriter(buffer, path.Join("images", resource))
 }
 
-func newControlRunner(ctx context.Context, cancel context.CancelFunc, c *control) (*controlrunner, error) {
+func newControlRunner(ctx context.Context, cancel context.CancelFunc, c *Control) (*controlrunner, error) {
 	if e := os.MkdirAll(c.rundir, 0755); e != nil {
 		return nil, e
 	}
 
 	cfile := path.Join(c.rundir, "ctl")
-	c.event(cfile)
+	c.Event(cfile)
 
 	ctl, err := os.Create(cfile)
 	if err != nil {
 		return nil, err
 	}
 
-	if e := printCtlFile(c.cmdlist, ctl); e != nil {
+	if e := command.PrintCtlFile(c.cmdlist, ctl); e != nil {
 		return nil, e
 	}
 
 	ctl.Close()
 
-	r, err := newReader(cfile)
+	r, err := reader.New(cfile)
 	if err != nil {
 		return nil, err
 	}
@@ -345,4 +350,12 @@ func (c *controlrunner) listen() {
 			c.req <- line
 		}
 	}
+}
+
+func validateString(path string) error {
+	if _, e := os.Stat(path); e != nil {
+		return e
+	}
+
+	return nil
 }

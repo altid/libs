@@ -8,6 +8,9 @@ import (
 	"os"
 	"path"
 
+	"github.com/altid/libs/fs/internal/defaults"
+	"github.com/altid/libs/fs/internal/mock"
+	"github.com/altid/libs/fs/internal/reader"
 	"github.com/altid/libs/markup"
 )
 
@@ -17,9 +20,9 @@ type Handler interface {
 }
 
 type inputter interface {
-	addErr(format string, args ...interface{})
-	errs() []error
-	stop(context.Context)
+	AddErr(format string, args ...interface{})
+	Errs() []error
+	Stop(context.Context)
 }
 
 // Input allows an Altid service to listen for writes to a file named input for a given buffer
@@ -54,7 +57,7 @@ func NewInput(h Handler, dir, buffer string, debug bool) (*Input, error) {
 
 	if _, e := os.Stat(fp); os.IsNotExist(e) {
 
-		r, err := newReader(fp)
+		r, err := reader.New(fp)
 		if err != nil {
 			return nil, err
 		}
@@ -64,13 +67,8 @@ func NewInput(h Handler, dir, buffer string, debug bool) (*Input, error) {
 			return nil, err
 		}
 
-		run := &input{
-			ew: ew,
-			fp: fp,
-		}
-
 		i := &Input{
-			run:   run,
+			run:   defaults.NewInput(ew, fp),
 			h:     h,
 			r:     r,
 			fname: inpath,
@@ -91,10 +89,7 @@ func NewInput(h Handler, dir, buffer string, debug bool) (*Input, error) {
 // NewMockInput returns a faked input file for testing
 // All writes to `reqs` will trigger the Handler internally
 func NewMockInput(h Handler, buffer string, debug bool, reqs chan string) (*Input, error) {
-
-	mci := &mockinput{
-		reqs: reqs,
-	}
+	mci := mock.NewInput(reqs)
 
 	i := &Input{
 		h:     h,
@@ -146,26 +141,26 @@ func (i *Input) StartContext(ctx context.Context) {
 				return
 			case err := <-errors:
 				i.debug(inputerr, i.fname, err)
-				i.run.addErr("input error on %s: %v", i.fname, err)
+				i.run.AddErr("input error on %s: %v", i.fname, err)
 			case inputs <- scanner.Bytes():
 				i.debug(inputnorm, i.fname, scanner.Bytes())
 			}
 		}
 
 		if e := scanner.Err(); e != io.EOF && e != nil {
-			i.run.addErr("input error: %s: %v", i.fname, e)
+			i.run.AddErr("input error: %s: %v", i.fname, e)
 		}
 	}()
 }
 
 // Stop ends the Input session, cleaning up after itself
 func (i *Input) Stop() {
-	i.run.stop(i.ctx)
+	i.run.Stop(i.ctx)
 }
 
 // Errs returns a list of any errors encountered during input's runtime
 func (i *Input) Errs() []error {
-	return i.run.errs()
+	return i.run.Errs()
 }
 
 func inputLogging(msg inputMsg, args ...interface{}) {
