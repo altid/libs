@@ -30,6 +30,7 @@ const (
 	CmdInput
 	CmdFeed
 	CmdDocument
+	CmdComm
 )
 
 // Client represents a 9p client session
@@ -45,6 +46,7 @@ type runner interface {
 	connect(int) error
 	attach() error
 	auth() error
+	command(*fs.Command) error
 	ctl(int, ...string) (int, error)
 	tabs() ([]byte, error)
 	title() ([]byte, error)
@@ -100,6 +102,12 @@ func (c *Client) Cleanup() {
 // Connect performs the network dial for the connection
 func (c *Client) Connect(debug int) (err error) {
 	return c.run.connect(debug)
+}
+
+// Command sends the named command to the service
+// If command is invalid, it will return an error
+func (c *Client) Command(cmd *fs.Command) error {
+	return c.run.command(cmd)
 }
 
 // Attach is called after optionally calling Auth

@@ -40,9 +40,45 @@ func (c *mock) auth() error {
 	return nil
 }
 
+func (c *mock) command(cmd *fs.Command) error {
+	c.debug(CmdComm, cmd)
+	return nil
+}
+
 func (c *mock) getCommands() ([]*fs.Command, error) {
-	// TODO(halfwit): Mock up a general: list
-	return nil, nil
+	d := []*fs.Command{
+		{
+			Name:        "open",
+			Args:        []string{"<buffer>"},
+			Heading:     fs.DefaultGroup,
+			Description: "Open and change buffers to a given service",
+		},
+		{
+			Name:        "close",
+			Args:        []string{"<buffer>"},
+			Heading:     fs.DefaultGroup,
+			Description: "Close a buffer and return to the last opened previously",
+		},
+		{
+			Name:        "buffer",
+			Args:        []string{"<buffer>"},
+			Heading:     fs.DefaultGroup,
+			Description: "Change to the named buffer",
+		},
+		{
+			Name:        "link",
+			Args:        []string{"<to>", "<from>"},
+			Heading:     fs.DefaultGroup,
+			Description: "Overwrite the current <to> buffer with <from>, switching to from after. This destroys <to>",
+		},
+		{
+			Name:        "quit",
+			Args:        []string{},
+			Heading:     fs.DefaultGroup,
+			Description: "Exits the service",
+		},
+	}
+	return d, nil
 }
 
 // We want to eventually create and track tabs internally to the library
@@ -139,6 +175,9 @@ func mockLogging(cmd int, args ...interface{}) {
 	case CmdBuffer, CmdOpen, CmdClose, CmdLink:
 		l.Printf("cmd %s", args[0])
 		l.Println()
+	case CmdComm:
+		m := args[0].(*fs.Command)
+		l.Printf("%s from=\"%s\" args=\"%s\"\n", m.Name, m.From, m.Args)
 	case CmdTabs:
 		l.Printf("tabs list=\"%s\"\n", args[0])
 	case CmdTitle:

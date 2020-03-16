@@ -7,7 +7,13 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 	"sync"
+
+	"github.com/altid/libs/fs/internal/command"
+	"github.com/altid/libs/fs/internal/defaults"
+	"github.com/altid/libs/fs/internal/mock"
+	"github.com/altid/libs/fs/internal/writer"
 )
 
 // Controller is our main type for controlling a session
@@ -27,31 +33,24 @@ type Controller interface {
 	Default(c *Control, cmd *Command) error
 }
 
-// SigHandler - Optional interface to provide fine grained control for catching signals.
-// It is expected that you will call c.Cleanup() within your SigHandle function
-// If none is supplied, c.Cleanup() will be called on SIGINT and SIGKILL
-type SigHandler interface {
-	SigHandle(c *Control)
-}
-
 type runner interface {
-	cleanup()
-	setCommand(cmd ...*Command) error
-	buildCommand(string) (*Command, error)
-	event(string) error
-	createBuffer(string, string) error
-	deleteBuffer(string, string) error
-	hasBuffer(string, string) bool
-	listen() error
-	remove(string, string) error
-	start() (context.Context, error)
-	notification(string, string, string) error
+	Cleanup()
+	SetCommands(cmd ...*command.Command) error
+	BuildCommand(string) (*command.Command, error)
+	Event(string) error
+	CreateBuffer(string, string) error
+	DeleteBuffer(string, string) error
+	HasBuffer(string, string) bool
+	Listen() error
+	Remove(string, string) error
+	Start() (context.Context, error)
+	Notification(string, string, string) error
 }
 
 type writercloser interface {
-	errorwriter() (*WriteCloser, error)
-	fileWriter(string, string) (*WriteCloser, error)
-	imageWriter(string, string) (*WriteCloser, error)
+	Errorwriter() (*writer.WriteCloser, error)
+	FileWriter(string, string) (*writer.WriteCloser, error)
+	ImageWriter(string, string) (*writer.WriteCloser, error)
 }
 
 // Control type can be used to manage a running ctl file session
@@ -61,7 +60,6 @@ type Control struct {
 	ctl   Controller
 	run   runner
 	write writercloser
-	watch watcher
 	debug func(ctlMsg, ...interface{})
 	sync.Mutex
 }
@@ -80,40 +78,6 @@ const (
 	ctlDefault
 )
 
-//TODO(halfiwt) i18n
-var defaultCommands = []*Command{
-	{
-		Name:        "open",
-		Args:        []string{"<buffer>"},
-		Heading:     DefaultGroup,
-		Description: "Open and change buffers to a given service",
-	},
-	{
-		Name:        "close",
-		Args:        []string{"<buffer>"},
-		Heading:     DefaultGroup,
-		Description: "Close a buffer and return to the last opened previously",
-	},
-	{
-		Name:        "buffer",
-		Args:        []string{"<buffer>"},
-		Heading:     DefaultGroup,
-		Description: "Change to the named buffer",
-	},
-	{
-		Name:        "link",
-		Args:        []string{"<to>", "<from>"},
-		Heading:     DefaultGroup,
-		Description: "Overwrite the current <to> buffer with <from>, switching to from after. This destroys <to>",
-	},
-	{
-		Name:        "quit",
-		Args:        []string{},
-		Heading:     DefaultGroup,
-		Description: "Exits the service",
-	},
-}
-
 // MockCtlFile returns a type that can be used for testing services
 // it will track in-memory and behave like a file-backed control
 // It will wait for messages on reqs which act as ctl messages
@@ -124,12 +88,7 @@ func MockCtlFile(ctl Controller, reqs chan string, debug bool) (*Control, error)
 	done := make(chan struct{})
 	cmds := make(chan string)
 	errs := make(chan error)
-	t := &mockctl{
-		err:  errs,
-		reqs: reqs,
-		cmds: cmds,
-		done: done,
-	}
+	t := mock.NewControl(errs, reqs, cmds, done)
 
 	c := &Control{
 		ctl:   ctl,
@@ -137,7 +96,6 @@ func MockCtlFile(ctl Controller, reqs chan string, debug bool) (*Control, error)
 		done:  done,
 		run:   t,
 		write: t,
-		watch: watcher{},
 		debug: func(ctlMsg, ...interface{}) {},
 	}
 
@@ -145,7 +103,7 @@ func MockCtlFile(ctl Controller, reqs chan string, debug bool) (*Control, error)
 		c.debug = ctlLogger
 	}
 
-	c.SetCommands(defaultCommands...)
+	t.SetCommands(command.DefaultCommands...)
 
 	return c, nil
 }
@@ -166,16 +124,7 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug 
 		var tab []string
 		req := make(chan string)
 		done := make(chan struct{})
-		rtc := &control{
-			rundir:  rundir,
-			logdir:  logdir,
-			doctype: doctype,
-			tabs:    tab,
-			req:     req,
-			done:    done,
-		}
-
-		// TODO(halfwit) Go back and re-add signal watching
+		rtc := defaults.NewControl(rundir, logdir, doctype, tab, req, done)
 
 		c := &Control{
 			req:   req,
@@ -183,7 +132,6 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug 
 			run:   rtc,
 			ctl:   ctl,
 			write: rtc,
-			watch: watcher{},
 			debug: func(ctlMsg, ...interface{}) {},
 		}
 
@@ -191,7 +139,7 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug 
 			c.debug = ctlLogger
 		}
 
-		c.SetCommands(defaultCommands...)
+		rtc.SetCommands(command.DefaultCommands...)
 
 		return c, nil
 	}
@@ -204,14 +152,14 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug 
 // Returns "$service: invalid event $eventmsg" or nil.
 func (c *Control) Event(eventmsg string) error {
 	c.debug(ctlEvent, eventmsg)
-	return c.run.event(eventmsg)
+	return c.run.Event(eventmsg)
 }
 
 // Cleanup removes created symlinks and removes the main dir
 // On plan9, it unbinds any file named 	"document" or "feed", prior to removing the directory itself.
 func (c *Control) Cleanup() {
 	c.debug(ctlCleanup)
-	c.run.cleanup()
+	c.run.Cleanup()
 
 }
 
@@ -221,25 +169,25 @@ func (c *Control) Cleanup() {
 // Calling CreateBuffer on a directory that already exists will return nil
 func (c *Control) CreateBuffer(name, doctype string) error {
 	c.debug(ctlCreate, name, doctype)
-	return c.run.createBuffer(name, doctype)
+	return c.run.CreateBuffer(name, doctype)
 }
 
 // DeleteBuffer unlinks a document/buffer, and cleanly removes the directory
 // Will return an error if it's unable to unlink on plan9, or if the remove fails.
 func (c *Control) DeleteBuffer(name, doctype string) error {
 	c.debug(ctlDelete, name)
-	return c.run.deleteBuffer(name, doctype)
+	return c.run.DeleteBuffer(name, doctype)
 }
 
 // HasBuffer returns whether or not a buffer is present in the current control session
 func (c *Control) HasBuffer(name, doctype string) bool {
-	return c.run.hasBuffer(name, doctype)
+	return c.run.HasBuffer(name, doctype)
 }
 
 // Remove removes a buffer from the runtime dir. If the buffer doesn't exist, this is a no-op
 func (c *Control) Remove(buffer, filename string) error {
 	c.debug(ctlRemove, buffer, filename)
-	return c.run.remove(buffer, filename)
+	return c.run.Remove(buffer, filename)
 }
 
 // Listen creates a file named "ctl" inside RunDirectory, after making sure the directory exists
@@ -247,21 +195,19 @@ func (c *Control) Remove(buffer, filename string) error {
 // Messages handled internally are as follows: open (or join), close (or part), and quit, which causes Listen() to return.
 // This will return an error if we're unable to create the ctlfile itself, and will log any error relating to control messages.
 func (c *Control) Listen() error {
-	go sigwatch(c)
 	go dispatch(c)
 
 	c.debug(ctlStart, "listen")
-	return c.run.listen()
+	return c.run.Listen()
 }
 
 // Start is like listen, but occurs in a separate go routine, returning flow to the calling process once the ctl file is instantiated.
 // This provides a context.Context that can be used for cancellations
 func (c *Control) Start() (context.Context, error) {
-	go sigwatch(c)
 	go dispatch(c)
 
 	c.debug(ctlStart, "start")
-	return c.run.start()
+	return c.run.Start()
 }
 
 // SetCommands allows services to add additional commands
@@ -283,7 +229,7 @@ func (c *Control) SetCommands(cmd ...*Command) error {
 		}
 	}
 
-	if e := c.run.setCommand(cmd...); e != nil {
+	if e := setCommands(c.run, cmd...); e != nil {
 		return e
 	}
 
@@ -302,43 +248,122 @@ func (c *Control) SetCommands(cmd ...*Command) error {
 //     fs.Notification(ntfy.Parse())
 func (c *Control) Notification(buff, from, msg string) error {
 	c.debug(ctlNotify, buff, from, msg)
-	return c.run.notification(buff, from, msg)
+	return c.run.Notification(buff, from, msg)
 }
 
 // ErrorWriter returns a WriteCloser attached to a services' errors file
-func (c *Control) ErrorWriter() (*WriteCloser, error) {
-	return c.write.errorwriter()
+func (c *Control) ErrorWriter() (*writer.WriteCloser, error) {
+	return c.write.Errorwriter()
 }
 
 // StatusWriter returns a WriteCloser attached to a buffers status file, which will as well send the correct event to the events file
-func (c *Control) StatusWriter(buffer string) (*WriteCloser, error) {
-	return c.write.fileWriter(buffer, "status")
+func (c *Control) StatusWriter(buffer string) (*writer.WriteCloser, error) {
+	return c.write.FileWriter(buffer, "status")
 }
 
 // SideWriter returns a WriteCloser attached to a buffers `aside` file, which will as well send the correct event to the events file
-func (c *Control) SideWriter(buffer string) (*WriteCloser, error) {
-	return c.write.fileWriter(buffer, "aside")
+func (c *Control) SideWriter(buffer string) (*writer.WriteCloser, error) {
+	return c.write.FileWriter(buffer, "aside")
 }
 
 // NavWriter returns a WriteCloser attached to a buffers nav file, which will as well send the correct event to the events file
-func (c *Control) NavWriter(buffer string) (*WriteCloser, error) {
-	return c.write.fileWriter(buffer, "navi")
+func (c *Control) NavWriter(buffer string) (*writer.WriteCloser, error) {
+	return c.write.FileWriter(buffer, "navi")
 }
 
 // TitleWriter returns a WriteCloser attached to a buffers title file, which will as well send the correct event to the events file
-func (c *Control) TitleWriter(buffer string) (*WriteCloser, error) {
-	return c.write.fileWriter(buffer, "title")
+func (c *Control) TitleWriter(buffer string) (*writer.WriteCloser, error) {
+	return c.write.FileWriter(buffer, "title")
 }
 
 // ImageWriter returns a WriteCloser attached to a named file in the buffers' image directory
-func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
-	return c.write.imageWriter(buffer, resource)
+func (c *Control) ImageWriter(buffer, resource string) (*writer.WriteCloser, error) {
+	return c.write.ImageWriter(buffer, resource)
 
 }
 
 // MainWriter returns a WriteCloser attached to a buffers feed/document function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file
-func (c *Control) MainWriter(buffer, doctype string) (*WriteCloser, error) {
-	return c.write.fileWriter(buffer, doctype)
+func (c *Control) MainWriter(buffer, doctype string) (*writer.WriteCloser, error) {
+	return c.write.FileWriter(buffer, doctype)
+}
+
+func dispatch(c *Control) {
+	// TODO: wrap with waitgroups
+	// If close is requested on a file which is currently being opened, cancel open request
+	// If open is requested on file which already exists, no-op
+	ew, err := c.write.Errorwriter()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer ew.Close()
+
+	for {
+		select {
+		case line := <-c.req:
+			run(c, ew, line)
+		case <-c.done:
+			return
+		}
+	}
+}
+
+func run(c *Control, ew *writer.WriteCloser, line string) {
+	c.Lock()
+	defer c.Unlock()
+
+	token := strings.Fields(line)
+	if len(token) < 1 {
+		return
+	}
+
+	switch token[0] {
+	case "open":
+		if len(token) < 2 {
+			return
+		}
+
+		if e := c.ctl.Open(c, token[1]); e != nil {
+			c.debug(ctlError, token[1], e)
+			fmt.Fprintf(ew, "open: %v\n", e)
+		}
+	case "close":
+		if len(token) < 2 {
+			return
+		}
+
+		// We need to get to these still somehow
+		if e := c.ctl.Close(c, token[1]); e != nil {
+			c.debug(ctlError, token[1], e)
+			fmt.Fprintf(ew, "close: %v\n", e)
+		}
+
+	case "link":
+		if len(token) < 2 {
+			return
+		}
+
+		if e := c.ctl.Link(c, token[1], token[2]); e != nil {
+			c.debug(ctlError, token[1], e)
+			fmt.Fprintf(ew, "link: %v\n", e)
+		}
+
+	default:
+		cmd, err := c.run.BuildCommand(line)
+		if err != nil {
+			c.debug(ctlError, token[0], errors.New("unsupported command"))
+			fmt.Fprintf(ew, "unsupported command")
+			return
+		}
+
+		// Translate to our other command type here
+		cmd2 := cmd2Command(cmd)
+		c.debug(ctlDefault, cmd2)
+		if e := c.ctl.Default(c, cmd2); e != nil {
+			c.debug(ctlError, token[0], e)
+			fmt.Fprintf(ew, "%s: %v\n", token[0], e)
+		}
+	}
 }
 
 func ctlLogger(msg ctlMsg, args ...interface{}) {

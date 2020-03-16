@@ -1,4 +1,4 @@
-package fs
+package reader
 
 import (
 	"io"
@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-type reader struct {
+// Reader is a simple implementation of tail -f
+type Reader struct {
 	io.ReadCloser
 }
 
@@ -18,19 +19,20 @@ type reader struct {
 // That way we can assure paths are good and the API doesn't have to actually change
 // StartContext might be considered insteresting; we can check the contexts in the loop as well, and use that to clean up instead of something like input.Close()
 
-func newReader(name string) (*reader, error) {
+// New returns a new reader, ready to read from
+func New(name string) (*Reader, error) {
 	os.MkdirAll(path.Dir(name), 0755)
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
-		return &reader{}, err
+		return &Reader{}, err
 	}
 	if _, err := f.Seek(0, os.SEEK_END); err != nil {
-		return &reader{f}, err
+		return &Reader{f}, err
 	}
-	return &reader{f}, err
+	return &Reader{f}, err
 }
 
-func (r *reader) Read(p []byte) (n int, err error) {
+func (r *Reader) Read(p []byte) (n int, err error) {
 	for {
 		n, err := r.ReadCloser.Read(p)
 		if n > 0 {
