@@ -63,6 +63,11 @@ func (c *client) auth() error {
 	return nil
 }
 
+func (c *client) command(cmd *fs.Command) error {
+	// TODO(halfwit) Send off named command
+	return nil
+}
+
 func (c *client) ctl(cmd int, args ...string) (int, error) {
 	nfid := c.clnt.FidAlloc()
 	_, err := c.clnt.Walk(c.root, nfid, []string{"ctl"})
@@ -127,13 +132,12 @@ func (c *client) notifications() ([]byte, error) {
 }
 
 func (c *client) getCommands() ([]*fs.Command, error) {
-	_, err := getNamedFile(c, "ctl")
+	b, err := getNamedFile(c, "ctl")
 	if err != nil {
 		return nil, err
 	}
-	// Parse into Command struct
-
-	return nil, nil
+	// TODO(halfwit) Parse into Command struct
+	return fs.ParseCommands(b)
 }
 
 func (c *client) feed() (io.ReadCloser, error) {
