@@ -11,12 +11,13 @@ func TestLexer(t *testing.T) {
 	for i := 0; i < 50000; i++ {
 		f := fuzz.New()
 
-		var myData []byte
+		myData := make([]byte, 50)
 		f.Fuzz(&myData)
 		l := markup.NewLexer(myData)
 
 		for {
 			i := l.Next()
+			
 			switch i.ItemType {
 			case markup.EOF:
 				return

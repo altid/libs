@@ -47,10 +47,12 @@ func NewColor(code string, msg []byte) (*Color, error) {
 	if !validateColorCode(code) {
 		return nil, fmt.Errorf("invalid color code %s", code)
 	}
+
 	color := &Color{
 		code: code,
 		msg:  msg,
 	}
+
 	return color, nil
 }
 
@@ -73,13 +75,16 @@ func NewURL(link, msg []byte) (*URL, error) {
 	if len(link) == 0 {
 		return nil, fmt.Errorf("no link provided for %s", msg)
 	}
+
 	if len(msg) == 0 {
 		msg = link
 	}
+
 	url := &URL{
 		Link: link,
 		Msg:  msg,
 	}
+
 	return url, nil
 }
 
@@ -103,20 +108,25 @@ func NewImage(path, msg, alt []byte) (*Image, error) {
 	if len(alt) == 0 && len(msg) == 0 {
 		return nil, fmt.Errorf("no img or alt provided for path %s", path)
 	}
+
 	if len(path) == 0 {
 		return nil, fmt.Errorf("no path provided for image")
 	}
+
 	if len(alt) == 0 {
 		alt = msg
 	}
+
 	if len(msg) == 0 {
 		msg = alt
 	}
+
 	img := &Image{
 		alt:  alt,
 		path: path,
 		msg:  msg,
 	}
+
 	return img, nil
 }
 
@@ -182,6 +192,7 @@ func (c *Cleaner) WritefList(depth int, format string, args ...interface{}) (n i
 	if depth > 0 {
 		spaces += "- "
 	}
+
 	return doWritef(c.w, spaces+format, args...)
 }
 
@@ -223,6 +234,7 @@ func NewNotifier(path, from, msg string) *Notifier {
 func (n *Notifier) Parse() (string, string, string) {
 	from := "# " + EscapeString(n.from)
 	msg := EscapeString(n.msg)
+
 	return n.buff, from, msg
 }
 
@@ -240,7 +252,9 @@ func doWritef(w io.WriteCloser, format string, args ...interface{}) (n int, err 
 
 func escape(msg []byte) []byte {
 	var offset int
+
 	result := make([]byte, len(msg)*2)
+
 	for i, c := range msg {
 		switch c {
 		case '*', '#', '_', '-', '~', '\\', '/', '(', ')', '`', '[', ']', '!':
@@ -249,12 +263,14 @@ func escape(msg []byte) []byte {
 		}
 		result[i+offset] = c
 	}
+
 	return result[:len(msg)+offset]
 }
 
 // EscapeString returns a properly escaped Altid markup string
 func EscapeString(msg string) string {
 	var result strings.Builder
+
 	for _, c := range msg {
 		switch c {
 		case '*', '#', '_', '-', '~', '\\', '/', '(', ')', '`', '[', ']', '!':
@@ -276,5 +292,6 @@ func validateColorCode(s string) bool {
 	case hex6.MatchString(s):
 		return true
 	}
+	
 	return false
 }
