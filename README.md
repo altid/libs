@@ -5,13 +5,9 @@ in a canonical way.
 
 ### Overview
 
-The main documentation for the Go libraries can be found on the link below:
 
-[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs)
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs) [![Flutter](https://img.shields.io/pub/v/altid_lib)](https://pub.dev/packages/altid_lib) [![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
 
-The main documentation for Flutter libraries can be found at the link below:
-
-[![Flutter](https://img.shields.io/pub/v/altid_lib)](https://pub.dev/packages/altid_lib)
 
 ### How To Get
 
