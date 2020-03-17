@@ -11,7 +11,7 @@ Doing so will call the Configurator which was passed in to config.New() and exit
 
 Repl
 
-The included Repl is meant to make designing Configurators much easier. To use, simply pass a struct to Repl with all the entries you wish described as string entries
+The included Repl is meant to make designing Configurators much easier. To use, simply pass a struct to Repl with all the entries you wish described as type string|int|bool
 The struct tags will be used verbatim as the prompt message to the client
 
 	func myConfigurator(rw io.ReadCloser) (*config.Config, error) {
