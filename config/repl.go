@@ -113,8 +113,12 @@ func toArray(req interface{}) ([]request, error) {
 			i := s.Field(i).Interface().(int)
 			req.defaults = fmt.Sprintf("%d", i)
 		case "bool":
-			b := s.Field(i).Interface().(bool)
-			req.defaults = fmt.Sprintf("%t", b)
+			switch s.Field(i).Interface().(bool) {
+			case true:
+				req.defaults = fmt.Sprintf("%s", "yes")
+			case false:
+				req.defaults = fmt.Sprintf("%s", "no")
+			}
 		default:
 			return nil, fmt.Errorf("unknown type for config: %s", f.Type.Name())
 		}
