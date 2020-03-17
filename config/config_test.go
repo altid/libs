@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-type builder struct{}
-
 func buildConfig(rwc io.ReadWriter) (*Config, error) {
 	c := &Config{
 		Name: "zzyzx",
