@@ -19,7 +19,7 @@ func buildConfig(rw io.ReadWriter) (*config.Config, error) {
 }
 
 func main() {
-	if _, e := config.New(buildConfig, "zzyzx", false); e != nil {
+	if _, e := config.Mock(buildConfig, "zzyzx", false); e != nil {
 		log.Fatal(e)
 	}
 }
