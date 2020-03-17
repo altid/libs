@@ -21,23 +21,6 @@ type request struct {
 
 // Repl accepts a struct with String/Int/Bool types
 // The fields should contain the default values, which will be presented to the client during the repl
-//
-// For example:
-//
-//		mytype := struct {
-//			Address string `IP address to dial`
-//			Nickname string `Username for service`
-//			Password string `Password for service`
-//		}{"127.0.0.1", "guest", "hunter2"}
-//
-// will start a repl with the client over the io.ReadWriter, using the struct tags as the prompt
-//
-//		$ IP address to dial [127.0.0.1]: (enter to use default)
-//		$ Username for service[guest]: (enter to use default)
-//		$ Password for service[hunter2]: (enter to use default)
-//
-// On successful completion, a Config will be returned
-// If debug is true Repl will output debug information
 func Repl(rw io.ReadWriter, req interface{}, debug bool) (*Config, error) {
 	var values []*Entry
 

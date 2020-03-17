@@ -18,12 +18,18 @@ The struct tags will be used verbatim as the prompt message to the client
 		repl := struct {
 			Address string `IP Address of service`
 			Port int `Port to use`
-			UseTLS string `Do you wish to use TLS? yes/no`
+			UseTLS bool `Do you wish to use TLS?`
 		}{"localhost", 564, "false"}
 
 		return config.Repl(rw, repl, false)
 	}
 
-The library will walk through each step, in order, and build a config entry.
+
+This will start a repl with the client over the io.ReadWriter, using the struct tags as the prompt
+
+	$ IP Address of service [localhost]: (enter to use default)
+	$ Port to use [564]: (enter to use default)
+	$ Do you wish to use TLS? [no]: (enter to use default)
+
 */
 package config
