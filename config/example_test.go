@@ -18,7 +18,7 @@ func buildConfig(rw io.ReadWriter) (*config.Config, error) {
 	return config.Repl(rw, repl, false)
 }
 
-func main() {
+func ExampleRepl() {
 	if _, e := config.Mock(buildConfig, "zzyzx", false); e != nil {
 		log.Fatal(e)
 	}
