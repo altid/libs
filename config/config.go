@@ -45,7 +45,13 @@ type Entry struct {
 // complete and usable Config
 type Configurator func(io.ReadWriter) (*Config, error)
 
-// New returns a valid config for a given service. If one is not found, the Configurators Configure method
+// Mock returns a mock config for a given service for testing
+// It always calls Configurator to create a Config, and will not write to file
+func Mock(c Configurator, service string, debug bool) (*Config, error) {
+	return nil, nil
+}
+
+// New returns a valid config for a given service. If one is not found, the Configurator
 // will be called to interactively create one
 func New(c Configurator, service string, debug bool) (*Config, error) {
 	// Since this is a library to create services, we can expect

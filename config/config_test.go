@@ -20,15 +20,14 @@ func buildConfig(rwc io.ReadWriter) (*Config, error) {
 }
 
 func TestCreate(t *testing.T) {
-	*createConfig = true
-	//conf, err := Mock(buildConfig, "zzyzx")
-	//if err != nil {
-	//	t.Error(err)
-	//}
+	conf, err := Mock(buildConfig, "zzyzx")
+	if err != nil {
+		t.Error(err)
+	}
 
-	//if conf.Values[0].Key != "address" && conf.Values[0].Value != "123.456.789.0" {
-	//	t.Error("unable to create config successfully")
-	//}
+	if conf.Values[0].Key != "address" && conf.Values[0].Value != "123.456.789.0" {
+		t.Error("unable to create config successfully")
+	}
 }
 
 func buildReplConfig(rw io.ReadWriter) (*Config, error) {
@@ -41,9 +40,9 @@ func buildReplConfig(rw io.ReadWriter) (*Config, error) {
 
 	return Repl(rw, repl)
 }
+
 func TestRepl(t *testing.T) {
-	*createConfig = true
-	//if _, e := Mock(buildReplConfig, "zzyzx"); e != nil {
-	//	log.Fatal(e)
-	//}
+	if _, e := Mock(buildReplConfig, "zzyzx"); e != nil {
+		log.Fatal(e)
+	}
 }
