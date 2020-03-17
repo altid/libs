@@ -113,9 +113,11 @@ func (l *Lexer) nextChar() byte {
 		l.width = 0
 		return EOF
 	}
+
 	rune, width := utf8.DecodeRune(l.src[l.pos:])
 	l.width = width
 	l.pos += l.width
+	
 	return byte(rune)
 }
 
@@ -126,12 +128,14 @@ func lexText(l *Lexer) stateFn {
 				l.emit(NormalText)
 			}
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			if l.pos > l.start {
 				l.emit(NormalText)
 			}
 			l.emit(EOF)
+
 			return nil
 		case '\\':
 			return lexBack
@@ -156,6 +160,7 @@ func lexText(l *Lexer) stateFn {
 func lexBack(l *Lexer) stateFn {
 	l.ignore()
 	l.accept("\\!([])*_-~`")
+
 	return lexText
 }
 
@@ -164,10 +169,12 @@ func lexStrike(l *Lexer) stateFn {
 	l.emit(NormalText)
 	l.accept("~")
 	l.ignore()
+
 	for {
 		if l.peek() == '~' {
 			l.emit(StrikeText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -175,6 +182,7 @@ func lexStrike(l *Lexer) stateFn {
 		case '~':
 			l.accept("~")
 			l.ignore()
+
 			return lexText
 		}
 	}
@@ -185,10 +193,12 @@ func lexUnderline(l *Lexer) stateFn {
 	l.emit(NormalText)
 	l.accept("_")
 	l.ignore()
+
 	for {
 		if l.peek() == '_' {
 			l.emit(UnderlineText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -196,6 +206,7 @@ func lexUnderline(l *Lexer) stateFn {
 		case '_':
 			l.accept("_")
 			l.ignore()
+
 			return lexText
 		}
 	}
@@ -206,10 +217,12 @@ func lexEmphasis(l *Lexer) stateFn {
 	l.emit(NormalText)
 	l.accept("-")
 	l.ignore()
+
 	for {
 		if l.peek() == '-' {
 			l.emit(EmphasisText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -217,6 +230,7 @@ func lexEmphasis(l *Lexer) stateFn {
 		case '-':
 			l.accept("-")
 			l.ignore()
+
 			return lexText
 		}
 	}
@@ -229,10 +243,12 @@ func lexBold(l *Lexer) stateFn {
 	l.emit(NormalText)
 	l.accept("*")
 	l.ignore()
+
 	for {
 		if l.peek() == '*' {
 			l.emit(BoldText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -240,6 +256,7 @@ func lexBold(l *Lexer) stateFn {
 		case '*':
 			l.accept("*")
 			l.ignore()
+
 			return lexText
 		}
 	}
@@ -260,10 +277,12 @@ func lexMaybeColor(l *Lexer) stateFn {
 func lexColorText(l *Lexer) stateFn {
 	l.accept("[")
 	l.ignore()
+
 	for {
 		if strings.IndexByte("*~-_]\\", l.peek()) >= 0 {
 			l.emit(ColorText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -271,6 +290,7 @@ func lexColorText(l *Lexer) stateFn {
 		case ']':
 			l.accept("]")
 			l.ignore()
+
 			return lexColorCode
 		case '\\': // eat a single slash
 			l.accept("\\")
@@ -279,18 +299,22 @@ func lexColorText(l *Lexer) stateFn {
 		case '*':
 			l.accept("*")
 			l.ignore()
+
 			return lexColorBold
 		case '_':
 			l.accept("_")
 			l.ignore()
+
 			return lexColorUnderline
 		case '~':
 			l.accept("~")
 			l.ignore()
+
 			return lexColorStrikeout
 		case '-':
 			l.accept("-")
 			l.ignore()
+
 			return lexColorEmphasis
 		}
 	}
@@ -315,10 +339,12 @@ func lexColorStrikeout(l *Lexer) stateFn {
 		case '~':
 			l.accept("~")
 			l.ignore()
+
 			return lexColorText
 		case ']':
 			l.accept("]")
 			l.ignore()
+
 			return lexColorCode
 		}
 	}
@@ -343,10 +369,12 @@ func lexColorEmphasis(l *Lexer) stateFn {
 		case '-':
 			l.accept("-")
 			l.ignore()
+
 			return lexColorText
 		case ']':
 			l.accept("]")
 			l.ignore()
+
 			return lexColorCode
 		}
 	}
@@ -371,10 +399,12 @@ func lexColorUnderline(l *Lexer) stateFn {
 		case '_':
 			l.accept("_")
 			l.ignore()
+
 			return lexColorText
 		case ']':
 			l.accept("]")
 			l.ignore()
+
 			return lexColorCode
 		}
 	}
@@ -399,10 +429,12 @@ func lexColorBold(l *Lexer) stateFn {
 		case '*':
 			l.accept("*")
 			l.ignore()
+
 			return lexColorText
 		case ']':
 			l.accept("]")
 			l.ignore()
+
 			return lexColorCode
 		}
 	}
@@ -417,11 +449,13 @@ func lexColorCode(l *Lexer) stateFn {
 	l.emit(ColorCode)
 	l.accept(")")
 	l.ignore()
+
 	return lexText
 }
 
 func lexMaybeURL(l *Lexer) stateFn {
 	l.ignore()
+
 	switch l.nextChar() {
 	case EOF:
 		l.emit(EOF)
@@ -438,6 +472,7 @@ func lexURLText(l *Lexer) stateFn {
 		if l.peek() == ']' {
 			l.emit(URLText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -451,10 +486,12 @@ func lexURLText(l *Lexer) stateFn {
 func lexURLLink(l *Lexer) stateFn {
 	l.acceptRun("](")
 	l.ignore()
+
 	for {
 		if l.peek() == ')' {
 			l.emit(URLLink)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -462,6 +499,7 @@ func lexURLLink(l *Lexer) stateFn {
 		case ')':
 			l.accept(")")
 			l.ignore()
+
 			return lexText
 		}
 	}
@@ -471,10 +509,12 @@ func lexURLLink(l *Lexer) stateFn {
 func lexImageLinkText(l *Lexer) stateFn {
 	l.acceptRun("[!")
 	l.ignore()
+
 	for {
 		if l.peek() == ']' {
 			l.emit(ImageText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -488,10 +528,12 @@ func lexImageLinkText(l *Lexer) stateFn {
 func lexImageLinkPath(l *Lexer) stateFn {
 	l.acceptRun("](")
 	l.ignore()
+
 	for {
 		if l.peek() == ')' {
 			l.emit(ImagePath)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -505,10 +547,12 @@ func lexImageLinkPath(l *Lexer) stateFn {
 func lexImageLink(l *Lexer) stateFn {
 	l.acceptRun(")](")
 	l.ignore()
+
 	for {
 		if l.peek() == ')' {
 			l.emit(ImageLink)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -516,6 +560,7 @@ func lexImageLink(l *Lexer) stateFn {
 		case ')':
 			l.accept(")")
 			l.ignore()
+
 			return lexText
 		}
 	}
@@ -536,10 +581,12 @@ func lexMaybeImage(l *Lexer) stateFn {
 func lexImageText(l *Lexer) stateFn {
 	l.accept("[")
 	l.ignore()
+
 	for {
 		if l.peek() == ']' {
 			l.emit(ImageText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -553,10 +600,12 @@ func lexImageText(l *Lexer) stateFn {
 func lexImagePath(l *Lexer) stateFn {
 	l.acceptRun("](")
 	l.ignore()
+
 	for {
 		if l.peek() == ')' {
 			l.emit(ImagePath)
 		}
+
 		switch l.nextChar() {
 		case EOF:
 			l.emit(EOF)
@@ -564,6 +613,7 @@ func lexImagePath(l *Lexer) stateFn {
 		case ')':
 			l.accept(")")
 			l.ignore()
+
 			return lexText
 		}
 	}
@@ -574,6 +624,7 @@ func (l *Lexer) emit(t byte) {
 		t,
 		l.src[l.start:l.pos],
 	}
+
 	l.start = l.pos
 }
 
@@ -588,6 +639,7 @@ func (l *Lexer) backup() {
 func (l *Lexer) peek() byte {
 	rune := l.nextChar()
 	l.backup()
+
 	return rune
 }
 
@@ -595,6 +647,7 @@ func (l *Lexer) accept(valid string) bool {
 	if strings.IndexByte(valid, l.nextChar()) >= 0 {
 		return true
 	}
+	
 	l.backup()
 	return false
 }

@@ -76,7 +76,7 @@ func TestImage(t *testing.T) {
 func TestNotifier(t *testing.T) {
 	c := markup.NewNotifier("#foo", "bar - the place to be!", "baz is a *real* friend")
 	foo, bar, baz := c.Parse()
-	fmt.Println(c.Parse())
+
 	if foo != "foo" && bar != "# bar \\- the place to be\\!" && baz != "baz is a \\*real\\* friend" {
 		t.Error("parsing error - invalid code in Notifier.Parse")
 	}
