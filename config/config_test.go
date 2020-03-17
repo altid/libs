@@ -20,7 +20,7 @@ func buildConfig(rwc io.ReadWriter) (*Config, error) {
 }
 
 func TestCreate(t *testing.T) {
-	conf, err := Mock(buildConfig, "zzyzx")
+	conf, err := Mock(buildConfig, "zzyzx", true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -42,7 +42,7 @@ func buildReplConfig(rw io.ReadWriter) (*Config, error) {
 }
 
 func TestRepl(t *testing.T) {
-	if _, e := Mock(buildReplConfig, "zzyzx"); e != nil {
+	if _, e := Mock(buildReplConfig, "zzyzx", true); e != nil {
 		log.Fatal(e)
 	}
 }
