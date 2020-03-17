@@ -8,6 +8,5 @@ require (
 	github.com/knieriem/g v0.1.2
 	github.com/lionkov/go9p v0.0.0-20190125202718-b4200817c487
 	github.com/mischief/ndb v0.0.0-20131219140803-a27299009a40
-	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 )

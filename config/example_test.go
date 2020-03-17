@@ -13,9 +13,9 @@ func buildConfig(rw io.ReadWriter) (*config.Config, error) {
 		Password string `password for service`
 		UseSSL   bool   `Use SSL?`
 		Foo      string // Will use default
-	}{"127.0.0.1", "password", false, "banana"}
+	}{"127.0.0.1", "password", false, "bar"}
 
-	return config.Repl(rw, repl)
+	return config.Repl(rw, repl, false)
 }
 
 func main() {
