@@ -1,4 +1,3 @@
-// Package config manage and create configs for Altid services
 package config
 
 import (
@@ -68,7 +67,7 @@ func Mock(c Configurator, service string, debug bool) (*Config, error) {
 }
 
 // New returns a valid config for a given service. If one is not found, the Configurator
-// will be called to interactively create one
+// will be called to interactively create one. On success, the program will exit
 func New(c Configurator, service string, debug bool) (*Config, error) {
 	// Since this is a library to create services, we can expect there to be flags passed in
 	if debug {
@@ -90,7 +89,8 @@ func New(c Configurator, service string, debug bool) (*Config, error) {
 			return nil, e
 		}
 
-		return conf, err
+		log.Println("configuration successful, exiting")
+		os.Exit(0)
 	}
 
 	conf, err := ndb.Open(getConfDir(service))
