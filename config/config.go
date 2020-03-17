@@ -51,7 +51,7 @@ func Mock(c Configurator, service string, debug bool) (*Config, error) {
 		configLogger("mock starting")
 	}
 
-	conf, err := createConfigFile(c, service)
+	conf, err := buildConfigFromConfigurator(c, service)
 	if err != nil {
 		return nil, err
 	}
