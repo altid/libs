@@ -55,11 +55,6 @@ func (c *Control) Event(eventmsg string) error {
 		os.MkdirAll(path.Dir(file), 0755)
 	}
 
-	if e := validateString(file); e != nil {
-		sname := path.Base(c.rundir)
-		return fmt.Errorf("%s: invalid event %s", sname, eventmsg)
-	}
-
 	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		return err
@@ -350,12 +345,4 @@ func (c *controlrunner) listen() {
 			c.req <- line
 		}
 	}
-}
-
-func validateString(path string) error {
-	if _, e := os.Stat(path); e != nil {
-		return e
-	}
-
-	return nil
 }
