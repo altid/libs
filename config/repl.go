@@ -5,9 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"os"
 	"reflect"
 	"strings"
 )
+
+var debugLogger func(string, ...interface{})
 
 type request struct {
 	key      string
@@ -33,11 +37,19 @@ type request struct {
 //		$ Password for service[hunter2]: (enter to use default)
 //
 // On successful completion, a Config will be returned
-func Repl(rw io.ReadWriter, req interface{}) (*Config, error) {
+// If debug is true Repl will output debug information
+func Repl(rw io.ReadWriter, req interface{}, debug bool) (*Config, error) {
 	var values []*Entry
 
 	c := new(Config)
 
+	if debug {
+		debugLogger = replLogger
+	} else {
+		debugLogger = func(string, ...interface{}) {}
+	}
+
+	debugLogger("starting")
 	reqs, err := toArray(req)
 	if err != nil {
 		return nil, err
@@ -58,6 +70,7 @@ func Repl(rw io.ReadWriter, req interface{}) (*Config, error) {
 	}
 
 	c.Values = values
+	debugLogger("success")
 
 	return c, nil
 }
@@ -67,6 +80,8 @@ func runRepl(rw io.ReadWriter, req request) (*Entry, error) {
 	entry := &Entry{
 		Key: key,
 	}
+
+	debugLogger("request key=\"%s\" default=\"%s\"", key, req.defaults)
 
 	switch {
 	case req.prompt == "":
@@ -93,7 +108,7 @@ func runRepl(rw io.ReadWriter, req request) (*Entry, error) {
 		entry.Value = req.defaults
 	}
 
-	// TODO: handle escape
+	debugLogger("response key=\"%s\" value=\"%s\"", entry.Key, entry.Value)
 
 	return entry, nil
 }
@@ -125,4 +140,9 @@ func toArray(req interface{}) ([]request, error) {
 	}
 
 	return reqs, nil
+}
+
+func replLogger(format string, v ...interface{}) {
+	l := log.New(os.Stdout, "repl: ", 0)
+	l.Printf(format+"\n", v...)
 }

@@ -2,6 +2,9 @@ package config
 
 import (
 	"io"
+	"io/ioutil"
+	"log"
+	"os"
 	"testing"
 )
 
@@ -9,7 +12,7 @@ func buildConfig(rwc io.ReadWriter) (*Config, error) {
 	c := &Config{
 		Name: "zzyzx",
 		Values: []*Entry{
-			&Entry{
+			{
 				Key:   "address",
 				Value: "123.456.789.0",
 			},
@@ -38,7 +41,12 @@ func buildReplConfig(rw io.ReadWriter) (*Config, error) {
 		Foo      string // Will use default
 	}{"127.0.0.1", "password", false, "banana"}
 
-	return Repl(rw, repl)
+	rw = struct {
+		io.Reader
+		io.Writer
+	}{os.Stdin, ioutil.Discard}
+
+	return Repl(rw, repl, true)
 }
 
 func TestRepl(t *testing.T) {
