@@ -4,7 +4,9 @@ package config
 import (
 	"crypto/tls"
 	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -17,11 +19,14 @@ import (
 
 // Errors
 const (
-	ErrNoConfigure  = "unable to find or create config for this service"
-	ErrNoSuchKey    = "no such key"
-	ErrNoEntries    = "unable to find config entries for this service"
-	ErrMultiEntries = "config contains duplicate entries for this service"
+	ErrBadConfigurator = "configurator nil or invalid, cannot continue"
+	ErrNoConfigure     = "unable to find or create config for this service. To create one, please run %s -conf"
+	ErrNoSuchKey       = "no such key"
+	ErrNoEntries       = "unable to find config entry for this service."
+	ErrMultiEntries    = "config contains duplicate entries for this service"
 )
+
+var createConfig = flag.Bool("conf", false, "Create configuration file for service")
 
 // Config defines a services' configuration in a given config file
 type Config struct {
@@ -38,39 +43,28 @@ type Entry struct {
 // Configurator is called when no entry is found for a given service
 // It should query the user for each required value, returning a
 // complete and usable Config
-type Configurator func() (*Config, error)
+type Configurator func(io.ReadWriter) (*Config, error)
 
 // New returns a valid config for a given service. If one is not found, the Configurators Configure method
 // will be called to interactively create one
-func New(c Configurator, service string) (*Config, error) {
+func New(c Configurator, service string, debug bool) (*Config, error) {
+	// Since this is a library to create services, we can expect
+	// there to be flags passed in
+	flag.Parse()
+	if *createConfig {
+		return createConfigFile(c, service)
+	}
+
 	conf, err := ndb.Open(getConfDir(service))
 	if err != nil {
-		if err != os.ErrNotExist {
-			return nil, err
-		}
-
-		cf, err := c()
-		if err != nil {
-			return nil, err
-		}
-
-		return cf.writeToFile()
+		return nil, fmt.Errorf(ErrNoConfigure, os.Args[0])
 	}
 
 	if entry := conf.Search("service", service).Search("service"); entry != "" {
 		return parseConfig(service)
 	}
 
-	if c == nil {
-		return nil, errors.New(ErrNoConfigure)
-	}
-
-	cf, err := c()
-	if err != nil {
-		return nil, err
-	}
-
-	return cf.writeToFile()
+	return nil, fmt.Errorf(ErrNoConfigure, os.Args[0])
 }
 
 // Password queries the database for a password, and uses the factotum
@@ -164,17 +158,19 @@ func (c *Config) String() string {
 	return entry.String()
 }
 
-func (c *Config) writeToFile() (*Config, error) {
-	fp, err := os.OpenFile(getConfDir(c.Name), os.O_APPEND|os.O_CREATE, 0644)
+func (c *Config) writeToFile() error {
+	fp, err := os.OpenFile(getConfDir(c.Name), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	defer fp.Close()
 	// NOTE(halfwit) We always want an extra newline to separate entries
-	fmt.Fprintf(fp, "%s\n\n", c.String())
+	if _, e := fmt.Fprintf(fp, "%s\n\n", c.String()); e != nil {
+		return e
+	}
 
-	return c, nil
+	return nil
 }
 
 // GetLogDir returns a canonical directory for a user log, searching first altid/config
@@ -236,4 +232,38 @@ func buildconf(recs ndb.Record, service string) (*Config, error) {
 	}
 
 	return c, nil
+}
+
+func createConfigFile(c Configurator, service string) (*Config, error) {
+	if c == nil {
+		return nil, errors.New(ErrBadConfigurator)
+	}
+
+	fp, err := os.OpenFile(getConfDir(service), os.O_CREATE, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	fp.Close()
+	return buildConfigEntry(c, service)
+}
+
+func buildConfigEntry(c Configurator, service string) (*Config, error) {
+	rw := struct {
+		io.Reader
+		io.Writer
+	}{os.Stdin, os.Stdout}
+
+	conf, err := c(rw)
+	if err != nil {
+		return nil, err
+	}
+
+	conf.Name = service
+
+	if e := conf.writeToFile(); e != nil {
+		return nil, e
+	}
+
+	return conf, nil
 }

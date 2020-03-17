@@ -24,9 +24,10 @@ func (w *WriteCloser) Write(b []byte) (n int, err error) {
 
 // Close - A Closer which sends an event
 func (w *WriteCloser) Close() error {
+	defer w.fp.Close()
 	if e := w.closeFn(w.buffer); e != nil {
 		return e
 	}
 
-	return w.fp.Close()
+	return nil
 }
