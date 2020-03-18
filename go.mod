@@ -8,5 +8,5 @@ require (
 	github.com/go9p/styx v0.0.0-20200314201655-4aa21a63d347
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/mischief/ndb v0.0.0-20131219140803-a27299009a40
-	github.com/sqs/goreturns v0.0.0-20181028201513-538ac6014518
+	github.com/sqs/goreturns v0.0.0-20181028201513-538ac6014518 // indirect
 )

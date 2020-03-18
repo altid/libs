@@ -1,7 +1,16 @@
 package tabs
 
-// Track the internal tab state entirely here, no where else
-// We'll have to pass some state around in the msg from server <--> service <--> tabs
+import (
+	"bytes"
+	"fmt"
+)
+
+// Track the internal tab state
+const (
+	Alert uint8 = 1 << iota
+	Active
+	ClearUnread
+)
 
 // Manager is used to manage tabs accurately for a service
 type Manager struct {
@@ -12,10 +21,11 @@ type Manager struct {
 type Tab struct {
 	Name   string
 	Alert  bool
-	Count  uint16
 	Active bool
+	Unread uint16
 }
 
+// List returns all currently tracked tabs
 func (m *Manager) List() []*Tab {
 	return m.tabs
 }
@@ -24,10 +34,33 @@ func (m *Manager) List() []*Tab {
 
 // Pop
 
-// use a const for these or a bitmask or whatever
-// SetState() 
-// Alert
+// SetState will set Alert and Active flags of a tag based on the mask
+func (t *Tab) SetState(mask uint8) {
+	t.Alert = false
 
-// Clear(alert)
+	switch {
+	case ClearUnread&mask != 0:
+		t.Unread = 0
+		fallthrough
+	case Alert&mask != 0:
+		t.Alert = true
+		fallthrough
+	case Active&mask != 0:
+		t.Active = true
+	default:
+		t.Active = false
+	}
+}
 
-// Active
+func (t *Tab) String() string {
+	var b bytes.Buffer
+
+	if t.Alert {
+		b.WriteRune('!')
+	}
+
+	fmt.Fprintf(&b, "[%d] ", t.Unread)
+	b.WriteString(t.Name)
+
+	return b.String()
+}
