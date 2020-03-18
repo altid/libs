@@ -1,5 +1,14 @@
 package main
 
+// We'll have to hold the handler to the tab state in service, and pass it down to tabs when it wants to read on it.
+// This should be mostly fine regardless
+
+// So we need access to the commands as they're made
+// commands
+// clients... maybe?
+// list of client buffers
+// Then from tabs, we can call 
+
 import (
 	"log"
 	"os"
@@ -245,6 +254,6 @@ func serviceChatlog(key cmdKey, args ...string) {
 }
 
 func serviceDebugLog(format string, v ...interface{}) {
-	l := log.New(os.Stdout, "", 0)
+	l := log.New(os.Stdout, "9pd: ", 0)
 	l.Printf(format, v...)
 }

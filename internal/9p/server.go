@@ -14,6 +14,20 @@ import (
 	//"github.com/go9p/styx/styxauth/factotum"
 )
 
+
+if len(srv.services) < 1 {
+	log.Fatal("Found no running services, exiting")
+}
+
+		// type Server interface {
+			//Just have func that blocks forever on an err chan
+			//Err() <- chan error
+			//Start(inpath) runs and forks, with a Mock and Normal variant for testing
+			//New() *Server
+			//Mock() *Server for testing
+			//All the other flags here propagate up
+		//}
+
 type server struct {
 	services map[string]*service
 	ctx      context.Context

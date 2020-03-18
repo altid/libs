@@ -2,7 +2,7 @@
 
 9pd is an Altid server, used to connect to clients over the 9p protocol.
 
-`go install github.com/altid/9p-server
+`go get github.com/altid/server/cmd/9pd`
 
 ## Usage
 
