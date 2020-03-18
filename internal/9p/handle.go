@@ -1,28 +1,6 @@
 package main
 
-import (
-	"os"
-
-	"github.com/go9p/styx"
-)
-
-type fileHandler struct {
-	stat func(msg *message) (os.FileInfo, error)
-	fn   func(msg *message) (interface{}, error)
-}
-
-var handlers = make(map[string]*fileHandler)
-
-type message struct {
-	svc  *service
-	buff string
-	file string
-	uuid int64
-}
-
-func addFileHandler(path string, fh *fileHandler) {
-	handlers[path] = fh
-}
+import "github.com/altid/9pd/internal/files"
 
 func walk(svc *service, c *client) (os.FileInfo, error) {
 	h, m := handler(svc, c)
@@ -36,6 +14,7 @@ func open(svc *service, c *client) (interface{}, error) {
 	return h.fn(m)
 }
 
+//all this needs to do is get a handler, the rest can happen in 9pd top level
 func handler(svc *service, c *client) (*fileHandler, *message) {
 	m := &message{
 		uuid: c.uuid,
@@ -44,10 +23,7 @@ func handler(svc *service, c *client) (*fileHandler, *message) {
 		file: c.reading,
 	}
 
-	h, ok := handlers[c.reading]
-	if !ok {
-		return handlers["/default"], m
-	}
+	h := files.Handler(c.reading)
 
 	return h, m
 }

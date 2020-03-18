@@ -1,18 +1,21 @@
 package main
 
-// Abstracted back a bit from raw ndb so that we can change the interface if we ever need
-
 import (
 	"log"
 
 	"github.com/mischief/ndb"
 )
 
-type config struct {
+type Config struct {
 	*ndb.Ndb
 }
 
-func newConfig(filename string) (*config, error) {
+// Switch to altid/libs/config
+// We want a config.All, to get back all config entries in an array
+// Then we can walk them and see all the names trivially
+// get the error messages back, etc
+
+func NewConfig(filename string) (*config, error) {
 	conf, err := ndb.Open(filename)
 	if err != nil {
 		return nil, err
@@ -27,7 +30,7 @@ func newConfig(filename string) (*config, error) {
 	return c, nil
 }
 
-func (c *config) listServices() []string {
+func (c *Config) ListServices() []string {
 	var results []string
 
 	for _, rs := range c.Search("service", "") {
@@ -41,7 +44,7 @@ func (c *config) listServices() []string {
 	return results
 }
 
-func (c *config) getAddress(name string) string {
+func (c *Config) GetAddress(name string) string {
 	rs := c.Search("service", name)
 	if rs == nil {
 		log.Fatal("no service entry found")

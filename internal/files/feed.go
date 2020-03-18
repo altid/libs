@@ -1,28 +1,43 @@
-package main
+package files
 
 import (
 	"errors"
 	"io"
 	"os"
 	"path"
+
+	"github.com/altid/server/files"
 )
+
+type feedHandler struct {
+	// We want at a client here
+	event chan struct{}
+}
+
+func (fh *feedHandler) Normal(msg *files.Message) (interface{}, error) {
+	done := make(chan struct{})
+	f := &feed{
+		event: fh.event,
+		path:  path.Join(msg.Service, msg.Buffer, "feed"),
+		buff:  path.Join(msg.Service, msg.Buffer),
+		done:  done,
+	}
+
+	return f, nil
+
+}
+
+func (*feedHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+	return os.Lstat(path.Join(msg.Service, msg.Buffer, "feed"))
+}
 
 // feed files are special in that they're blocking
 type feed struct {
-	client  *client
+	event   chan struct{}
 	tailing bool
 	path    string
 	buff    string
 	done    chan struct{}
-	debug   func(string, ...interface{})
-}
-
-func init() {
-	s := &fileHandler{
-		fn:   getFeed,
-		stat: getFeedStat,
-	}
-	addFileHandler("/feed", s)
 }
 
 func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
@@ -45,8 +60,7 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 		return n, nil
 	}
 
-	for range f.client.feed {
-		f.debug("feed event on %s", f.buff)
+	for range f.event {
 		n, err = fp.ReadAt(p, off)
 		if err == io.EOF {
 			return n, nil
@@ -55,32 +69,11 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 		return
 	}
 
-	f.debug("feed closed %s", f.buff)
 	return 0, io.EOF
 }
 
 func (f *feed) WriteAt(p []byte, off int64) (int, error) {
-	f.debug("Attempted write on feed")
 	return 0, errors.New("writing to feed files is currently unsupported")
 }
 
 func (f *feed) Close() error { return nil }
-
-func getFeed(msg *message) (interface{}, error) {
-	done := make(chan struct{})
-	f := &feed{
-		client: msg.svc.clients[msg.uuid],
-		path:   path.Join(*inpath, msg.svc.name, msg.buff, "feed"),
-		buff:   path.Join(msg.svc.name, msg.buff),
-		done:   done,
-		debug:  msg.svc.debug,
-	}
-
-	f.debug("feed started %s", f.buff)
-	return f, nil
-
-}
-
-func getFeedStat(msg *message) (os.FileInfo, error) {
-	return os.Lstat(path.Join(*inpath, msg.svc.name, msg.buff, "feed"))
-}
