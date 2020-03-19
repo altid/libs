@@ -5,7 +5,36 @@ import (
 	"testing"
 )
 
-func TestTabs(t *testing.T) {
+func TestManager(t *testing.T) {
+	h := Manager{}
+
+	tab := h.Create("foo")
+	tab.SetState(Active)
+
+	h.Create("bar")
+	tab2 := h.Create("baz")
+	tab2.SetState(Alert)
+
+	l := h.List()
+
+	if len(l) != 3 {
+		t.Error("unable to create tabs")
+	}
+
+	h.Remove("baz")
+	tab = h.Create("foo")
+
+	if ! tab.Active {
+		t.Error("unable to retrieve tab")
+	}
+
+	tab2 = h.Create("baz")
+	if tab.Alert {
+		t.Error("remove failed, tab maintained state across re-creation")
+	}
+}
+
+func TestTab(t *testing.T) {
 	// Make sure we tax the management, change up everything we can and ensure tracking is rock solid
 	d := &Tab{
 		Name:   "test",
