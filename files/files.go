@@ -14,7 +14,6 @@ type Handler interface {
 // Files is the main
 type Files struct {
 	run     map[string]Handler
-	path    string
 	service string
 }
 
@@ -41,7 +40,6 @@ type Message struct {
 //		defer fp.Close()
 //		fp.WriteString("open foo")
 func Handle(dir string) *Files {
-	// TODO(halfwit) split dir
 	return &Files{
 		service: dir,
 		run:     make(map[string]Handler),

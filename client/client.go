@@ -1,9 +1,11 @@
 package client
 
 // Client represents a unique client attatched to a server
+// The Aux can be used to store additional data
 type Client struct {
 	Active  bool
-	uuid    uint32
+	UUID    UUID
+	Aux     interface{}
 	current string
 	history []string
 }

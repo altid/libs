@@ -16,8 +16,8 @@ func (m *Manager) List() []*Tab {
 	return m.tabs
 }
 
-// Create a named tab, and append to our manager list, if it does not exist
-func (m *Manager) Create(name string) *Tab {
+// Tab returns a named tab, creating and appending to our list if none exists
+func (m *Manager) Tab(name string) *Tab {
 	for _, t := range m.tabs {
 		if t.Name == name {
 			return t

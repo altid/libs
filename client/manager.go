@@ -3,7 +3,12 @@ package client
 import (
 	"errors"
 	"sync"
+
+	"github.com/google/uuid"
 )
+
+// UUID is a unique identifier for a client
+type UUID uint32
 
 // Manager is used to represent an overview of all currently
 // connected clients
@@ -17,16 +22,23 @@ func (m *Manager) List() []*Client {
 	return m.clients
 }
 
-// Create a client for id, and append to our manager list with buffer "none", if it does not exist
-func (m *Manager) Create(uuid uint32) *Client {
+// Client - return for given id
+// If UUID is 0, a new one will be generated
+func (m *Manager) Client(id UUID) *Client {
+
 	for _, c := range m.clients {
-		if c.uuid == uuid {
+		if c.UUID == id {
 			return c
 		}
 	}
 
+	if id == 0 {
+		newid := uuid.New()
+		id = UUID(newid.ID())
+	}
+
 	client := &Client{
-		uuid:    uuid,
+		UUID:    id,
 		current: "none",
 	}
 
@@ -38,9 +50,9 @@ func (m *Manager) Create(uuid uint32) *Client {
 }
 
 // Remove a named tab from the internal list
-func (m *Manager) Remove(uuid uint32) error {
+func (m *Manager) Remove(uuid UUID) error {
 	for n, c := range m.clients {
-		if c.uuid == uuid {
+		if c.UUID == uuid {
 			m.Lock()
 			m.clients[n] = m.clients[len(m.clients)-1]
 			m.clients = m.clients[:len(m.clients)-1]
