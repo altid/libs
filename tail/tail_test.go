@@ -36,27 +36,27 @@ func TestTail(t *testing.T) {
 	go mockEvents(fp, dir)
 
 	first := <-ev
-	if first.Name != "test1" || first.Etype != FeedEvent {
+	if first.Name != "test1" || first.EventType != FeedEvent {
 		t.Error(errors.New("test1 failed"))
 	}
 
 	second := <-ev
-	if second.Name != "test2" || second.Etype != FeedEvent {
+	if second.Name != "test2" || second.EventType != FeedEvent {
 		t.Error(errors.New("test2 failed"))
 	}
 
 	third := <-ev
-	if third.Name != "test3" || third.Etype != DocEvent {
+	if third.Name != "test3" || third.EventType != DocEvent {
 		t.Error(errors.New("test3 failed"))
 	}
 
 	fourth := <-ev
-	if fourth.Name != "test4" || fourth.Etype != NotifyEvent {
+	if fourth.Name != "test4" || fourth.EventType != NotifyEvent {
 		t.Error(errors.New("test4 failed"))
 	}
 
 	fifth := <-ev
-	if fifth.Name != "test5" || fifth.Etype != NoneEvent {
+	if fifth.Name != "test5" || fifth.EventType != NoneEvent {
 		t.Error(errors.New("test5 failed"))
 	}
 

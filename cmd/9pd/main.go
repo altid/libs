@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/altid/server/signal"
+	"github.com/altid/9pd/internal/ninep"
 )
 
 var factotum = flag.Bool("f", false, "Enable client authentication via a plan9 factotum")
@@ -24,24 +24,17 @@ func main() {
 		os.Exit(0)
 	}
 
-	sigs := signal.Setup()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 
-	srv, err := server.New(ctx, *debug, *chatty)
+	settings := ninep.NewSettings(*debug, *chatty, *dir, *port, *factotum, *usetls)
+	if e := settings.BuildServices(); e != nil {
+		log.Fatal(e)
+	}
+
+	srv, err := ninep.NewServer(ctx, settings)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	srv.Start(*dir, *port, *usetls, *factotum)
-
-	for {
-		select {
-		case e := srv.Err():
-			log.Fatal(e)
-		case sig := <-sigs:
-			signal.Handle(cancel, sig.String(), *debug)
-		case <-ctx.Done():
-			break
-		}
-	}
+	log.Fatal(srv.Run())
 }

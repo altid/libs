@@ -15,25 +15,35 @@ type Client struct {
 // if buffer was previously inactive, it marks it as active
 func (c *Client) SetBuffer(buffer string) {
 	// Setting to inactive
-	if buffer == "none" {
+	switch {
+	case buffer == "none":
 		if c.current != "none" {
 			c.history = append(c.history, c.current)
 		}
 
 		c.Active = false
-		c.current = buffer
-		return
-	}
-
 	// Coming out of inactive
-	if c.current == "none" && buffer != "none" {
+	case c.current == "none":
+		if buffer == "none" {
+			c.Active = false
+			return
+		}
+
 		c.Active = true
-		c.current = buffer
-		return
+	default:
+		c.Active = true
+		c.history = append(c.history, c.current)
 	}
 
-	// Normal
-	c.Active = true
-	c.history = append(c.history, c.current)
 	c.current = buffer
+}
+
+// Current returns the client's current buffer
+func (c *Client) Current() string {
+	return c.current
+}
+
+// History returns a list of all visited buffers
+func (c *Client) History() []string {
+	return c.history
 }

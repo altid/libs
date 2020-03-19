@@ -27,9 +27,9 @@ var isnoti = []byte("notification")
 // Event represents a single event that occured on a service
 // Such as new data to feed or a notification
 type Event struct {
-	Service string
-	Etype   EventType
-	Name    string
+	Service   string
+	EventType EventType
+	Name      string
 }
 
 // WatchEvents watches a given directory, returning a channel of all events written to the events file
@@ -75,8 +75,6 @@ func (t *tail) readlines() ([]*Event, error) {
 			return events, nil
 		}
 	}
-
-	return events, nil
 }
 
 func parseEvent(line []byte, name string) *Event {
@@ -99,9 +97,9 @@ func parseEvent(line []byte, name string) *Event {
 	}
 
 	e := &Event{
-		Service: name,
-		Etype:   etype,
-		Name:    string(lines[l-2]),
+		Service:   name,
+		EventType: etype,
+		Name:      string(lines[l-2]),
 	}
 
 	return e

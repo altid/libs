@@ -11,7 +11,7 @@ import (
 )
 
 type FeedHandler struct {
-	event chan *tail.Event
+	event chan struct{}
 }
 
 func (fh *FeedHandler) NewFeed(event chan *tail.Event) *FeedHandler {
