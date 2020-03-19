@@ -3,7 +3,6 @@ package config
 import (
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"testing"
 )
@@ -51,6 +50,12 @@ func buildReplConfig(rw io.ReadWriter) (*Config, error) {
 
 func TestRepl(t *testing.T) {
 	if _, e := Mock(buildReplConfig, "zzyzx", true); e != nil {
-		log.Fatal(e)
+		t.Error(e)
+	}
+}
+
+func TestListAll(t *testing.T) {
+	if _, e := ListAll(); e != nil {
+		t.Error(e)
 	}
 }
