@@ -34,7 +34,7 @@ var items = map[string]CmdType{
 // Command is a ctl message
 type Command struct {
 	// The sending client ID
-	UUID    int64
+	UUID    uint32
 	CmdType CmdType
 	// Arguments for known commands, such as buffer/open/close/link
 	Args []string
@@ -43,7 +43,7 @@ type Command struct {
 }
 
 // New - helper func with varargs
-func New(uuid int64, cmdType CmdType, data []byte, args ...string) *Command {
+func New(uuid uint32, cmdType CmdType, data []byte, args ...string) *Command {
 	return &Command{
 		UUID:    uuid,
 		CmdType: cmdType,
@@ -53,12 +53,12 @@ func New(uuid int64, cmdType CmdType, data []byte, args ...string) *Command {
 }
 
 // FromBytes returns a command from byte input, or an error if it was unable to parse
-func FromBytes(uuid int64, b []byte) (*Command, error) {
+func FromBytes(uuid uint32, b []byte) (*Command, error) {
 	return FromString(uuid, string(b))
 }
 
 // FromString retruns a command from string input, or an error if it was unable to parse
-func FromString(uuid int64, s string) (*Command, error) {
+func FromString(uuid uint32, s string) (*Command, error) {
 	c := &Command{
 		UUID: uuid,
 		Data: []byte(s),
@@ -131,7 +131,7 @@ func (c *Command) WriteOut(w io.Writer) error {
 
 func add(c *Command, t []string, count int) (*Command, error) {
 	// don't count the command token, just the args
-	if len(t) - 1 != count {
+	if len(t)-1 != count {
 		return nil, fmt.Errorf("missing argument(s) to command %s", t[0])
 	}
 

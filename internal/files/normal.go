@@ -7,14 +7,16 @@ import (
 	"github.com/altid/server/files"
 )
 
-type normalHandler struct{}
+type NormalHandler struct{}
 
-func (*normalHandler) Normal(msg *files.Message) (interface{}, error) {
+func NewNormal() *NormalHandler { return &NormalHandler{} }
+
+func (*NormalHandler) Normal(msg *files.Message) (interface{}, error) {
 	fp := path.Join(msg.Server, msg.Buffer, msg.Target)
 	return os.Open(fp)
 }
 
-func getNormalStat(msg *files.Message) (os.FileInfo, error) {
+func (*NormalHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	fp := path.Join(msg.Server, msg.Buffer, msg.Target)
 	return os.Lstat(fp)
 }

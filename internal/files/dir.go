@@ -10,7 +10,7 @@ import (
 	"github.com/altid/server/files"
 )
 
-type dirHandler struct{}
+type DirHandler struct{}
 
 type dir struct {
 	name  string
@@ -20,7 +20,9 @@ type dir struct {
 	total int64
 }
 
-func (*dirHandler) Normal(msg *files.Message) (interface{}, error) {
+func NewDir() *DirHandler { return &DirHandler{} }
+
+func (*DirHandler) Normal(msg *files.Message) (interface{}, error) {
 	c := make(chan os.FileInfo)
 	done := make(chan struct{})
 	fp := path.Join(msg.Service, msg.Buffer)
@@ -51,7 +53,7 @@ func (*dirHandler) Normal(msg *files.Message) (interface{}, error) {
 	return d, nil
 }
 
-func (*dirHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*DirHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	fp := path.Join(msg.Service, msg.Buffer)
 
 	_, count, err := listDir(msg, fp)
@@ -91,31 +93,31 @@ func listDir(msg *files.Message, fp string) ([]os.FileInfo, int64, error) {
 	// a missing entry may occur in the worst case
 	// but a direct read of the file will correctly error
 	// with all details we want
-	c := &ctlHandler{}
+	c := &CtlHandler{}
 	if cstat, e := c.Stat(msg); e == nil {
 		list = append(list, cstat)
 		count++
 	}
 
-	e := &errHandler{}
+	e := &ErrHandler{}
 	if estat, e := e.Stat(msg); e == nil {
 		list = append(list, estat)
 		count++
 	}
 
-	f := &feedHandler{}
+	f := &FeedHandler{}
 	if fstat, e := f.Stat(msg); e == nil {
 		list = append(list, fstat)
 		count++
 	}
 
-	t := &tabsHandler{}
+	t := &TabsHandler{}
 	if tstat, e := t.Stat(msg); e == nil {
 		list = append(list, tstat)
 		count++
 	}
 
-	i := &inputHandler{}
+	i := &InputHandler{}
 	if istat, e := i.Stat(msg); e == nil {
 		list = append(list, istat)
 		count++

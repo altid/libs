@@ -12,7 +12,7 @@ import (
 	"github.com/altid/server/tabs"
 )
 
-type tabsHandler struct {
+type TabsHandler struct {
 	// Put handler to tabs here
 	manager *tabs.Manager
 }
@@ -22,7 +22,9 @@ type tab struct {
 	size int64
 }
 
-func (th *tabsHandler) Normal(msg *files.Message) (interface{}, error) {
+func NewTabs(manager *tabs.Manager) *TabsHandler { return &TabsHandler{manager} }
+
+func (th *TabsHandler) Normal(msg *files.Message) (interface{}, error) {
 	var b bytes.Buffer
 
 	for _, tab := range th.manager.List() {
@@ -41,7 +43,7 @@ func (th *tabsHandler) Normal(msg *files.Message) (interface{}, error) {
 	return t, nil
 }
 
-func (*tabsHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*TabsHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	return os.Stat(path.Join(msg.Service, "tabs"))
 }
 func (t *tab) ReadAt(p []byte, off int64) (n int, err error) {

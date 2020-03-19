@@ -8,11 +8,11 @@ import (
 func TestManager(t *testing.T) {
 	h := Manager{}
 
-	tab := h.Create("foo")
+	tab := h.Tab("foo")
 	tab.SetState(Active)
 
-	h.Create("bar")
-	tab2 := h.Create("baz")
+	h.Tab("bar")
+	tab2 := h.Tab("baz")
 	tab2.SetState(Alert)
 
 	l := h.List()
@@ -22,13 +22,13 @@ func TestManager(t *testing.T) {
 	}
 
 	h.Remove("baz")
-	tab = h.Create("foo")
+	tab = h.Tab("foo")
 
 	if !tab.Active {
 		t.Error("unable to retrieve tab")
 	}
 
-	tab2 = h.Create("baz")
+	tab2 = h.Tab("baz")
 	if tab.Alert {
 		t.Error("remove failed, tab maintained state across re-creation")
 	}

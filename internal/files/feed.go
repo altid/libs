@@ -7,14 +7,18 @@ import (
 	"path"
 
 	"github.com/altid/server/files"
+	"github.com/altid/server/tail"
 )
 
-type feedHandler struct {
-	// We want at a client here
-	event chan struct{}
+type FeedHandler struct {
+	event chan *tail.Event
 }
 
-func (fh *feedHandler) Normal(msg *files.Message) (interface{}, error) {
+func (fh *FeedHandler) NewFeed(event chan *tail.Event) *FeedHandler {
+	return &FeedHandler{event}
+}
+
+func (fh *FeedHandler) Normal(msg *files.Message) (interface{}, error) {
 	done := make(chan struct{})
 	f := &feed{
 		event: fh.event,
@@ -27,7 +31,7 @@ func (fh *feedHandler) Normal(msg *files.Message) (interface{}, error) {
 
 }
 
-func (*feedHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*FeedHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	return os.Lstat(path.Join(msg.Service, msg.Buffer, "feed"))
 }
 

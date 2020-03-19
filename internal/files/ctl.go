@@ -3,20 +3,27 @@ package files
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 
+	"github.com/altid/server/command"
 	"github.com/altid/server/files"
 )
 
-type ctlHandler struct {
+// CtlHandler with access to Command
+type CtlHandler struct {
+	uuid uint32
+	cmds chan *command.Command
 	// Put the command here
 }
 
-func (*ctlHandler) Normal(msg *files.Message) (interface{}, error) {
+func NewCtl(uuid, cmds chan *command.Command) *CtlHandler {	return &CtlHandler{uuid, cmds}}
+
+func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
 	fp := path.Join(msg.Service, msg.Buffer, "ctl")
 
 	buff, err := ioutil.ReadFile(fp)
@@ -25,6 +32,7 @@ func (*ctlHandler) Normal(msg *files.Message) (interface{}, error) {
 	}
 
 	c := &ctl{
+		cmds: ch,
 		uuid: msg.UUID,
 		data: buff,
 		size: int64(len(buff)),
@@ -34,11 +42,12 @@ func (*ctlHandler) Normal(msg *files.Message) (interface{}, error) {
 	return c, nil
 }
 
-func (*ctlHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*CtlHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	return os.Lstat(path.Join(msg.Service, msg.Buffer, "ctl"))
 }
 
 type ctl struct {
+	cmds chan *command.Command
 	off  int64
 	size int64
 	uuid int64
@@ -49,7 +58,6 @@ type ctl struct {
 func (c *ctl) ReadAt(b []byte, off int64) (n int, err error) {
 	n = copy(b, c.data[off:])
 	if int64(n)+off > c.size {
-
 		return n, io.EOF
 	}
 
@@ -57,15 +65,14 @@ func (c *ctl) ReadAt(b []byte, off int64) (n int, err error) {
 }
 
 func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
-	c.off += off + int64(len(p))
 	buff := bytes.NewBuffer(p)
 
-	command, err := buff.ReadString(' ')
+	cmd, err := buff.ReadString(' ')
 	if err != nil && err != io.EOF {
 		return 0, errors.New("nil or empty command received")
 	}
 
-	command = strings.TrimSuffix(command, " ")
+	cmd = strings.TrimSuffix(cmd, " ")
 
 	value, err := buff.ReadString('\n')
 	if err != nil && err != io.EOF {
@@ -74,27 +81,27 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 
 	value = value[:len(value)-1]
 
-	c.data = append(c.data, p...)
-
-	// TODO: We want to send the cmd on the internal cmd handler for ctl
-	switch command {
+	switch cmd {
 	case "refresh":
-		//c.cmds.Send(uuid, command.Reload, value)
+		c.cmds <- command.New(c.uuid, command.ReloadCmd)
 	case "buffer":
-		//c.cmds.Send(uuid, command.Buffer, value)
-		return len(p), nil
+		c.cmds <- command.New(c.uuid, command.BufferCmd, value)
 	case "close":
-		//c.cmds.Send(uuid, command.Close, value)
+		c.cmds <- command.New(c.uuid, command.CloseCmd, value)
 	case "link":
-		//c.cmds.Send(uuid, command.Link, value)
-	case "open":
-		//c.cmds.Send(uuid, command.Open, value)
-		if value == "none" {
-			return len(p), nil
+		t := strings.Fields(value)
+		if len(t) != 2 {
+			return 0, errors.New("link requires two arguments")
 		}
+		c.cmds <- command.New(c.uuid, command.LinkCmd, t[0], t[1])
+	case "open":
+		c.cmds <- command.New(c.uuid, command.OpenCmd, value)
+
+	default:
+		c.cmds <- command.New(c.uuid, command.OtherCmd, fmt.Sprintf("%s %s", cmd, value))
 	}
 
-	return 0, errors.New("No such command")
+	return len(p), nil
 }
 
 func (c *ctl) Close() error { return nil }

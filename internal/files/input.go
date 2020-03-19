@@ -7,9 +7,11 @@ import (
 	"github.com/altid/server/files"
 )
 
-type inputHandler struct{}
+type InputHandler struct{}
 
-func (*inputHandler) Normal(msg *files.Message) (interface{}, error) {
+func NewInput() *InputHandler { return &InputHandler{} }
+
+func (*InputHandler) Normal(msg *files.Message) (interface{}, error) {
 	fp := path.Join(msg.Server, msg.Buffer, "input")
 	i := &input{
 		path: fp,
@@ -18,7 +20,7 @@ func (*inputHandler) Normal(msg *files.Message) (interface{}, error) {
 	return i, nil
 }
 
-func (*inputHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*InputHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	return os.Stat(path.Join(msg.Server, msg.Buffer, "input"))
 }
 
