@@ -9,7 +9,6 @@ func TestManager(t *testing.T) {
 
 	client1 := h.Client(0)
 
-	// Should also set Active
 	client1.SetBuffer("banana")
 
 	h.Client(0)
@@ -36,5 +35,12 @@ func TestManager(t *testing.T) {
 
 	if len(h.List()) != 2 {
 		t.Error("unable to remove item from list")
+	}
+
+	client1.SetBuffer("foo")
+	client1.SetBuffer("bar")
+
+	if len(client1.History()) != 2 || client1.History()[0] != "banana" {
+		t.Error("incorrect history")
 	}
 }

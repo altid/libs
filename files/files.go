@@ -11,7 +11,7 @@ type Handler interface {
 	Normal(msg *Message) (interface{}, error)
 }
 
-// Files is the main
+// Files facilitates access to the functions of the sythetic files
 type Files struct {
 	run     map[string]Handler
 	service string
