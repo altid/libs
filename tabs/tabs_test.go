@@ -24,13 +24,18 @@ func TestManager(t *testing.T) {
 	h.Remove("baz")
 	tab = h.Create("foo")
 
-	if ! tab.Active {
+	if !tab.Active {
 		t.Error("unable to retrieve tab")
 	}
 
 	tab2 = h.Create("baz")
 	if tab.Alert {
 		t.Error("remove failed, tab maintained state across re-creation")
+	}
+
+	h.Remove("baz")
+	if len(h.List()) != 2 {
+		t.Error("unable to remove entry entirely")
 	}
 }
 
