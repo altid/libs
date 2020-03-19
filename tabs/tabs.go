@@ -12,11 +12,6 @@ const (
 	ClearUnread
 )
 
-// Manager is used to manage tabs accurately for a service
-type Manager struct {
-	tabs []*Tab
-}
-
 // Tab represents the state of one open buffer
 type Tab struct {
 	Name   string
@@ -24,15 +19,6 @@ type Tab struct {
 	Active bool
 	Unread uint16
 }
-
-// List returns all currently tracked tabs
-func (m *Manager) List() []*Tab {
-	return m.tabs
-}
-
-// Push
-
-// Pop
 
 // SetState will set Alert and Active flags of a tag based on the mask
 func (t *Tab) SetState(mask uint8) {
