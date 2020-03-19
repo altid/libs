@@ -53,9 +53,3 @@ func TestRepl(t *testing.T) {
 		t.Error(e)
 	}
 }
-
-func TestListAll(t *testing.T) {
-	if _, e := ListAll(); e != nil {
-		t.Error(e)
-	}
-}
