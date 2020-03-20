@@ -1,4 +1,4 @@
-package main
+package files
 
 import (
 	"io"
@@ -6,15 +6,11 @@ import (
 	"os"
 	"path"
 	"time"
+
+	"github.com/altid/server/files"
 )
 
-func init() {
-	s := &fileHandler{
-		fn:   getDir,
-		stat: getDirStat,
-	}
-	addFileHandler("/", s)
-}
+type DirHandler struct{}
 
 type dir struct {
 	name  string
@@ -24,10 +20,12 @@ type dir struct {
 	total int64
 }
 
-func getDir(msg *message) (interface{}, error) {
+func NewDir() *DirHandler { return &DirHandler{} }
+
+func (*DirHandler) Normal(msg *files.Message) (interface{}, error) {
 	c := make(chan os.FileInfo)
 	done := make(chan struct{})
-	fp := path.Join(*inpath, msg.svc.name, msg.buff)
+	fp := path.Join(msg.Service, msg.Buffer)
 
 	list, total, err := listDir(msg, fp)
 	if err != nil {
@@ -52,13 +50,11 @@ func getDir(msg *message) (interface{}, error) {
 		name:  fp,
 		total: total,
 	}
-
-	msg.svc.debug("listing directory for %s", msg.svc.name)
 	return d, nil
 }
 
-func getDirStat(msg *message) (os.FileInfo, error) {
-	fp := path.Join(*inpath, msg.svc.name, msg.buff)
+func (*DirHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+	fp := path.Join(msg.Service, msg.Buffer)
 
 	_, count, err := listDir(msg, fp)
 	if err != nil {
@@ -72,7 +68,7 @@ func getDirStat(msg *message) (os.FileInfo, error) {
 	return d, nil
 }
 
-func listDir(msg *message, fp string) ([]os.FileInfo, int64, error) {
+func listDir(msg *files.Message, fp string) ([]os.FileInfo, int64, error) {
 	var count int64
 
 	list, err := ioutil.ReadDir(fp)
@@ -97,27 +93,33 @@ func listDir(msg *message, fp string) ([]os.FileInfo, int64, error) {
 	// a missing entry may occur in the worst case
 	// but a direct read of the file will correctly error
 	// with all details we want
-	cstat, err := getCtlStat(msg)
-	if err == nil {
+	c := &CtlHandler{}
+	if cstat, e := c.Stat(msg); e == nil {
 		list = append(list, cstat)
 		count++
 	}
 
-	cfeed, err := getFeedStat(msg)
-	if err == nil {
-		list = append(list, cfeed)
+	e := &ErrHandler{}
+	if estat, e := e.Stat(msg); e == nil {
+		list = append(list, estat)
 		count++
 	}
 
-	ctabs, err := getTabsStat(msg)
-	if err == nil {
-		list = append(list, ctabs)
+	f := &FeedHandler{}
+	if fstat, e := f.Stat(msg); e == nil {
+		list = append(list, fstat)
 		count++
 	}
 
-	cinput, err := getInputStat(msg)
-	if err == nil {
-		list = append(list, cinput)
+	t := &TabsHandler{}
+	if tstat, e := t.Stat(msg); e == nil {
+		list = append(list, tstat)
+		count++
+	}
+
+	i := &InputHandler{}
+	if istat, e := i.Stat(msg); e == nil {
+		list = append(list, istat)
 		count++
 	}
 
@@ -129,8 +131,6 @@ func (d *dir) IsDir() bool        { return true }
 func (d *dir) ModTime() time.Time { return time.Now().Truncate(time.Hour) }
 func (d *dir) Mode() os.FileMode  { return os.ModeDir | 0755 }
 func (d *dir) Sys() interface{}   { return d }
-func (d *dir) Uid() string        { return defaultUID }
-func (d *dir) Gid() string        { return defaultGID }
 func (d *dir) Size() int64        { return 0 }
 
 func (d *dir) Readdir(n int) ([]os.FileInfo, error) {
