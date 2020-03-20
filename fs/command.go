@@ -13,9 +13,11 @@ const (
 	DefaultGroup ComGroup = iota
 	ActionGroup
 	MediaGroup
+	ServiceGroup
 )
 
 // Command represents an available command to a service
+// The From field should generally be populated, except in the case of a ServiceGroup command
 type Command struct {
 	Name        string
 	Description string
@@ -44,15 +46,4 @@ func setCommands(r runner, cmds ...*Command) error {
 	}
 
 	return r.SetCommands(cmdlist...)
-}
-
-func cmd2Command(cmd *command.Command) *Command {
-	return &Command{
-		Name:        cmd.Name,
-		Description: cmd.Description,
-		Heading:     ComGroup(cmd.Heading),
-		Args:        cmd.Args,
-		Alias:       cmd.Alias,
-		From:        cmd.From,
-	}
 }
