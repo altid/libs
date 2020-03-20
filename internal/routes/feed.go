@@ -1,4 +1,4 @@
-package files
+package routes
 
 import (
 	"errors"
@@ -7,14 +7,13 @@ import (
 	"path"
 
 	"github.com/altid/server/files"
-	"github.com/altid/server/tail"
 )
 
 type FeedHandler struct {
 	event chan struct{}
 }
 
-func (fh *FeedHandler) NewFeed(event chan *tail.Event) *FeedHandler {
+func NewFeed(event chan struct{}) *FeedHandler {
 	return &FeedHandler{event}
 }
 

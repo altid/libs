@@ -1,4 +1,4 @@
-package files
+package routes
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func (th *TabsHandler) Normal(msg *files.Message) (interface{}, error) {
 			b.WriteString("!")
 		}
 
-		fmt.Fprintf(&b, "%s [%d]\n", tab.Name, tab.Count)
+		fmt.Fprintf(&b, "%s [%d]\n", tab.Name, tab.Unread)
 	}
 
 	t := &tab{
