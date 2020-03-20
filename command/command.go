@@ -21,6 +21,8 @@ const (
 	QuitCmd
 )
 
+// There are more possible commands, but these are the only ones
+// the server itself intercepts in any meaningful way
 var items = map[string]CmdType{
 	"open":   OpenCmd,
 	"close":  CloseCmd,
@@ -43,6 +45,12 @@ type Command struct {
 }
 
 // New - helper func with varargs
+//
+//		cmdChannel <- New(clientuuid, BufferCmd, nil, "newbuffer")
+//		cmdChannel <- New(clientuuid, CloseCmd, nil, "oldbuffer")
+//		cmdChannel <- New(clientuuid, OtherCmd, []byte("emote I swapped buffers"))
+//		cmdChannel <- New(clientuuid, LinkCmd, nil, "newbuffer", "oldbuffer")
+//
 func New(uuid uint32, cmdType CmdType, data []byte, args ...string) *Command {
 	return &Command{
 		UUID:    uuid,
@@ -58,6 +66,10 @@ func FromBytes(uuid uint32, b []byte) (*Command, error) {
 }
 
 // FromString retruns a command from string input, or an error if it was unable to parse
+//
+//		cmdChannel <- FromString(clientuuid, "buffer newbuffer")
+//		cmdChannel <- FromString(clientuuid, "link new old")
+//
 func FromString(uuid uint32, s string) (*Command, error) {
 	c := &Command{
 		UUID: uuid,
@@ -92,7 +104,9 @@ func FromString(uuid uint32, s string) (*Command, error) {
 }
 
 // WriteOut will write the command correctly to the Writer
+// If a command is poorly formatted, it will return an error
 func (c *Command) WriteOut(w io.Writer) error {
+	// check the args count before writing
 	switch c.CmdType {
 	case OpenCmd:
 		if len(c.Args) != 1 {
@@ -136,10 +150,11 @@ func add(c *Command, t []string, count int) (*Command, error) {
 	}
 
 	switch count {
-	// Open, close, buffer take 1
+	// Open, close, buffer take 1 argument
+	// t[0] holds the command name
 	case 1:
 		c.Args = t[1:2]
-	// Link takes 2 args
+	// Link takes 2 arguments
 	case 2:
 		c.Args = t[1:3]
 	}
