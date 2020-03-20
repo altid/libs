@@ -9,10 +9,21 @@ func TestManager(t *testing.T) {
 
 	client1 := h.Client(0)
 
+	if client1 == nil {
+		t.Error("client was nil")
+		return
+	}
+
 	client1.SetBuffer("banana")
 
 	h.Client(0)
+
 	client2 := h.Client(0)
+	if client2 == nil {
+		t.Error("client2 was nil")
+		return
+	}
+
 	client2.SetBuffer("orange")
 
 	if len(h.List()) != 3 {
@@ -21,13 +32,17 @@ func TestManager(t *testing.T) {
 
 	h.Remove(client2.UUID)
 	client1 = h.Client(client1.UUID)
+	if client1 == nil {
+		t.Error("unable to retrieve client")
+		return
+	}
 
 	if !client1.Active {
 		t.Error("unable to retrieve client")
 	}
 
-	client2 = h.Client(client2.UUID)
-	if client2.Active {
+	client2 = h.Client(0)
+	if client2 == nil || client2.Active {
 		t.Error("remove failed, client maintained state across re-creation")
 	}
 
