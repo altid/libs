@@ -28,7 +28,7 @@ const (
 // ErrBadArgs is returned from Ctl when incorrect arguments are provided
 var ErrBadArgs = errors.New("Too few/incorrect arguments")
 
-func RunClientCtl(cmd int, args ...string) ([]byte, error) {
+func RunClientCtl(cmd int, from string, args ...string) ([]byte, error) {
 	var data string
 	switch cmd {
 	case CmdBuffer:
@@ -36,25 +36,25 @@ func RunClientCtl(cmd int, args ...string) ([]byte, error) {
 			return nil, ErrBadArgs
 		}
 
-		data = fmt.Sprintf("buffer %s\x00", args[0])
+		data = fmt.Sprintf("buffer %s %s\x00", from, args[0])
 	case CmdOpen:
 		if len(args) != 1 {
 			return nil, ErrBadArgs
 		}
 
-		data = fmt.Sprintf("open %s\x00", args[0])
+		data = fmt.Sprintf("open %s %s\x00", from, args[0])
 	case CmdClose:
 		if len(args) != 1 {
 			return nil, ErrBadArgs
 		}
 
-		data = fmt.Sprintf("close %s\x00", args[0])
+		data = fmt.Sprintf("close %s %s\x00", from, args[0])
 	case CmdLink:
 		if len(args) != 2 {
 			return nil, ErrBadArgs
 		}
 
-		data = fmt.Sprintf("link %s %s\x00", args[0], args[1])
+		data = fmt.Sprintf("link %s %s %s\x00", from, args[0], args[1])
 	default:
 		return nil, ErrBadArgs
 	}
