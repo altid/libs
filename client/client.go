@@ -4,7 +4,7 @@ package client
 // The Aux can be used to store additional data
 type Client struct {
 	Active  bool
-	UUID    UUID
+	UUID    uint32
 	Aux     interface{}
 	current string
 	history []string

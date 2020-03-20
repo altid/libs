@@ -1,4 +1,4 @@
-package files
+package routes
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func (th *TabsHandler) Normal(msg *files.Message) (interface{}, error) {
 			b.WriteString("!")
 		}
 
-		fmt.Fprintf(&b, "%s [%d]\n", tab.Name, tab.Count)
+		fmt.Fprintf(&b, "%s [%d]\n", tab.Name, tab.Unread)
 	}
 
 	t := &tab{
@@ -47,6 +47,10 @@ func (*TabsHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	return os.Stat(path.Join(msg.Service, "tabs"))
 }
 func (t *tab) ReadAt(p []byte, off int64) (n int, err error) {
+	if off > t.size {
+		return n, io.EOF
+	}
+
 	n = copy(p, t.data[off:])
 	if int64(n)+off > t.size {
 		return n, io.EOF

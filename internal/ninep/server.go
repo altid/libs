@@ -44,6 +44,7 @@ func (s *Server) Run() error {
 		go func(svc *service) {
 			defer wg.Done()
 			if err = svc.run(); err != nil {
+				s.debug("%v", err)
 				return
 			}
 		}(svc)
@@ -56,6 +57,6 @@ func (s *Server) Run() error {
 }
 
 func serverDebugLog(format string, v ...interface{}) {
-	l := log.New(os.Stderr, "", 0)
+	l := log.New(os.Stderr, "9pd server ", 0)
 	l.Printf(format, v...)
 }
