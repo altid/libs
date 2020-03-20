@@ -1,3 +1,4 @@
+// build plan9
 package tail
 
 import (
