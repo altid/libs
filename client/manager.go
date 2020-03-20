@@ -7,9 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// UUID is a unique identifier for a client
-type UUID uint32
-
 // Manager is used to represent an overview of all currently
 // connected clients
 type Manager struct {
@@ -24,7 +21,7 @@ func (m *Manager) List() []*Client {
 
 // Client - return for given id or nil
 // If UUID is 0, a new one will be generated
-func (m *Manager) Client(id UUID) *Client {
+func (m *Manager) Client(id uint32) *Client {
 
 	for _, c := range m.clients {
 		if c.UUID == id {
@@ -37,7 +34,7 @@ func (m *Manager) Client(id UUID) *Client {
 	}
 
 	newid := uuid.New()
-	id = UUID(newid.ID())
+	id = newid.ID()
 
 	client := &Client{
 		UUID:    id,
@@ -52,7 +49,7 @@ func (m *Manager) Client(id UUID) *Client {
 }
 
 // Remove a named tab from the internal list
-func (m *Manager) Remove(uuid UUID) error {
+func (m *Manager) Remove(uuid uint32) error {
 	for n, c := range m.clients {
 		if c.UUID == uuid {
 			m.Lock()
