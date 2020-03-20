@@ -47,18 +47,19 @@ func (s *service) run() error {
 	//}
 
 	if s.chatty {
-		t.TraceLog = log.New(os.Stderr, "", 0)
+		t.TraceLog = log.New(os.Stdout, "styx: ", 0)
 	}
 
 	if s.log {
 		s.debug = serviceDebugLog
-		t.ErrorLog = log.New(os.Stderr, "", 0)
+		t.ErrorLog = log.New(os.Stdout, "styx: ", 0)
 	}
 
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
 		c := s.client.Client(0)
 		c.Aux = s
 
+		defer s.client.Remove(c.UUID)
 		c.SetBuffer(s.tabs.List()[0].Name)
 
 		s.debug("client start id=\"%d\"", c.UUID)

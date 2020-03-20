@@ -83,5 +83,4 @@ func (s *service) sendFeeds(e *tail.Event) {
 func (s *service) update(uuid uint32) {
 	s.debug("feed update id=\"%d\"", uuid)
 	s.feed.Done(uuid)
-	//s.feed.Start(uuid)
 }

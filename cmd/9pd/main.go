@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 
+	_ "net/http/pprof"
+
 	"github.com/altid/server/internal/ninep"
 )
 
@@ -45,4 +47,5 @@ func main() {
 	if e := srv.Run(); e != nil {
 		log.Fatal(e)
 	}
+
 }
