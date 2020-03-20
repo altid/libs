@@ -1,19 +1,36 @@
 # .github/workflows/release.yaml
+name: publish releases
+on:
+  push:
+    tags:
+      - '*'
 
-on: release
-name: release
 jobs:
-  linux-386:
-    name: 9pd linux/386
+  release:
     runs-on: ubuntu-latest
     steps:
-    - name: checkout
-      uses: actions/checkout@v2
+
     - name: set up go
       uses: actions/setup-go@v1
       with:
         go-version: 1.14
-    - name: compile and release
+      id: go
+      
+    - name: checkout
+      uses: actions/checkout@v2
+      
+    - name: unshallow
+      run: git fetch --prune --unshallow
+      
+    - name: Get Dependencies
+      run: |
+        go get -v -t -d ./...
+        if [ -f Gopkg.toml ]; then
+            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+            dep ensure
+        fi
+        
+    - name: release linux/386
       uses: goreleaser/go-release.action@v1
       with:
         args: release --rm-dist
@@ -22,17 +39,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
         GOOS: linux
-  linux-amd64:
-    name: 9pd linux/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-    - name: set up go
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.14
-    - name: compile and release
+  
+    - name: release linux/amd64
       uses: goreleaser/go-release.action@v1
       with:
         args: release --rm-dist
@@ -41,36 +49,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
         GOOS: linux
-  darwin-386:
-    name: 9pd darwin/386
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-    - name: set up go
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.14
-    - name: compile and release
-      uses: goreleaser/go-release.action@v1
-      with:
-        args: release --rm-dist
-        workdir:  cmds/9pd
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GOARCH: "386"
-        GOOS: darwin
-  darwin-amd64:
-    name: 9pd darwin/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-    - name: set up go
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.14
-    - name: compile and release
+
+    - name: release darwin/amd64
       uses: goreleaser/go-release.action@v1
       with:
         args: release --rm-dist
@@ -79,17 +59,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
         GOOS: darwin
-  windows-amd64:
-    name: 9pd windows/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-    - name: set up go
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.14
-    - name: compile and release
+
+    - name: release windows/amd64
       uses: goreleaser/go-release.action@v1
       with:
         args: release --rm-dist
