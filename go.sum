@@ -1,7 +1,5 @@
 9fans.net/go v0.0.2/go.mod h1:lfPdxjq9v8pVQXUMBCx5EO5oLXWQFlKRQgs1kEkjoIM=
 aqwari.net/retry v0.0.0-20180428204214-1281ce5d8df0/go.mod h1:XSNyyoM+OSg3vRmROPrS1lEpV7q/I9J1HAKMMxdUkU4=
-github.com/altid/9pd v0.0.0-20200317044037-3d3c500e4989 h1:o88YwQuT/51e1E6D5Y/7dckau3bkSdH6xQOd3JC0RFk=
-github.com/altid/libs v0.0.1-alpha/go.mod h1:U8m8LG+xPdt5M3MXW+opofIYFS3iA6RrP/fQhBaH9N8=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/go9p/styx v0.0.0-20200314201655-4aa21a63d347/go.mod h1:FgWI1n+H1ObcezDRbKsfosnG3kcImhviboh33/pvglU=
