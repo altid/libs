@@ -1,8 +1,9 @@
 name: goreleaser
 
 on:
-  pull_request:
   push:
+    tags:
+      - '*'
 
 jobs:
   goreleaser:
@@ -24,6 +25,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v1
         with:
           version: latest
+          workdir: cmd/9pd
           args: release --rm-dist
           key: ${{ secrets.YOUR_PRIVATE_KEY }}
         env:
