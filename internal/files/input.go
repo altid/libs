@@ -1,16 +1,27 @@
-package main
+package files
 
 import (
 	"os"
 	"path"
+
+	"github.com/altid/server/files"
 )
 
-func init() {
-	s := &fileHandler{
-		fn:   getInput,
-		stat: getInputStat,
+type InputHandler struct{}
+
+func NewInput() *InputHandler { return &InputHandler{} }
+
+func (*InputHandler) Normal(msg *files.Message) (interface{}, error) {
+	fp := path.Join(msg.Server, msg.Buffer, "input")
+	i := &input{
+		path: fp,
 	}
-	addFileHandler("/input", s)
+
+	return i, nil
+}
+
+func (*InputHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+	return os.Stat(path.Join(msg.Server, msg.Buffer, "input"))
 }
 
 type input struct {
@@ -40,18 +51,3 @@ func (i *input) WriteAt(p []byte, off int64) (n int, err error) {
 }
 
 func (i *input) Close() error { return nil }
-func (i *input) Uid() string  { return defaultUID }
-func (i *input) Gid() string  { return defaultGID }
-
-func getInput(msg *message) (interface{}, error) {
-	fp := path.Join(*inpath, msg.svc.name, msg.buff, "input")
-	i := &input{
-		path: fp,
-	}
-
-	return i, nil
-}
-
-func getInputStat(msg *message) (os.FileInfo, error) {
-	return os.Stat(path.Join(*inpath, msg.svc.name, msg.buff, "input"))
-}
