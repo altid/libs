@@ -1,31 +1,50 @@
-// build !plan9
-
 package tail
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"log"
 	"os"
 	"path"
-
-	"github.com/fsnotify/fsnotify"
+	"time"
 )
+
+type runner struct {
+	t      *tail
+	events chan *Event
+}
+
+func (r *runner) item() error {
+	hs, err := r.t.fd.Stat()
+	if err != nil {
+		return err
+	}
+
+	if hs.Size() == r.t.size {
+		defer time.Sleep(250 * time.Millisecond)
+		return nil
+	}
+
+	eventlist, err := r.t.readlines()
+	if err != nil {
+		return err
+	}
+
+	for _, event := range eventlist {
+		r.events <- event
+	}
+
+	r.t.size = hs.Size()
+	return nil
+}
 
 func watchEvents(ctx context.Context, dir, service string) (chan *Event, error) {
 	events := make(chan *Event)
 
-	watcher, err := fsnotify.NewWatcher()
+	dir = path.Join(dir, service, "event")
+
+	f, err := os.Open(dir)
 	if err != nil {
 		return nil, err
-	}
-
-	fp := path.Join(dir, service, "event")
-
-	f, err := os.Open(fp)
-	if err != nil {
-		return nil, fmt.Errorf("%s: entry found, but no service running", service)
 	}
 
 	stat, err := f.Stat()
@@ -33,41 +52,34 @@ func watchEvents(ctx context.Context, dir, service string) (chan *Event, error) 
 		return nil, err
 	}
 
-	_, err = f.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, err
-	}
-
-	go func() {
-		t := &tail{
+	go func(f *os.File, stat os.FileInfo, events chan *Event) {
+		// Make sure we tail from the end of the file
+		tail := &tail{
 			fd:   f,
 			name: service,
 			size: stat.Size(),
 		}
 
+		defer f.Close()
+
+		r := &runner{
+			t:      tail,
+			events: events,
+		}
+
 		for {
 			select {
-			case <-watcher.Events:
-				eventlist, err := t.readlines()
-				if err != nil {
-					ctx.Done()
-					log.Print(err)
-					break
-				}
-				for _, event := range eventlist {
-					events <- event
-				}
-			case err := <-watcher.Errors:
-				ctx.Done()
-				log.Print(err)
+			case <-ctx.Done():
+				close(events)
 				break
+			default:
+				if e := r.item(); e != nil {
+					log.Println(e)
+					return
+				}
 			}
 		}
-	}()
-
-	if err = watcher.Add(fp); err != nil {
-		return nil, err
-	}
+	}(f, stat, events)
 
 	return events, nil
 }
