@@ -18,7 +18,7 @@ type Server struct {
 func NewServer(ctx context.Context, s *Settings) (*Server, error) {
 	server := &Server{
 		ctx:      ctx,
-		services: s.listServices(),
+		services: s.services,
 		debug:    serverDebugLog,
 	}
 
