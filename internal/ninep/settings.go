@@ -1,6 +1,10 @@
 package ninep
 
 import (
+	"context"
+
+	"github.com/altid/libs/config"
+	"github.com/altid/server/client"
 	"github.com/altid/server/command"
 	"github.com/altid/server/files"
 	my "github.com/altid/server/internal/files"
@@ -15,82 +19,71 @@ type Settings struct {
 	port     int
 	factotum bool
 	usetls   bool
-	subsets map[string]*subset
+	services map[string]*service
 }
 
-type subset struct {
-	handler *files.Files
-	tabs *tabs.Manager
-	command chan *command.Command
-	events chan *tail.Event
-	feed chan struct{}
-}
-// *debug, *chatty, *dir, *port, *factotum, *usetls
 func NewSettings(debug, chatty bool, path string, port int, factotum, usetls bool) *Settings {
 	return &Settings{
-		debug:   debug,
-		chatty:  chatty,
-		path:    path,
-		port: port,
+		debug:    debug,
+		chatty:   chatty,
+		path:     path,
+		port:     port,
 		factotum: factotum,
-		usetls: usetls,
-		subset: make(map[string]*subset)
+		usetls:   usetls,
 	}
 }
 
-
-// BuildServices must be called before any of the underlying types are used
-func (s *Settings) BuildServices() error {
-	for _, entry := range config.ListAll() {
-		v := &subset{}
-		s.subsets[entry] = v
-	}
-}
-
-func (s *Settings) registerFiles(svc string) error {
+func (s *Settings) registerFiles(t *tabs.Manager, e chan *tail.Event, c chan *command.Command) *files.Manager {
 	h := files.Handle(s.path)
 
 	h.Add("/", my.NewDir())
-	h.Add("/ctl", my.NewCtl(s.command[svc]))
+	h.Add("/ctl", my.NewCtl(c))
 	h.Add("/error", my.NewError())
-	h.Add("/feed", my.NewFeed(s.feed[svc])
+	h.Add("/feed", my.NewFeed(e))
 	h.Add("/input", my.NewInput())
-	h.Add("/tabs", my.Tabs(s.tabs[svc]))
+	h.Add("/tabs", my.Tabs(t))
 	h.Add("default", my.NewNormal())
 
-	s.handlers = h
-	return nil
+	return h
 }
 
-func (s *Settings) listServices() map[string]*service {
+func (s *Settings) BuildServices(ctx context.Context) error {
 	services := make(map[string]*service)
 
-	for name, set := range s.subset {
-		conf, _ := config.New(nil, name, false)
+	for _, entry := range config.ListAll() {
+		events, err := tail.WatchEvents(ctx, s.path, entry.Name)
+		if err != nil {
+			return err
+		}
+
+		tabs := tabs.Manager{}
+		commands := make(chan *command.Command)
+		feed := make(chan struct{})
+		files := s.registerFiles(tabs, events, commands)
+
 		srv := &service{
-			client: &client.Manager{},
-			files: set.handler,
-			config: conf,
-			tabs: set.tabs,
-			commands: set.command,
-			events: set.events,
-			feed: set.feed,
-			basedir: set.path,
-			log: set.debug,
-			chatty: set.chatty,
-			tls: set.tls,
-			factotum: set.factotum,
-			debug: func(string, ...interface{}){},
+			client:   &client.Manager{},
+			files:    files,
+			config:   entry,
+			tabs:     tabs,
+			commands: commands,
+			events:   events,
+			feed:     feed,
+			basedir:  s.path,
+			log:      s.debug,
+			chatty:   s.chatty,
+			tls:      s.usetls,
+			factotum: s.factotum,
+			debug:    func(string, ...interface{}) {},
 		}
 
-		if set.debug {
-			srv.debug = serviceDebugLogging
+		if s.debug {
+			srv.debug = serviceDebugLog
 		}
 
-		s.registerFiles(srv)
-		services[name] = srv
+		services[entry.Name] = srv
 	}
 
-
-	return services
+	s.services = services
+	return nil
 }

@@ -1,6 +1,6 @@
 package ninep
 
-import "github.com/altid/9pd/tail"
+import "github.com/altid/server/tail"
 
 func (s *service) listenCommands() {
 	for _, cmd := range s.commands {

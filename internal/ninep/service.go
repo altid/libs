@@ -10,6 +10,7 @@ import (
 	"github.com/altid/server/command"
 	"github.com/altid/server/files"
 	"github.com/altid/server/tabs"
+	"github.com/altid/server/tail"
 	"github.com/go9p/styx"
 )
 
@@ -31,8 +32,9 @@ type service struct {
 
 // Add the service to the client.Aux (yay for self-reference?)
 func (s *service) run() error {
-	addr := s.config.Addr()
-	port := s.config.Port()
+	//addr, port := s.config.DialString() returns found or defaults
+	addr := "localhost"
+	port := "564"
 
 	t := &styx.Server{
 		Addr: addr + fmt.Sprintf(":%d", port),
@@ -60,10 +62,10 @@ func (s *service) run() error {
 			handleReq(c, sess.Request())
 		}
 
-		s.debug("client stop id=\"%d\"", s.client.UUID))
+		s.debug("client stop id=\"%d\"", s.client.UUID)
 	})
 
-	go s.handleCommands()
+	//go s.handleCommands()
 	go s.listenEvents()
 
 	switch s.tls {

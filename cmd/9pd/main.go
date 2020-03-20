@@ -27,7 +27,7 @@ func main() {
 	ctx := context.Background()
 
 	settings := ninep.NewSettings(*debug, *chatty, *dir, *port, *factotum, *usetls)
-	if e := settings.BuildServices(); e != nil {
+	if e := settings.BuildServices(ctx); e != nil {
 		log.Fatal(e)
 	}
 
@@ -36,5 +36,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Fatal(srv.Run())
+	if e := srv.Run(); e != nil {
+		log.Fatal(e)
+	}
 }
