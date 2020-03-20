@@ -92,7 +92,7 @@ func (c *Client) GetCommands() ([]*fs.Command, error) {
 
 // We want to eventually create and track tabs internally to the library
 func (c *Client) Ctl(cmd int, args ...string) (int, error) {
-	data, err := util.RunClientCtl(cmd, args...)
+	data, err := util.RunClientCtl(cmd, "testing", args...)
 	if err != nil {
 		return 0, err
 	}

@@ -85,7 +85,7 @@ func (c *Client) Ctl(cmd int, args ...string) (int, error) {
 	c.clnt.Open(nfid, p.OAPPEND)
 	defer c.clnt.Clunk(nfid)
 
-	data, err := util.RunClientCtl(cmd, args...)
+	data, err := util.RunClientCtl(cmd, c.buffer, args...)
 	if err != nil {
 		return 0, err
 	}
