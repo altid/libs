@@ -8,6 +8,4 @@ require (
 	github.com/go9p/styx v0.0.0-20200314201655-4aa21a63d347
 	github.com/google/uuid v1.1.1
 	github.com/grandcat/zeroconf v1.0.0
-	github.com/mischief/ndb v0.0.0-20131219140803-a27299009a40 // indirect
-	github.com/sqs/goreturns v0.0.0-20181028201513-538ac6014518 // indirect
 )
