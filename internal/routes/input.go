@@ -1,6 +1,7 @@
-package files
+package routes
 
 import (
+	"fmt"
 	"os"
 	"path"
 
@@ -12,7 +13,7 @@ type InputHandler struct{}
 func NewInput() *InputHandler { return &InputHandler{} }
 
 func (*InputHandler) Normal(msg *files.Message) (interface{}, error) {
-	fp := path.Join(msg.Server, msg.Buffer, "input")
+	fp := path.Join(msg.Service, msg.Buffer, "input")
 	i := &input{
 		path: fp,
 	}
@@ -21,7 +22,7 @@ func (*InputHandler) Normal(msg *files.Message) (interface{}, error) {
 }
 
 func (*InputHandler) Stat(msg *files.Message) (os.FileInfo, error) {
-	return os.Stat(path.Join(msg.Server, msg.Buffer, "input"))
+	return os.Stat(path.Join(msg.Service, msg.Buffer, "input"))
 }
 
 type input struct {
@@ -47,7 +48,7 @@ func (i *input) WriteAt(p []byte, off int64) (n int, err error) {
 	}
 
 	defer fp.Close()
-	return fp.Write(p)
+	return fmt.Fprintf(fp, "%s\n", p)
 }
 
 func (i *input) Close() error { return nil }

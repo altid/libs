@@ -2,24 +2,32 @@
 
 Adding
 
-To add a special file, simply include it in this source directory, making sure to call the AddFileHandler with your specific handlers in the init()
+	import (
+		"os"
+		"path"
 
-	func init() {
-		s := &files.Handler{
-			Normal: getMyFile,
-			Stat:   getMyFileStat,
-		}
-		files.Add("/myfile", s)
-	}
+		"github.com/altid/server/files"
+	)
 
-	func getMyFile(msg *files.Message) (interface{}, error) {
-		fp := path.Join(*inpath, msg.service, msg.buff, msg.file)
+	type NormalHandler struct{}
+
+	func NewNormal() *NormalHandler { return &NormalHandler{} }
+
+	func (*NormalHandler) Normal(msg *files.Message) (interface{}, error) {
+		fp := path.Join(msg.Service, msg.Buffer, msg.Target)
 		return os.Open(fp)
 	}
 
-	func getMyFileStat (msg *files.Message) (os.FileInfo, error) {
-		fp := path.Join(*inpath, msg.service, msg.buff, msg.file)
+	func (*NormalHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+		fp := path.Join(msg.Service, msg.Buffer, msg.Target)
 		return os.Lstat(fp)
+	}
+
+	func main() {
+		fh := files.Handle("/path/to/dir")
+		fh.Add("/myfile", NewNormal())
+
+		// [...]
 	}
 */
 package files

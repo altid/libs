@@ -1,3 +1,7 @@
+//Package mdns is a convenience wrapper over github.com/grandcat/zeroconf for listing Altid services over mdns
+//
+//		go get github.com/altid/server/mdns
+//
 package mdns
 
 import (
@@ -6,7 +10,7 @@ import (
 	"github.com/grandcat/zeroconf"
 )
 
-// An Entry indicates a service we want to broadcast over mdns
+// An Entry indicates a service we want to broadcast over mDNS
 type Entry struct {
 	Addr    string
 	Name    string

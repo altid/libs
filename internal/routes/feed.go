@@ -1,47 +1,79 @@
-package files
+package routes
 
 import (
 	"errors"
 	"io"
 	"os"
 	"path"
+	"sync"
 
 	"github.com/altid/server/files"
-	"github.com/altid/server/tail"
 )
 
+// FeedHandler wraps a `feed` file with special blocking read semantics
 type FeedHandler struct {
-	event chan struct{}
+	feeds map[uint32]chan struct{}
+	sync.Mutex
 }
 
-func (fh *FeedHandler) NewFeed(event chan *tail.Event) *FeedHandler {
-	return &FeedHandler{event}
+// NewFeed returns a FeedHandler
+func NewFeed() *FeedHandler {
+	fh := &FeedHandler{
+		feeds: make(map[uint32]chan struct{}),
+	}
+
+	return fh
 }
 
+// Send an event to the feed file specified by the uuid, if one exists
+func (fh *FeedHandler) Send(uuid uint32) {
+	fh.Lock()
+	defer fh.Unlock()
+
+	if f, ok := fh.feeds[uuid]; ok {
+		f <- struct{}{}
+	}
+}
+
+// Done sends EOF for any blocking reads to a client on a `feed`
+func (fh *FeedHandler) Done(uuid uint32) {
+	if _, ok := fh.feeds[uuid]; ok {
+		fh.Lock()
+		defer fh.Unlock()
+
+		close(fh.feeds[uuid])
+		delete(fh.feeds, uuid)
+	}
+}
+
+// Normal returns a readwritecloser tied to "feed", which tails it
+// until a new file is read by the client
 func (fh *FeedHandler) Normal(msg *files.Message) (interface{}, error) {
-	done := make(chan struct{})
+	event := make(chan struct{})
 	f := &feed{
-		event: fh.event,
+		event: event,
 		path:  path.Join(msg.Service, msg.Buffer, "feed"),
 		buff:  path.Join(msg.Service, msg.Buffer),
-		done:  done,
 	}
+
+	// Feed to match this specific client
+	fh.feeds[msg.UUID] = event
 
 	return f, nil
 
 }
 
+// Stat returns a normal stat to an underlying feed file
 func (*FeedHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	return os.Lstat(path.Join(msg.Service, msg.Buffer, "feed"))
 }
 
 // feed files are special in that they're blocking
 type feed struct {
-	event   chan struct{}
 	tailing bool
 	path    string
 	buff    string
-	done    chan struct{}
+	event   chan struct{}
 }
 
 func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {

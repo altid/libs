@@ -1,7 +1,11 @@
 package tabs
 
 import (
+	"bufio"
 	"errors"
+	"io"
+	"os"
+	"path"
 	"sync"
 )
 
@@ -9,6 +13,41 @@ import (
 type Manager struct {
 	tabs []*Tab
 	sync.Mutex
+}
+
+// FromFile returns a Manager with all tabs listed in a file added
+func FromFile(dir string) (*Manager, error) {
+	t := &Manager{}
+
+	fp, err := os.Open(path.Join(dir, "tabs"))
+	if err != nil {
+		return nil, err
+	}
+
+	defer fp.Close()
+
+	s := bufio.NewReader(fp)
+	for {
+		line, err := s.ReadString('\n')
+		switch err {
+		case io.EOF:
+			// We may have a tab here as well, add it
+			if len(line) > 0 {
+				t.Tab(line[:len(line)-1])
+			}
+
+			if len(t.List()) > 0 {
+				return t, nil
+			}
+
+			return nil, errors.New("found no entries")
+		case nil:
+			t.Tab(line[:len(line)-1])
+		default:
+			return nil, err
+		}
+
+	}
 }
 
 // List returns all currently tracked tabs

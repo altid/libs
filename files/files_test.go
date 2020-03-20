@@ -20,7 +20,7 @@ func TestFiles(t *testing.T) {
 	h := Handle(m.path)
 	h.Add("/test", m)
 
-	s, err := h.Stat("", "/test")
+	s, err := h.Stat("", "/test", 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -30,7 +30,7 @@ func TestFiles(t *testing.T) {
 		t.Error("names did not match")
 	}
 
-	d, err := h.Normal("", "/test")
+	d, err := h.Normal("", "/test", 0)
 	if err != nil {
 		t.Error(err)
 		return

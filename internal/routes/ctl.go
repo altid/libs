@@ -1,9 +1,8 @@
-package files
+package routes
 
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,15 +15,13 @@ import (
 
 // CtlHandler with access to Command
 type CtlHandler struct {
-	uuid uint32
 	cmds chan *command.Command
-	// Put the command here
 }
 
-func NewCtl(uuid, cmds chan *command.Command) *CtlHandler {	return &CtlHandler{uuid, cmds}}
+func NewCtl(cmds chan *command.Command) *CtlHandler { return &CtlHandler{cmds} }
 
 func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
-	fp := path.Join(msg.Service, msg.Buffer, "ctl")
+	fp := path.Join(msg.Service, "ctl")
 
 	buff, err := ioutil.ReadFile(fp)
 	if err != nil {
@@ -32,8 +29,8 @@ func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
 	}
 
 	c := &ctl{
-		cmds: ch,
 		uuid: msg.UUID,
+		cmds: ch.cmds,
 		data: buff,
 		size: int64(len(buff)),
 		path: fp,
@@ -43,14 +40,14 @@ func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
 }
 
 func (*CtlHandler) Stat(msg *files.Message) (os.FileInfo, error) {
-	return os.Lstat(path.Join(msg.Service, msg.Buffer, "ctl"))
+	return os.Lstat(path.Join(msg.Service, "ctl"))
 }
 
 type ctl struct {
 	cmds chan *command.Command
 	off  int64
 	size int64
-	uuid int64
+	uuid uint32
 	data []byte
 	path string
 }
@@ -83,22 +80,22 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 
 	switch cmd {
 	case "refresh":
-		c.cmds <- command.New(c.uuid, command.ReloadCmd)
+		c.cmds <- command.New(c.uuid, command.ReloadCmd, p)
 	case "buffer":
-		c.cmds <- command.New(c.uuid, command.BufferCmd, value)
+		c.cmds <- command.New(c.uuid, command.BufferCmd, p, value)
 	case "close":
-		c.cmds <- command.New(c.uuid, command.CloseCmd, value)
+		c.cmds <- command.New(c.uuid, command.CloseCmd, p, value)
 	case "link":
 		t := strings.Fields(value)
 		if len(t) != 2 {
 			return 0, errors.New("link requires two arguments")
 		}
-		c.cmds <- command.New(c.uuid, command.LinkCmd, t[0], t[1])
+		c.cmds <- command.New(c.uuid, command.LinkCmd, p, t[0], t[1])
 	case "open":
-		c.cmds <- command.New(c.uuid, command.OpenCmd, value)
+		c.cmds <- command.New(c.uuid, command.OpenCmd, p, value)
 
 	default:
-		c.cmds <- command.New(c.uuid, command.OtherCmd, fmt.Sprintf("%s %s", cmd, value))
+		c.cmds <- command.New(c.uuid, command.OtherCmd, p)
 	}
 
 	return len(p), nil
