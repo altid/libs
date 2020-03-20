@@ -5,26 +5,43 @@ import (
 	"io"
 	"os"
 	"path"
+	"sync"
 
+	"github.com/altid/server/client"
+	"github.com/altid/server/command"
 	"github.com/altid/server/files"
 )
 
 type FeedHandler struct {
-	event chan struct{}
+	clients  *client.Manager
+	commands chan *command.Command
+	feeds    map[uint32]chan struct{}
+	sync.Mutex
 }
 
-func NewFeed(event chan struct{}) *FeedHandler {
-	return &FeedHandler{event}
+func NewFeed(clients *client.Manager, commands chan *command.Command, fp *os.File) *FeedHandler {
+	fh := &FeedHandler{
+		clients:  clients,
+		commands: commands,
+		feeds:    make(map[uint32]chan struct{}),
+	}
+
+	go fh.listenCommands(fp)
+	return fh
 }
 
 func (fh *FeedHandler) Normal(msg *files.Message) (interface{}, error) {
 	done := make(chan struct{})
+	event := make(chan struct{})
 	f := &feed{
-		event: fh.event,
+		event: event,
 		path:  path.Join(msg.Service, msg.Buffer, "feed"),
 		buff:  path.Join(msg.Service, msg.Buffer),
 		done:  done,
 	}
+
+	// Feed to match this specific client
+	fh.feeds[msg.UUID] = event
 
 	return f, nil
 
@@ -32,6 +49,54 @@ func (fh *FeedHandler) Normal(msg *files.Message) (interface{}, error) {
 
 func (*FeedHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	return os.Lstat(path.Join(msg.Service, msg.Buffer, "feed"))
+}
+
+// Commands only effect feed file
+func (fh *FeedHandler) listenCommands(fp *os.File) {
+	defer fp.Close()
+	for cmd := range fh.commands {
+		switch cmd.CmdType {
+		case command.OtherCmd:
+			cmd.WriteOut(fp)
+		case command.OpenCmd:
+			c := fh.clients.Client(client.UUID(cmd.UUID))
+			if c != nil {
+				fh.switchBuffer(c, cmd)
+				cmd.WriteOut(fp)
+			}
+		case command.BufferCmd:
+			c := fh.clients.Client(client.UUID(cmd.UUID))
+			if c != nil {
+				fh.switchBuffer(c, cmd)
+			}
+		case command.CloseCmd:
+			c := fh.clients.Client(client.UUID(cmd.UUID))
+			if c != nil {
+				// Pop back to the last buffer
+				history := c.History()
+				if len(history) < 1 {
+					c.SetBuffer("none")
+				} else {
+					c.SetBuffer(history[len(history)-1])
+				}
+				cmd.WriteOut(fp)
+				close(fh.feeds[cmd.UUID])
+				fh.feeds[cmd.UUID] = make(chan struct{})
+			}
+			/* mostly send cmds down for now
+			ReloadCmd
+			CloseCmd
+			LinkCmd
+			QuitCmd
+			*/
+		}
+	}
+}
+
+func (fh *FeedHandler) switchBuffer(c *client.Client, cmd *command.Command) {
+	c.SetBuffer(cmd.Args[0])
+	close(fh.feeds[cmd.UUID])
+	fh.feeds[cmd.UUID] = make(chan struct{})
 }
 
 // feed files are special in that they're blocking

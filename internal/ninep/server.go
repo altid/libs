@@ -57,6 +57,6 @@ func (s *Server) Run() error {
 }
 
 func serverDebugLog(format string, v ...interface{}) {
-	l := log.New(os.Stderr, "", 0)
+	l := log.New(os.Stderr, "9pd server: ", 0)
 	l.Printf(format, v...)
 }

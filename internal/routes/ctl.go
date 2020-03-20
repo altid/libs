@@ -15,14 +15,13 @@ import (
 
 // CtlHandler with access to Command
 type CtlHandler struct {
-	uuid uint32
 	cmds chan *command.Command
 }
 
-func NewCtl(uuid uint32, cmds chan *command.Command) *CtlHandler { return &CtlHandler{uuid, cmds} }
+func NewCtl(cmds chan *command.Command) *CtlHandler { return &CtlHandler{cmds} }
 
 func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
-	fp := path.Join(msg.Service, msg.Buffer, "ctl")
+	fp := path.Join(msg.Service, "ctl")
 
 	buff, err := ioutil.ReadFile(fp)
 	if err != nil {
@@ -30,7 +29,7 @@ func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
 	}
 
 	c := &ctl{
-		uuid: ch.uuid,
+		uuid: msg.UUID,
 		cmds: ch.cmds,
 		data: buff,
 		size: int64(len(buff)),
@@ -41,7 +40,7 @@ func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
 }
 
 func (*CtlHandler) Stat(msg *files.Message) (os.FileInfo, error) {
-	return os.Lstat(path.Join(msg.Service, msg.Buffer, "ctl"))
+	return os.Lstat(path.Join(msg.Service, "ctl"))
 }
 
 type ctl struct {
