@@ -5,7 +5,6 @@ import (
 	"path"
 
 	"github.com/altid/server/client"
-	"github.com/altid/server/files"
 	"github.com/go9p/styx"
 )
 
@@ -15,30 +14,18 @@ type handler struct {
 }
 
 func (h *handler) walk() (os.FileInfo, error) {
-	m, f := h.build()
-	return f.Stat(m)
+	service := h.c.Aux.(*service)
+	return service.files.Stat(h.c.Current(), h.target)
 }
 
 func (h *handler) open() (interface{}, error) {
-	m, f := h.build()
-	return f.Normal(m)
-}
-
-//all this needs to do is get a handler, the rest can happen in 9pd top level
-func (h *handler) build() (*files.Message, *files.Handler) {
-	s := h.c.Aux.(*service)
-	m := &files.Message{
-		Server: s.addr,
-		Buffer: h.c.Current(),
-		Target: h.target,
-	}
-
-	return m, s.files
+	service := h.c.Aux.(*service)
+	return service.files.Normal(h.c.Current(), h.target)
 }
 
 func (h *handler) path() string {
 	service := h.c.Aux.(*service)
-	return path.Join(service.dir, h.c.Current(), h.target)
+	return path.Join(service.basedir, h.c.Current(), h.target)
 }
 
 func handleReq(c *client.Client, req styx.Request) {

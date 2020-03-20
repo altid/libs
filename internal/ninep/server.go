@@ -44,6 +44,7 @@ func (s *Server) Run() error {
 		go func(svc *service) {
 			defer wg.Done()
 			if err = svc.run(); err != nil {
+				s.debug("%v", err)
 				return
 			}
 		}(svc)

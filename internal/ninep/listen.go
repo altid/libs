@@ -3,7 +3,7 @@ package ninep
 import "github.com/altid/server/tail"
 
 func (s *service) listenCommands() {
-	for _, cmd := range s.commands {
+	for cmd := range s.commands {
 		switch cmd.CmdType {
 		/* mostly send cmds down for now
 		OtherCmd

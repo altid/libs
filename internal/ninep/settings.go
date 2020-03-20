@@ -2,12 +2,11 @@ package ninep
 
 import (
 	"context"
+	"path"
 
 	"github.com/altid/libs/config"
 	"github.com/altid/server/client"
 	"github.com/altid/server/command"
-	"github.com/altid/server/files"
-	my "github.com/altid/server/internal/files"
 	"github.com/altid/server/tabs"
 	"github.com/altid/server/tail"
 )
@@ -33,33 +32,30 @@ func NewSettings(debug, chatty bool, path string, port int, factotum, usetls boo
 	}
 }
 
-func (s *Settings) registerFiles(t *tabs.Manager, e chan *tail.Event, c chan *command.Command) *files.Manager {
-	h := files.Handle(s.path)
-
-	h.Add("/", my.NewDir())
-	h.Add("/ctl", my.NewCtl(c))
-	h.Add("/error", my.NewError())
-	h.Add("/feed", my.NewFeed(e))
-	h.Add("/input", my.NewInput())
-	h.Add("/tabs", my.Tabs(t))
-	h.Add("default", my.NewNormal())
-
-	return h
-}
-
 func (s *Settings) BuildServices(ctx context.Context) error {
 	services := make(map[string]*service)
 
-	for _, entry := range config.ListAll() {
+	list, err := config.ListAll()
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range list {
 		events, err := tail.WatchEvents(ctx, s.path, entry.Name)
-		if err != nil {
-			return err
+		if err != nil && s.debug {
+			serviceDebugLog("%s", err)
+			continue
 		}
 
-		tabs := tabs.Manager{}
+		tabs, err := tabs.FromFile(path.Join(s.path, entry.Name))
+		if err != nil && s.debug {
+			serviceDebugLog("%s", err)
+			continue
+		}
+
 		commands := make(chan *command.Command)
 		feed := make(chan struct{})
-		files := s.registerFiles(tabs, events, commands)
+		files := registerFiles(tabs, feed, commands, path.Join(s.path, entry.Name))
 
 		srv := &service{
 			client:   &client.Manager{},

@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/altid/9pd/internal/ninep"
+	"github.com/altid/server/internal/ninep"
 )
 
 var factotum = flag.Bool("f", false, "Enable client authentication via a plan9 factotum")

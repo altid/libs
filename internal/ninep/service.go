@@ -16,7 +16,7 @@ import (
 
 type service struct {
 	client   *client.Manager
-	files    *files.Handler
+	files    *files.Files
 	config   *config.Config
 	tabs     *tabs.Manager
 	events   chan *tail.Event
@@ -33,8 +33,8 @@ type service struct {
 // Add the service to the client.Aux (yay for self-reference?)
 func (s *service) run() error {
 	//addr, port := s.config.DialString() returns found or defaults
-	addr := "localhost"
-	port := "564"
+	addr := ""
+	port := 564
 
 	t := &styx.Server{
 		Addr: addr + fmt.Sprintf(":%d", port),
@@ -54,18 +54,19 @@ func (s *service) run() error {
 	}
 
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
-		c := s.client.Add(0)
+		c := s.client.Client(0)
 		c.Aux = s
 
-		s.debug("client start id=\"%d\"", s.client.UUID)
+		c.SetBuffer(s.tabs.List()[0].Name)
+		s.debug("client start id=\"%d\"", c.UUID)
 		for sess.Next() {
 			handleReq(c, sess.Request())
 		}
 
-		s.debug("client stop id=\"%d\"", s.client.UUID)
+		s.debug("client stop id=\"%d\"", c.UUID)
 	})
 
-	//go s.handleCommands()
+	go s.listenCommands()
 	go s.listenEvents()
 
 	switch s.tls {
