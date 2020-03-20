@@ -17,31 +17,32 @@ const (
 	DefaultGroup ComGroup = iota
 	ActionGroup
 	MediaGroup
+	ServiceGroup
 )
 
 //TODO(halfiwt) i18n
 var DefaultCommands = []*Command{
 	{
 		Name:        "open",
-		Args:        []string{"<buffer>"},
+		Args:        []string{"<current>", "<buffer>"},
 		Heading:     DefaultGroup,
 		Description: "Open and change buffers to a given service",
 	},
 	{
 		Name:        "close",
-		Args:        []string{"<buffer>"},
+		Args:        []string{"<current>", "<buffer>"},
 		Heading:     DefaultGroup,
 		Description: "Close a buffer and return to the last opened previously",
 	},
 	{
 		Name:        "buffer",
-		Args:        []string{"<buffer>"},
+		Args:        []string{"<current>", "<buffer>"},
 		Heading:     DefaultGroup,
 		Description: "Change to the named buffer",
 	},
 	{
 		Name:        "link",
-		Args:        []string{"<to>", "<from>"},
+		Args:        []string{"<current>", "<to>", "<from>"},
 		Heading:     DefaultGroup,
 		Description: "Overwrite the current <to> buffer with <from>, switching to from after. This destroys <to>",
 	},
@@ -49,7 +50,7 @@ var DefaultCommands = []*Command{
 		Name:        "quit",
 		Args:        []string{},
 		Heading:     DefaultGroup,
-		Description: "Exits the service",
+		Description: "Exits the client",
 	},
 }
 
@@ -78,7 +79,13 @@ func BuildFrom(cmd string, cmdlist []*Command) (*Command, error) {
 	var args []string
 
 	items := strings.Fields(cmd)
+
+	if len(items) < 1 {
+		return nil, errors.New("command missing arguments")
+	}
+
 	name = items[0]
+	args = items[1:]
 
 	if len(items) > 2 {
 		from = items[1]
@@ -86,6 +93,7 @@ func BuildFrom(cmd string, cmdlist []*Command) (*Command, error) {
 	}
 
 	for _, comm := range cmdlist {
+
 		if comm.Name == name {
 			return newFrom(comm, from, args)
 		}
@@ -101,7 +109,18 @@ func BuildFrom(cmd string, cmdlist []*Command) (*Command, error) {
 }
 
 func newFrom(comm *Command, from string, args []string) (*Command, error) {
-	if len(comm.Args) != len(args) && len(comm.Args) > 0 {
+	if comm.Heading == ServiceGroup {
+		c := &Command{
+			Name:        comm.Name,
+			Description: comm.Description,
+			Heading:     ServiceGroup,
+			Args:        args,
+		}
+
+		return c, nil
+	}
+
+	if len(comm.Args) > 0 && len(comm.Args) != len(args) {
 		return nil, fmt.Errorf("expected %d arguments: received %d", len(comm.Args), len(args))
 	}
 
@@ -161,6 +180,8 @@ func cmdHeading(to io.WriteCloser, heading ComGroup) {
 		to.Write([]byte("general:\n"))
 	case MediaGroup:
 		to.Write([]byte("media:\n"))
+	case ServiceGroup:
+		to.Write([]byte("service:\n"))
 	default:
 		log.Fatal("Group not implemented")
 	}
