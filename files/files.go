@@ -22,6 +22,7 @@ type Message struct {
 	Service string
 	Buffer  string
 	Target  string
+	UUID    uint32
 }
 
 // Handle listens for calls to its Stat and Normal functions, and returns a stat or os.File
@@ -52,7 +53,7 @@ func (f *Files) Add(path string, h Handler) {
 }
 
 // Stat will synthesize an os.FileInfo (stat) for the named file, if available
-func (f *Files) Stat(buffer, req string) (os.FileInfo, error) {
+func (f *Files) Stat(buffer, req string, uuid uint32) (os.FileInfo, error) {
 	h, ok := f.run[req]
 	if !ok {
 		return nil, errors.New("Unable to find handler for named file")
@@ -62,6 +63,7 @@ func (f *Files) Stat(buffer, req string) (os.FileInfo, error) {
 		Service: f.service,
 		Buffer:  buffer,
 		Target:  req,
+		UUID:    uuid,
 	}
 
 	return h.Stat(msg)
@@ -69,7 +71,7 @@ func (f *Files) Stat(buffer, req string) (os.FileInfo, error) {
 
 // Normal will return an interface satisfying io.ReaderAt, io.WriterAt, and io.Closer if the file requested is a regular file
 // If the file requested is a directory, it will synthesize an *os.FileInfo with the correct semantics
-func (f *Files) Normal(buffer, req string) (interface{}, error) {
+func (f *Files) Normal(buffer, req string, uuid uint32) (interface{}, error) {
 	h, ok := f.run[req]
 	if !ok {
 		return nil, errors.New("Unable to find handler for named file")
@@ -79,6 +81,7 @@ func (f *Files) Normal(buffer, req string) (interface{}, error) {
 		Service: f.service,
 		Buffer:  buffer,
 		Target:  req,
+		UUID:    uuid,
 	}
 
 	return h.Normal(msg)

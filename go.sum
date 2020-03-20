@@ -2,9 +2,6 @@
 9fans.net/go v0.0.2/go.mod h1:lfPdxjq9v8pVQXUMBCx5EO5oLXWQFlKRQgs1kEkjoIM=
 aqwari.net/retry v0.0.0-20180428204214-1281ce5d8df0 h1:BeD6U5TNwhMWxeydyi5xqpaNZx1MWl5QTcW4w7Mxf+Y=
 aqwari.net/retry v0.0.0-20180428204214-1281ce5d8df0/go.mod h1:XSNyyoM+OSg3vRmROPrS1lEpV7q/I9J1HAKMMxdUkU4=
-github.com/altid/9pd v0.0.0 h1:nyj3xgxSatY9anQvnR6Canany2volmpf0eCyNJaRaLU=
-github.com/altid/libs v0.0.1-alpha h1:qtQyhmLMMUmzxXjS/y61RlqoZVrCt/Z29LwT2aLpxt4=
-github.com/altid/libs v0.0.1-alpha/go.mod h1:U8m8LG+xPdt5M3MXW+opofIYFS3iA6RrP/fQhBaH9N8=
 github.com/altid/libs v0.0.1-config h1:+LMafZsZoIbi76kywR08BywOJ2Aymnly9LbeK7AyviI=
 github.com/altid/libs v0.0.1-config/go.mod h1:U8m8LG+xPdt5M3MXW+opofIYFS3iA6RrP/fQhBaH9N8=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=

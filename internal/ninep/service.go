@@ -7,7 +7,6 @@ import (
 
 	"github.com/altid/libs/config"
 	"github.com/altid/server/client"
-	"github.com/altid/server/command"
 	"github.com/altid/server/files"
 	"github.com/altid/server/tabs"
 	"github.com/altid/server/tail"
@@ -20,7 +19,6 @@ type service struct {
 	config   *config.Config
 	tabs     *tabs.Manager
 	events   chan *tail.Event
-	commands chan *command.Command
 	feed     chan struct{}
 	basedir  string
 	log      bool
@@ -56,8 +54,8 @@ func (s *service) run() error {
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
 		c := s.client.Client(0)
 		c.Aux = s
-
 		c.SetBuffer(s.tabs.List()[0].Name)
+
 		s.debug("client start id=\"%d\"", c.UUID)
 		for sess.Next() {
 			handleReq(c, sess.Request())
@@ -66,12 +64,21 @@ func (s *service) run() error {
 		s.debug("client stop id=\"%d\"", c.UUID)
 	})
 
-	go s.listenCommands()
 	go s.listenEvents()
 
 	switch s.tls {
 	case true:
-		if e := t.ListenAndServeTLS("none", "none"); e != nil {
+		cert, err := s.config.Search("cert")
+		if err != nil {
+			return err
+		}
+
+		key, err := s.config.Search("key")
+		if err != nil {
+			return err
+		}
+
+		if e := t.ListenAndServeTLS(cert, key); e != nil {
 			return e
 		}
 	case false:

@@ -6,7 +6,6 @@ import (
 
 	"github.com/altid/libs/config"
 	"github.com/altid/server/client"
-	"github.com/altid/server/command"
 	"github.com/altid/server/tabs"
 	"github.com/altid/server/tail"
 )
@@ -53,16 +52,12 @@ func (s *Settings) BuildServices(ctx context.Context) error {
 			continue
 		}
 
-		commands := make(chan *command.Command)
 		feed := make(chan struct{})
-		files := registerFiles(tabs, feed, commands, path.Join(s.path, entry.Name))
 
 		srv := &service{
 			client:   &client.Manager{},
-			files:    files,
 			config:   entry,
 			tabs:     tabs,
-			commands: commands,
 			events:   events,
 			feed:     feed,
 			basedir:  s.path,
@@ -72,6 +67,8 @@ func (s *Settings) BuildServices(ctx context.Context) error {
 			factotum: s.factotum,
 			debug:    func(string, ...interface{}) {},
 		}
+
+		srv.files = registerFiles(srv)
 
 		if s.debug {
 			srv.debug = serviceDebugLog

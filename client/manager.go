@@ -22,7 +22,7 @@ func (m *Manager) List() []*Client {
 	return m.clients
 }
 
-// Client - return for given id
+// Client - return for given id or nil
 // If UUID is 0, a new one will be generated
 func (m *Manager) Client(id UUID) *Client {
 
@@ -32,10 +32,12 @@ func (m *Manager) Client(id UUID) *Client {
 		}
 	}
 
-	if id == 0 {
-		newid := uuid.New()
-		id = UUID(newid.ID())
+	if id > 0 {
+		return nil
 	}
+
+	newid := uuid.New()
+	id = UUID(newid.ID())
 
 	client := &Client{
 		UUID:    id,

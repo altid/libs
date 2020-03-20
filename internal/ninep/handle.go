@@ -15,12 +15,12 @@ type handler struct {
 
 func (h *handler) walk() (os.FileInfo, error) {
 	service := h.c.Aux.(*service)
-	return service.files.Stat(h.c.Current(), h.target)
+	return service.files.Stat(h.c.Current(), h.target, uint32(h.c.UUID))
 }
 
 func (h *handler) open() (interface{}, error) {
 	service := h.c.Aux.(*service)
-	return service.files.Normal(h.c.Current(), h.target)
+	return service.files.Normal(h.c.Current(), h.target, uint32(h.c.UUID))
 }
 
 func (h *handler) path() string {
