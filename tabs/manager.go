@@ -15,6 +15,7 @@ type Manager struct {
 	sync.Mutex
 }
 
+// FromFile returns a Manager with all tabs listed in a file added
 func FromFile(dir string) (*Manager, error) {
 	t := &Manager{}
 
@@ -28,16 +29,25 @@ func FromFile(dir string) (*Manager, error) {
 	s := bufio.NewReader(fp)
 	for {
 		line, err := s.ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
+		switch err {
+		case io.EOF:
+			// We may have a tab here as well, add it
+			if len(line) > 0 {
+				t.Tab(line[:len(line)-1])
+			}
+
+			if len(t.List()) > 0 {
 				return t, nil
 			}
+
+			return nil, errors.New("found no entries")
+		case nil:
+			t.Tab(line[:len(line)-1])
+		default:
 			return nil, err
 		}
-		t.Tab(line[:len(line)-1])
-	}
 
-	return t, nil
+	}
 }
 
 // List returns all currently tracked tabs

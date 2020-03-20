@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 
 	"github.com/altid/libs/config"
 	"github.com/altid/server/client"
+	"github.com/altid/server/command"
 	"github.com/altid/server/files"
+	"github.com/altid/server/internal/routes"
 	"github.com/altid/server/tabs"
 	"github.com/altid/server/tail"
 	"github.com/go9p/styx"
@@ -18,8 +21,9 @@ type service struct {
 	files    *files.Files
 	config   *config.Config
 	tabs     *tabs.Manager
+	feed     *routes.FeedHandler
+	command  chan *command.Command
 	events   chan *tail.Event
-	feed     chan struct{}
 	basedir  string
 	log      bool
 	chatty   bool
@@ -54,6 +58,7 @@ func (s *service) run() error {
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
 		c := s.client.Client(0)
 		c.Aux = s
+
 		c.SetBuffer(s.tabs.List()[0].Name)
 
 		s.debug("client start id=\"%d\"", c.UUID)
@@ -64,7 +69,13 @@ func (s *service) run() error {
 		s.debug("client stop id=\"%d\"", c.UUID)
 	})
 
+	fp, err := os.OpenFile(path.Join(s.basedir, s.config.Name, "ctl"), os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+
 	go s.listenEvents()
+	go s.listenCommands(fp)
 
 	switch s.tls {
 	case true:
@@ -91,6 +102,6 @@ func (s *service) run() error {
 }
 
 func serviceDebugLog(format string, v ...interface{}) {
-	l := log.New(os.Stdout, "9pd service :", 0)
+	l := log.New(os.Stdout, "9pd ", 0)
 	l.Printf(format, v...)
 }

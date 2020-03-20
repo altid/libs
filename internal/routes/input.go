@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"fmt"
 	"os"
 	"path"
 
@@ -47,7 +48,7 @@ func (i *input) WriteAt(p []byte, off int64) (n int, err error) {
 	}
 
 	defer fp.Close()
-	return fp.Write(p)
+	return fmt.Fprintf(fp, "%s\n", p)
 }
 
 func (i *input) Close() error { return nil }
