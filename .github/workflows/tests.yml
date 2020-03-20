@@ -2,8 +2,12 @@ name: Tests
 
 on:
   push:
+    paths-ignore:
+      - '.github/**'
     branches: [ master ]
   pull_request:
+    paths-ignore:
+      - '.github/**'
     branches: [ master ]
 
 jobs:
