@@ -22,20 +22,15 @@ import (
 
 type Control struct {
 	cmdlist []*command.Command
+	scanner *bufio.Scanner
 	rundir  string
 	logdir  string
 	doctype string
 	tabs    []string
 	req     chan string
 	done    chan struct{}
-}
-
-type controlrunner struct {
-	ctx     context.Context
-	scanner *bufio.Scanner
-	done    chan struct{}
-	req     chan string
 	cancel  context.CancelFunc
+	ctx     context.Context
 }
 
 func NewControl(r, l, d string, t []string, req chan string, done chan struct{}) *Control {
@@ -157,28 +152,27 @@ func (c *Control) HasBuffer(name, doctype string) bool {
 
 func (c *Control) Listen() error {
 	ctx, cancel := context.WithCancel(context.Background())
-
-	cr, err := newControlRunner(ctx, cancel, c)
-	if err != nil {
-		return err
+	if e := c.setup(ctx, cancel); e != nil {
+		return e
 	}
-
-	cr.listen()
+	c.listen()
 
 	return nil
 }
 
 func (c *Control) Start() (context.Context, error) {
 	ctx, cancel := context.WithCancel(context.Background())
-
-	cr, err := newControlRunner(ctx, cancel, c)
-	if err != nil {
-		return nil, err
+	if e := c.setup(ctx, cancel); e != nil {
+		return nil, e
 	}
 
-	go cr.listen()
+	go c.listen()
 
 	return ctx, nil
+}
+
+func (c *Control) Quit() {
+	c.cancel()
 }
 
 func (c *Control) Remove(buffer, filename string) error {
@@ -292,9 +286,9 @@ func (c *Control) ImageWriter(buffer, resource string) (*writer.WriteCloser, err
 	return c.FileWriter(buffer, path.Join("images", resource))
 }
 
-func newControlRunner(ctx context.Context, cancel context.CancelFunc, c *Control) (*controlrunner, error) {
+func (c *Control) setup(ctx context.Context, cancel context.CancelFunc) error {
 	if e := os.MkdirAll(c.rundir, 0755); e != nil {
-		return nil, e
+		return e
 	}
 
 	cfile := path.Join(c.rundir, "ctl")
@@ -302,32 +296,28 @@ func newControlRunner(ctx context.Context, cancel context.CancelFunc, c *Control
 
 	ctl, err := os.Create(cfile)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if e := command.PrintCtlFile(c.cmdlist, ctl); e != nil {
-		return nil, e
+		return e
 	}
 
 	ctl.Close()
 
 	r, err := reader.New(cfile)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	cr := &controlrunner{
-		scanner: bufio.NewScanner(r),
-		req:     c.req,
-		ctx:     ctx,
-		cancel:  cancel,
-		done:    c.done,
-	}
+	c.scanner = bufio.NewScanner(r)
+	c.ctx = ctx
+	c.cancel = cancel
 
-	return cr, nil
+	return nil
 }
 
-func (c *controlrunner) listen() {
+func (c *Control) listen() {
 	defer close(c.req)
 
 	for c.scanner.Scan() {
@@ -335,14 +325,7 @@ func (c *controlrunner) listen() {
 		case <-c.ctx.Done():
 			break
 		default:
-			line := c.scanner.Text()
-			if line == "quit" {
-				c.cancel()
-				close(c.done)
-				break
-			}
-
-			c.req <- line
+			c.req <- c.scanner.Text()
 		}
 	}
 }
