@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>Complexity Tradeoffs | altid.github.io</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="Complexity Tradeoffs" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Landing Page" />
+<meta property="og:description" content="Landing Page" />
+<link rel="canonical" href="https://altid.github.io/complexity-tradeoff.html" />
+<meta property="og:url" content="https://altid.github.io/complexity-tradeoff.html" />
+<meta property="og:site_name" content="altid.github.io" />
+<script type="application/ld+json">
+{"@type":"WebPage","headline":"Complexity Tradeoffs","url":"https://altid.github.io/complexity-tradeoff.html","description":"Landing Page","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="/assets/css/style.css?v=fc5d92c5696cd63341a3b84e1cb33d47993ed77a">
+  </head>
+  <body>
+    <div class="container-lg px-3 my-5 markdown-body">
+      
+      <h1><a href="https://altid.github.io/">altid.github.io</a></h1>
+      
+
+      <h1 id="complexity-tradeoffs">Complexity Tradeoffs</h1>
+
+<blockquote>
+  <p>Controlling complexity is the essence of computer programming - Brian Kernighan</p>
+</blockquote>
+
+<p>As stated in the basic setup guide, Altid uses a three-tiered system, connecting clients to services through servers.</p>
+
+<p>This is a powerful abstraction, and is used by many solutions. The client only has to know how to talk to the server, and the services only have to know how to talk to the server.</p>
+
+<h2 id="state-of-the-art">State Of The Art</h2>
+
+<p>In a modern computing environment, services are expressed in a multitude of ways. Each particular service generally has a native client for interaction, and/or a web-based SaaS solution. Each comes with its own nuanced interface and control scheme, though many efforts have been made at homogenous interfaces for multiple services. For example, Emacs has handily solved this problem, for many users; providing a single, homogenous interface to multiple services.</p>
+
+<p>This approach pushes much of the complexity to the client implementation. Either it has to be very generalized, and able to interface well with nearly arbitrary service implementations, as is the case with Emacs and a web browser; or it’s a singular purpose, bespoke client which may take many thousands of hours to perfect, and make bug free. Additionally, as with many things related to computing, the very dynamic landscape leads to new bugs that must be dealt with, for each client.</p>
+
+<h2 id="altids-complexity-model">Altid’s Complexity Model</h2>
+
+<p>One of the initial goals of Altid was to defer a majority of computation to a centralized server in one’s home.</p>
+
+<p>All of the state for a given session is a marriage of the services, and the server. The services provide a series of directories, and the server aggregates content from the directories and presents it to the client (this is described in more detail on the <a href="/architecture.html">architectural overview</a> page). A bug introduced that would affect any running service would require work only on that specific service - no modifications to the server or any client would be needed.</p>
+
+<h2 id="single-buffer-view">Single Buffer View</h2>
+
+<p>An Altid client is served a single view, representing a single buffer of a single service (For more information about buffers and services, refer to the <a href="/">overview</a>. It can request to switch to other buffers, and also has a list of all available buffers via <code class="language-plaintext highlighter-rouge">tabs</code>; but fundamentally a single connection to a server results in a single buffer view.</p>
+
+<p>This may seem limiting, but due to the very simple, stable client implementations that result, clients may wish to issue multiple connections, to multiple services at once, providing for a very granular approach to setting up a client. For example, one could connect to Discord, IRC, sms, Slack, email, or any number of other chats in a single client window. Depending on the client implementation, you would see an aggregate of all tabs opened.</p>
+
+<h2 id="homogenous-interface">Homogenous Interface</h2>
+
+<p>One of the benefits of this method of aggregating services to a client is, much like what is achieved in Emacs you realise a single interace to interact with any number of clients. The available commands will depend on the underlying service, and the particular UI elements present may change, but the way you interact with everything is homogenized.</p>
+
+<h2 id="aside---a-central-theme">Aside - A Central Theme</h2>
+
+<p>Due to each service only providing a markdown representation of its state, the eventual theme is client-dependent. This is nice from an aesthetic perspective, but it’s very powerful when met with any of the following:</p>
+<ul>
+  <li>non-standard input devices, such as braille readers</li>
+  <li>providing content to vision impaired persons (high contrast themes, large font)</li>
+  <li>screen reading solutions</li>
+</ul>
+
+<h2 id="complexity">Complexity</h2>
+
+<p>Many of the things mentioned above would not be simple with a different model for complexity, though many things are very difficult this way.</p>
+<ul>
+  <li>Access to service state is very trivial, at the expense of the content being provided in a potentially very lossy manner; a well-formatted document loses the individuality of font selection, precision page layout, and many facets of branding</li>
+  <li>Aggregating services to a single client is very trivial, at the expense of multiple connections</li>
+  <li>Service implementations are trivial to write, at the expense of requiring the programmer to define a state as a set of directories of particular files, which is potentially very limiting</li>
+  <li>Service and client implementations are trivial to write, at the expense of more complex servers</li>
+</ul>
+
+<h2 id="authors-note">Author’s Note</h2>
+
+<p>All of these tradeoffs are less than ideal, but in practice the lossy nature allows me to read a document on my phone, walk over to my computer, and continue reading instantly; the same for any Altid service. Defining a state, (not as a relationship with a client), as a standalone entity for sessions is what many services on the web are accomplishing, but the bar to entry to provide such a thing is high, expensive, and resource-intensive.</p>
+
+<p>If you wish to discuss this, or anything else, feel free to join us at #altid on Freenode. I’m always happy to hear opinions, suggestions, and feedback!</p>
+
+
+      
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/anchor-js/4.1.0/anchor.min.js" integrity="sha256-lZaRhKri35AyJSypXXs4o6OPFTbTmUoltBbDCbdzegg=" crossorigin="anonymous"></script>
+    <script>anchors.add();</script>
+    
+  </body>
+</html>

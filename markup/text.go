@@ -95,43 +95,12 @@ func (u *URL) String() string {
 
 // Image represents an image markdown element
 type Image struct {
-	alt  []byte
-	path []byte
-	msg  []byte
-}
-
-// NewImage returns an Image
-// If `path` is empty, an error will be returned
-// If both `img` and `alt` are empty, an error will be returned
-// If either `img` or `alt` are empty, one will be substituted for the other
-func NewImage(path, msg, alt []byte) (*Image, error) {
-	if len(alt) == 0 && len(msg) == 0 {
-		return nil, fmt.Errorf("no img or alt provided for path %s", path)
-	}
-
-	if len(path) == 0 {
-		return nil, fmt.Errorf("no path provided for image")
-	}
-
-	if len(alt) == 0 {
-		alt = msg
-	}
-
-	if len(msg) == 0 {
-		msg = alt
-	}
-
-	img := &Image{
-		alt:  alt,
-		path: path,
-		msg:  msg,
-	}
-
-	return img, nil
+	Src string
+	Alt string
 }
 
 func (i *Image) String() string {
-	return fmt.Sprintf("![%s](%s \"%s\")", i.alt, i.path, i.msg)
+	return fmt.Sprintf("![%s](%s)", i.Alt, i.Src)
 }
 
 // Cleaner represents a WriteCloser used to escape any altid markdown elements from a reader
@@ -292,6 +261,6 @@ func validateColorCode(s string) bool {
 	case hex6.MatchString(s):
 		return true
 	}
-	
+
 	return false
 }
