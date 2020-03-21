@@ -26,24 +26,36 @@ func (c *testctrl) Default(ctl *Control, cmd *Command) error {
 	return nil
 }
 
+func (c *testctrl) Refresh(ctl *Control) error {
+	return nil
+}
+
+func (c *testctrl) Restart(ctl *Control) error {
+	return nil
+}
+
+func (c *testctrl) Quit() {}
+
 func sendctl(reqs chan string) {
-	reqs <- "open foo"
-	reqs <- "open bar"
-	reqs <- "link bar baz"
+	// Commands are sent with the current buffer for context
+	reqs <- "open current foo"
+	reqs <- "open current bar"
+	reqs <- "link current bar baz"
 	reqs <- "gibberish"
-	reqs <- "close baz"
-	reqs <- "quit"
+	reqs <- "close current baz"
+	reqs <- "test quit"
 }
 
 func TestCtl(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &testctrl{}
 
-	c, err := MockCtlFile(ctl, reqs, false)
+	c, err := MockCtlFile(ctl, reqs, "test", false)
 	if err != nil {
 		t.Error(err)
 	}
 
+	c.SetCommands()
 	defer c.Cleanup()
 
 	go sendctl(reqs)
@@ -57,7 +69,7 @@ func TestWriters(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &testctrl{}
 
-	c, err := MockCtlFile(ctl, reqs, false)
+	c, err := MockCtlFile(ctl, reqs, "test", false)
 	if err != nil {
 		t.Error(err)
 	}
