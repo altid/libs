@@ -1,6 +1,9 @@
 package fs
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/altid/libs/fs/internal/command"
 )
 
@@ -13,9 +16,11 @@ const (
 	DefaultGroup ComGroup = iota
 	ActionGroup
 	MediaGroup
+	ServiceGroup
 )
 
 // Command represents an available command to a service
+// The From field should generally be populated, except in the case of a ServiceGroup command
 type Command struct {
 	Name        string
 	Description string
@@ -23,6 +28,46 @@ type Command struct {
 	Args        []string
 	Alias       []string
 	From        string
+}
+
+// FindCommands within a byte array
+// It returns an error if it encounters malformed input
+func FindCommands(b []byte) ([]*Command, error) {
+	var cmdlist []*Command
+
+	cl, err := command.Parse(b)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("out of parse")
+	for _, cmd := range cl {
+		c := &Command{
+			Name:        cmd.Name,
+			Description: cmd.Description,
+			Heading:     ComGroup(cmd.Heading),
+			Args:        cmd.Args,
+			Alias:       cmd.Alias,
+			From:        cmd.From,
+		}
+
+		cmdlist = append(cmdlist, c)
+	}
+
+	return cmdlist, nil
+}
+
+func (c *Command) String() string {
+	args := strings.Join(c.Args, " ")
+	if c.From != "" {
+		return fmt.Sprintf("%s %s %s\n", c.Name, c.From, args)
+	}
+	return fmt.Sprintf("%s %s\n", c.Name, args)
+}
+
+// Bytes - Return a byte representation of a command
+func (c *Command) Bytes() []byte {
+	return []byte(c.String())
 }
 
 // Conversion functions for our internal command type
@@ -44,15 +89,4 @@ func setCommands(r runner, cmds ...*Command) error {
 	}
 
 	return r.SetCommands(cmdlist...)
-}
-
-func cmd2Command(cmd *command.Command) *Command {
-	return &Command{
-		Name:        cmd.Name,
-		Description: cmd.Description,
-		Heading:     ComGroup(cmd.Heading),
-		Args:        cmd.Args,
-		Alias:       cmd.Alias,
-		From:        cmd.From,
-	}
 }
