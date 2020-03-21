@@ -61,10 +61,8 @@ func handle(l *listener, args []string) {
 		sendCmd(l, l.c.Open, args[1])
 	case "/close":
 		sendCmd(l, l.c.Close, args[1])
-	// TODO(halfwit): We want to track the current buffer
-	// and only send the `from` field internally
 	case "/link":
-		//sendCmd(l, l.c.Link, 2, args)
+		sendCmd(l, l.c.Link, args[1])
 	case "/tabs":
 		getData(l, l.c.Tabs)
 	case "/title":

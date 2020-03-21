@@ -42,9 +42,9 @@ var DefaultCommands = []*Command{
 	},
 	{
 		Name:        "link",
-		Args:        []string{"<current>", "<to>", "<from>"},
+		Args:        []string{"<current>", "<buffer>"},
 		Heading:     DefaultGroup,
-		Description: "Overwrite the current <to> buffer with <from>, switching to from after. This destroys <to>",
+		Description: "Overwrite the current buffer with the named",
 	},
 	{
 		Name:        "quit",

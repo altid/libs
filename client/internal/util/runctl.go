@@ -30,31 +30,20 @@ var ErrBadArgs = errors.New("Too few/incorrect arguments")
 
 func RunClientCtl(cmd int, from string, args ...string) ([]byte, error) {
 	var data string
+
+	if len(args) != 1 {
+		return nil, ErrBadArgs
+	}
+
 	switch cmd {
 	case CmdBuffer:
-		if len(args) != 1 {
-			return nil, ErrBadArgs
-		}
-
 		data = fmt.Sprintf("buffer %s %s\x00", from, args[0])
 	case CmdOpen:
-		if len(args) != 1 {
-			return nil, ErrBadArgs
-		}
-
 		data = fmt.Sprintf("open %s %s\x00", from, args[0])
 	case CmdClose:
-		if len(args) != 1 {
-			return nil, ErrBadArgs
-		}
-
 		data = fmt.Sprintf("close %s %s\x00", from, args[0])
 	case CmdLink:
-		if len(args) != 2 {
-			return nil, ErrBadArgs
-		}
-
-		data = fmt.Sprintf("link %s %s %s\x00", from, args[0], args[1])
+		data = fmt.Sprintf("link %s %s\x00", from, args[0])
 	default:
 		return nil, ErrBadArgs
 	}
