@@ -2,12 +2,10 @@
 9fans.net/go v0.0.2/go.mod h1:lfPdxjq9v8pVQXUMBCx5EO5oLXWQFlKRQgs1kEkjoIM=
 aqwari.net/retry v0.0.0-20180428204214-1281ce5d8df0 h1:BeD6U5TNwhMWxeydyi5xqpaNZx1MWl5QTcW4w7Mxf+Y=
 aqwari.net/retry v0.0.0-20180428204214-1281ce5d8df0/go.mod h1:XSNyyoM+OSg3vRmROPrS1lEpV7q/I9J1HAKMMxdUkU4=
-github.com/altid/libs v0.0.1-config h1:+LMafZsZoIbi76kywR08BywOJ2Aymnly9LbeK7AyviI=
-github.com/altid/libs v0.0.1-config/go.mod h1:U8m8LG+xPdt5M3MXW+opofIYFS3iA6RrP/fQhBaH9N8=
+github.com/altid/libs v0.0.2-pre-alpha h1:SeE7fX2maxV2TEk8nw0ZuURwjDYpjcTpBa+xjb2PoCg=
+github.com/altid/libs v0.0.2-pre-alpha/go.mod h1:U8m8LG+xPdt5M3MXW+opofIYFS3iA6RrP/fQhBaH9N8=
 github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEet03Pg2g16Swow4=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
-github.com/fsnotify/fsnotify v1.4.9 h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWoS4=
-github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/go9p/styx v0.0.0-20200314201655-4aa21a63d347 h1:p/7dZzB0Cl1NtRGnTycBgw5GqBxZVTc5AsllmmPmTPc=
 github.com/go9p/styx v0.0.0-20200314201655-4aa21a63d347/go.mod h1:FgWI1n+H1ObcezDRbKsfosnG3kcImhviboh33/pvglU=
 github.com/google/gofuzz v1.1.0 h1:Hsa8mG0dQ46ij8Sl2AYJDUv1oA9/d6Vk+3LG99Oe02g=
