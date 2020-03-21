@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/altid/libs/client"
+	"github.com/altid/libs/fs"
 )
 
 type listener struct {
@@ -17,16 +18,27 @@ type listener struct {
 	done chan struct{}
 	rd   *bufio.Reader
 	c    *client.Client
+	cmds []*fs.Command
 }
 
-func newListener(c *client.Client) *listener {
-	return &listener{
+func newListener(c *client.Client) (*listener, error) {
+	cmds, err := c.GetCommands()
+	if err != nil {
+		return nil, err
+	}
+
+	cmds = append(cmds, additional...)
+
+	l := &listener{
+		cmds: cmds,
 		rd:   bufio.NewReader(os.Stdin),
 		err:  make(chan error),
 		data: make(chan []byte),
 		done: make(chan struct{}),
 		c:    c,
 	}
+
+	return l, nil
 }
 
 func (l *listener) listen() {
@@ -43,7 +55,7 @@ func (l *listener) listen() {
 		}
 
 		if line == "/quit" {
-			l.done <- struct{}{}
+			close(l.done)
 			return
 		}
 
@@ -54,7 +66,7 @@ func (l *listener) listen() {
 func handle(l *listener, args []string) {
 	switch args[0] {
 	case "/help":
-		l.data <- []byte(usage)
+		l.data <- listCommands(l.cmds)
 	case "/buffer":
 		sendCmd(l, l.c.Buffer, args[1])
 	case "/open":
