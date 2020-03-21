@@ -40,6 +40,7 @@ func FindCommands(b []byte) ([]*Command, error) {
 		return nil, err
 	}
 
+	fmt.Println("out of parse")
 	for _, cmd := range cl {
 		c := &Command{
 			Name:        cmd.Name,

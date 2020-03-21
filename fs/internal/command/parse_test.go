@@ -15,6 +15,7 @@ media:
 	play    track   # Play the named track
 	pause   # Pause the current track
 	next    # Play next
+
 `
 
 func TestParse(t *testing.T) {
