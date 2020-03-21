@@ -31,6 +31,9 @@ type Controller interface {
 	Close(c *Control, msg string) error
 	Link(c *Control, from, msg string) error
 	Default(c *Control, cmd *Command) error
+	Restart(c *Control) error
+	Refresh(c *Control) error
+	Quit()
 }
 
 type runner interface {
@@ -45,6 +48,7 @@ type runner interface {
 	Remove(string, string) error
 	Start() (context.Context, error)
 	Notification(string, string, string) error
+	Quit()
 }
 
 type writercloser interface {
@@ -83,7 +87,7 @@ const (
 // It will wait for messages on reqs which act as ctl messages
 // By default it writes to Stdout + Stderr with each WriteCloser
 // If debug is true, all logs will be written to stdout
-func MockCtlFile(ctl Controller, reqs chan string, debug bool) (*Control, error) {
+func MockCtlFile(ctl Controller, reqs chan string, service string, debug bool) (*Control, error) {
 
 	done := make(chan struct{})
 	cmds := make(chan string)
@@ -103,7 +107,15 @@ func MockCtlFile(ctl Controller, reqs chan string, debug bool) (*Control, error)
 		c.debug = ctlLogger
 	}
 
-	t.SetCommands(command.DefaultCommands...)
+	cmdlist := command.DefaultCommands
+	cmdlist = append(cmdlist, &command.Command{
+		Name:        service,
+		Args:        []string{"<quit|restart|reload>"},
+		Heading:     command.ServiceGroup,
+		Description: "Control the lifecycle of a service",
+	})
+
+	t.SetCommands(cmdlist...)
 
 	return c, nil
 }
@@ -139,7 +151,15 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug 
 			c.debug = ctlLogger
 		}
 
-		rtc.SetCommands(command.DefaultCommands...)
+		cmdlist := command.DefaultCommands
+		cmdlist = append(cmdlist, &command.Command{
+			Name:        service,
+			Args:        []string{"<quit|restart|reload>"},
+			Heading:     command.ServiceGroup,
+			Description: "Control the lifecycle of a service",
+		})
+
+		rtc.SetCommands(cmdlist...)
 
 		return c, nil
 	}
@@ -352,18 +372,49 @@ func run(c *Control, ew *writer.WriteCloser, line string) {
 		cmd, err := c.run.BuildCommand(line)
 		if err != nil {
 			c.debug(ctlError, token[0], errors.New("unsupported command"))
-			fmt.Fprintf(ew, "unsupported command")
+			fmt.Fprintf(ew, "unsupported command: %s", token[0])
 			return
 		}
 
-		// Translate to our other command type here
-		cmd2 := cmd2Command(cmd)
-		c.debug(ctlDefault, cmd2)
-		if e := c.ctl.Default(c, cmd2); e != nil {
-			c.debug(ctlError, token[0], e)
-			fmt.Fprintf(ew, "%s: %v\n", token[0], e)
+		if cmd.Heading == command.ServiceGroup {
+			serviceCommand(c, cmd, ew)
 		}
+
+		defaultCommand(c, cmd, ew, token[0])
 	}
+}
+
+func serviceCommand(c *Control, cmd *command.Command, ew *writer.WriteCloser) {
+	switch cmd.Args[0] {
+	case "quit":
+		c.run.Quit()
+		c.ctl.Quit()
+	case "restart":
+		close(c.done)
+		c.ctl.Restart(c)
+	case "reload":
+		c.ctl.Refresh(c)
+	default:
+		fmt.Fprintf(ew, "unsupported command: %s", cmd.Args[0])
+	}
+}
+
+func defaultCommand(c *Control, cmd *command.Command, ew *writer.WriteCloser, name string) {
+	cmd2 := &Command{
+		Name:        cmd.Name,
+		Description: cmd.Description,
+		Args:        cmd.Args,
+		Alias:       cmd.Alias,
+		From:        cmd.From,
+	}
+
+	cmd2.Heading = ComGroup(cmd.Heading)
+	c.debug(ctlDefault, cmd2)
+	if e := c.ctl.Default(c, cmd2); e != nil {
+		c.debug(ctlError, name, e)
+		fmt.Fprintf(ew, "%s: %v\n", name, e)
+	}
+
 }
 
 func ctlLogger(msg ctlMsg, args ...interface{}) {

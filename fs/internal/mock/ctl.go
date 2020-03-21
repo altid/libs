@@ -85,7 +85,6 @@ func (c *Control) Remove(name, doctype string) error {
 
 func (c *Control) Listen() error {
 	defer close(c.err)
-	defer close(c.done)
 
 	if e := command.PrintCtlFile(c.cmdlist, os.Stdout); e != nil {
 		return e
@@ -100,6 +99,8 @@ func (c *Control) Listen() error {
 			c.cmds <- cmd
 		case err := <-c.err:
 			return err
+		case <-c.done:
+			return nil
 		}
 	}
 }
@@ -165,6 +166,10 @@ func (c *Control) ImageWriter(buffer, resource string) (*writer.WriteCloser, err
 	w := writer.New(c.Event, tab, buffer)
 
 	return w, nil
+}
+
+func (c *Control) Quit() {
+	close(c.done)
 }
 
 func (c *Control) findTab(buffer string) (*tab, error) {

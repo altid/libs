@@ -9,7 +9,7 @@ func TestCommands(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &testctrl{}
 
-	c, err := MockCtlFile(ctl, reqs, false)
+	c, err := MockCtlFile(ctl, reqs, "test", false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -19,20 +19,20 @@ func TestCommands(t *testing.T) {
 	cmdlist = append(cmdlist, testMakeCmd("bar", []string{"<1>", "<2>"}, MediaGroup, []string{}))
 	cmdlist = append(cmdlist, testMakeCmd("baz", []string{"<2>", "<1>"}, ActionGroup, []string{}))
 	cmdlist = append(cmdlist, testMakeCmd("banana", []string{}, MediaGroup, []string{}))
-	cmdlist = append(cmdlist, testMakeCmd("nocomm", []string{"<an action>"}, ActionGroup, []string{"yacomm", "maybecomm"}))
+	cmdlist = append(cmdlist, testMakeCmd("nocomm", []string{}, ActionGroup, []string{"yacomm", "maybecomm"}))
 
 	if e := c.SetCommands(cmdlist...); e != nil {
 		t.Error(e)
 	}
 
-	time.AfterFunc(time.Second*5, func() {
-		reqs <- "foo test"
-		reqs <- "bar test this"
-		reqs <- "baz test this"
-		reqs <- "nocomm"
-		reqs <- "foo too many args should log error"
-		reqs <- "banana"
-		reqs <- "quit"
+	time.AfterFunc(time.Second*1, func() {
+		reqs <- "foo current test"
+		reqs <- "bar current test this"
+		reqs <- "baz current test this"
+		reqs <- "nocomm current jump up jump up and get down"
+		reqs <- "foo current too many args should log error"
+		reqs <- "banana current"
+		reqs <- "test quit"
 	})
 
 	defer c.Cleanup()
