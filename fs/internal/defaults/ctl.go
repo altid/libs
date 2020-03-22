@@ -23,24 +23,24 @@ import (
 type Control struct {
 	cmdlist []*command.Command
 	scanner *bufio.Scanner
+	done    chan struct{}
 	rundir  string
 	logdir  string
 	doctype string
 	tabs    []string
 	req     chan string
-	done    chan struct{}
-	cancel  context.CancelFunc
 	ctx     context.Context
 }
 
-func NewControl(r, l, d string, t []string, req chan string, done chan struct{}) *Control {
+func NewControl(ctx context.Context, r, l, d string, t []string, req chan string) *Control {
 	return &Control{
+		ctx:     ctx,
+		done:    make(chan struct{}),
 		rundir:  r,
 		logdir:  l,
 		doctype: d,
 		tabs:    t,
 		req:     req,
-		done:    done,
 	}
 }
 
@@ -151,31 +151,16 @@ func (c *Control) HasBuffer(name, doctype string) bool {
 }
 
 func (c *Control) Listen() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	if e := c.setup(ctx, cancel); e != nil {
+	if e := c.setup(); e != nil {
 		return e
 	}
 
 	c.Event(path.Join(c.rundir, "ctl"))
-	c.listen()
-
-	return nil
-}
-
-func (c *Control) Start() (context.Context, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	if e := c.setup(ctx, cancel); e != nil {
-		return nil, e
+	if e := c.listen(); e != nil {
+		return e
 	}
 
-	c.Event(path.Join(c.rundir, "ctl"))
-	go c.listen()
-
-	return ctx, nil
-}
-
-func (c *Control) Quit() {
-	c.cancel()
+	return nil
 }
 
 func (c *Control) Remove(buffer, filename string) error {
@@ -289,7 +274,7 @@ func (c *Control) ImageWriter(buffer, resource string) (*writer.WriteCloser, err
 	return c.FileWriter(buffer, path.Join("images", resource))
 }
 
-func (c *Control) setup(ctx context.Context, cancel context.CancelFunc) error {
+func (c *Control) setup() error {
 	if e := os.MkdirAll(c.rundir, 0755); e != nil {
 		return e
 	}
@@ -314,21 +299,23 @@ func (c *Control) setup(ctx context.Context, cancel context.CancelFunc) error {
 	}
 
 	c.scanner = bufio.NewScanner(r)
-	c.ctx = ctx
-	c.cancel = cancel
 
 	return nil
 }
 
-func (c *Control) listen() {
+func (c *Control) listen() error {
 	defer close(c.req)
 
 	for c.scanner.Scan() {
 		select {
 		case <-c.ctx.Done():
-			break
+			return nil
+		case <-c.done:
+			return nil
 		default:
 			c.req <- c.scanner.Text()
 		}
 	}
+
+	return nil
 }
