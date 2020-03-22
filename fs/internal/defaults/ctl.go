@@ -308,7 +308,7 @@ func (c *Control) setup(ctx context.Context, cancel context.CancelFunc) error {
 
 	ctl.Close()
 
-	r, err := reader.New(cfile)
+	r, err := reader.Cmd(c.rundir)
 	if err != nil {
 		return err
 	}
