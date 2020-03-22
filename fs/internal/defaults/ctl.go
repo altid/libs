@@ -155,6 +155,8 @@ func (c *Control) Listen() error {
 	if e := c.setup(ctx, cancel); e != nil {
 		return e
 	}
+
+	c.Event(path.Join(c.rundir, "ctl"))
 	c.listen()
 
 	return nil
@@ -166,6 +168,7 @@ func (c *Control) Start() (context.Context, error) {
 		return nil, e
 	}
 
+	c.Event(path.Join(c.rundir, "ctl"))
 	go c.listen()
 
 	return ctx, nil
