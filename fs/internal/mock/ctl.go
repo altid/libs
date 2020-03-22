@@ -18,10 +18,11 @@ type tab struct {
 }
 
 type Control struct {
+	ctx     context.Context
 	cmdlist []*command.Command
+	done    chan struct{}
 	reqs    chan string
 	cmds    chan string
-	done    chan struct{}
 	err     chan error
 	tabs    []*tab
 }
@@ -35,8 +36,9 @@ func (t *tab) Close() error {
 	return nil
 }
 
-func NewControl(errs chan error, reqs, cmds chan string, done chan struct{}) *Control {
+func NewControl(ctx context.Context, errs chan error, reqs, cmds chan string, done chan struct{}) *Control {
 	return &Control{
+		ctx:  ctx,
 		err:  errs,
 		reqs: reqs,
 		cmds: cmds,
@@ -93,13 +95,12 @@ func (c *Control) Listen() error {
 	for {
 		select {
 		case cmd := <-c.reqs:
-			if cmd == "quit" {
-				return nil
-			}
 			c.cmds <- cmd
 		case err := <-c.err:
 			return err
 		case <-c.done:
+			return nil
+		case <-c.ctx.Done():
 			return nil
 		}
 	}
@@ -166,10 +167,6 @@ func (c *Control) ImageWriter(buffer, resource string) (*writer.WriteCloser, err
 	w := writer.New(c.Event, tab, buffer)
 
 	return w, nil
-}
-
-func (c *Control) Quit() {
-	close(c.done)
 }
 
 func (c *Control) findTab(buffer string) (*tab, error) {

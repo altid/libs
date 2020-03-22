@@ -1,10 +1,13 @@
 package fs
 
 import (
+	"context"
 	"testing"
 )
 
-type testctrl struct{}
+type testctrl struct {
+	cancel context.CancelFunc
+}
 
 func (c *testctrl) Open(ctl *Control, buf string) error {
 	return ctl.CreateBuffer(buf, "test")
@@ -34,7 +37,9 @@ func (c *testctrl) Restart(ctl *Control) error {
 	return nil
 }
 
-func (c *testctrl) Quit() {}
+func (c *testctrl) Quit() {
+	c.cancel()
+}
 
 func sendctl(reqs chan string) {
 	// Commands are sent with the current buffer for context
@@ -47,10 +52,12 @@ func sendctl(reqs chan string) {
 }
 
 func TestCtl(t *testing.T) {
-	reqs := make(chan string)
-	ctl := &testctrl{}
+	ctx, cancel := context.WithCancel(context.Background())
 
-	c, err := MockCtlFile(ctl, reqs, "test", false)
+	reqs := make(chan string)
+	ctl := &testctrl{cancel}
+
+	c, err := MockCtlFile(ctx, ctl, reqs, "test", false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -66,10 +73,12 @@ func TestCtl(t *testing.T) {
 }
 
 func TestWriters(t *testing.T) {
-	reqs := make(chan string)
-	ctl := &testctrl{}
+	ctx, cancel := context.WithCancel(context.Background())
 
-	c, err := MockCtlFile(ctl, reqs, "test", false)
+	reqs := make(chan string)
+	ctl := &testctrl{cancel}
+
+	c, err := MockCtlFile(ctx, ctl, reqs, "test", false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -88,7 +97,7 @@ func TestWriters(t *testing.T) {
 
 		mw.Write([]byte("test"))
 		mw.Close()
-		reqs <- "quit"
+		reqs <- "test quit"
 	}()
 
 	if e := c.Listen(); e != nil {

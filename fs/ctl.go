@@ -46,9 +46,7 @@ type runner interface {
 	HasBuffer(string, string) bool
 	Listen() error
 	Remove(string, string) error
-	Start() (context.Context, error)
 	Notification(string, string, string) error
-	Quit()
 }
 
 type writercloser interface {
@@ -59,9 +57,10 @@ type writercloser interface {
 
 // Control type can be used to manage a running ctl file session
 type Control struct {
+	ctx   context.Context
 	req   chan string
-	done  chan struct{}
 	ctl   Controller
+	done  chan struct{}
 	run   runner
 	write writercloser
 	debug func(ctlMsg, ...interface{})
@@ -87,17 +86,18 @@ const (
 // It will wait for messages on reqs which act as ctl messages
 // By default it writes to Stdout + Stderr with each WriteCloser
 // If debug is true, all logs will be written to stdout
-func MockCtlFile(ctl Controller, reqs chan string, service string, debug bool) (*Control, error) {
+func MockCtlFile(ctx context.Context, ctl Controller, reqs chan string, service string, debug bool) (*Control, error) {
 
 	done := make(chan struct{})
 	cmds := make(chan string)
 	errs := make(chan error)
-	t := mock.NewControl(errs, reqs, cmds, done)
+	t := mock.NewControl(ctx, errs, reqs, cmds, done)
 
 	c := &Control{
+		ctx:   ctx,
 		ctl:   ctl,
+		done:  make(chan struct{}),
 		req:   cmds,
-		done:  done,
 		run:   t,
 		write: t,
 		debug: func(ctlMsg, ...interface{}) {},
@@ -125,7 +125,7 @@ func MockCtlFile(ctl Controller, reqs chan string, service string, debug bool) (
 // mtpt is the directory to create the file system in
 // service is the subdirectory inside mtpt for the runtime fs
 // This will return an error if a ctl file exists at the given directory, or if doctype is invalid.
-func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug bool) (*Control, error) {
+func CreateCtlFile(ctx context.Context, ctl Controller, logdir, mtpt, service, doctype string, debug bool) (*Control, error) {
 	if doctype != "document" && doctype != "feed" {
 		return nil, fmt.Errorf("unknown doctype: %s", doctype)
 	}
@@ -135,12 +135,12 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug 
 	if _, e := os.Stat(path.Join(rundir, "ctl")); os.IsNotExist(e) {
 		var tab []string
 		req := make(chan string)
-		done := make(chan struct{})
-		rtc := defaults.NewControl(rundir, logdir, doctype, tab, req, done)
+		rtc := defaults.NewControl(ctx, rundir, logdir, doctype, tab, req)
 
 		c := &Control{
+			ctx:   ctx,
 			req:   req,
-			done:  done,
+			done:  make(chan struct{}),
 			run:   rtc,
 			ctl:   ctl,
 			write: rtc,
@@ -218,15 +218,6 @@ func (c *Control) Listen() error {
 
 	c.debug(ctlStart, "listen")
 	return c.run.Listen()
-}
-
-// Start is like listen, but occurs in a separate go routine, returning flow to the calling process once the ctl file is instantiated.
-// This provides a context.Context that can be used for cancellations
-func (c *Control) Start() (context.Context, error) {
-	go dispatch(c)
-
-	c.debug(ctlStart, "start")
-	return c.run.Start()
 }
 
 // SetCommands allows services to add additional commands
@@ -323,6 +314,8 @@ func dispatch(c *Control) {
 			run(c, ew, line)
 		case <-c.done:
 			return
+		case <-c.ctx.Done():
+			return
 		}
 	}
 }
@@ -386,10 +379,10 @@ func run(c *Control, ew *writer.WriteCloser, line string) {
 func serviceCommand(c *Control, cmd *command.Command, ew *writer.WriteCloser) {
 	switch cmd.Args[0] {
 	case "quit":
-		c.run.Quit()
+		// Close our local listeners, then
+		close(c.done)
 		c.ctl.Quit()
 	case "restart":
-		close(c.done)
 		c.ctl.Restart(c)
 	case "reload":
 		c.ctl.Refresh(c)
