@@ -85,6 +85,12 @@ func New(c Configurator, service string, debug bool) (*Config, error) {
 			return nil, err
 		}
 
+		if debug {
+			conf.debug = configLogger
+		} else {
+			conf.debug = func(string, ...interface{}) {}
+		}
+
 		if e := writeToFile(conf); e != nil {
 			return nil, e
 		}
