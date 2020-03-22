@@ -160,7 +160,6 @@ func CreateCtlFile(ctl Controller, logdir, mtpt, service, doctype string, debug 
 		})
 
 		rtc.SetCommands(cmdlist...)
-
 		return c, nil
 	}
 
