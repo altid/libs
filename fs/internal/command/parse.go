@@ -56,13 +56,18 @@ func Parse(b []byte) ([]*Command, error) {
 
 	for {
 		c, err := l.parse()
-		if c.Name != "" {
-			cmdlist = append(cmdlist, c)
-		}
 		switch err {
 		case io.EOF:
+			if c.Name != "" {
+				cmdlist = append(cmdlist, c)
+			}
+
 			return cmdlist, nil
 		case nil:
+			if c.Name != "" {
+				cmdlist = append(cmdlist, c)
+			}
+
 			continue
 		default:
 			return nil, err
