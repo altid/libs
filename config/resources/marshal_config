@@ -1,0 +1,2 @@
+service=zzyzx address=test usessl=true foo=bar auth=password
+    password=banana
