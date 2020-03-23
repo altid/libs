@@ -6,30 +6,58 @@ The ndb format is described in http://man.cat-v.org/plan_9/6/ndb
 
 Usage
 
-This library has some special usage notes. Namely, on error it will return a string indicating the user should run `myservice -conf`. 
-Doing so will call the Configurator which was passed in to config.New() and exit the program. 
+A service can marshall values to a struct through Marshall, as long as the entries follow these rules:
+- Nested structs will be ignored
+- Type must be bool, int, string, or one of tls.Certificate, Auth, Log, or ListenAddress
+- Type tls.Certificate must not have struct tags
+- structs must have default values set
 
-Repl
+Example:
 
-The included Repl is meant to make designing Configurators much easier. To use, simply pass a struct to Repl with all the entries you wish described as type string|int|bool
-The struct tags will be used verbatim as the prompt message to the client
+	// package mypackage
 
-	func myConfigurator(rw io.ReadCloser) (*config.Config, error) {
-		repl := struct {
-			Address string `IP Address of service`
-			Port int `Port to use`
-			UseTLS bool `Do you wish to use TLS?`
-		}{"localhost", 564, "false"}
+	import (
+		"flag"
+		"log"
+		"os"
+		"os/user"
 
-		return config.Repl(rw, repl, false)
+		"github.com/altid/libs/config"
+	)
+
+	var conf = flag.Bool("conf", false, "Create configuration file")
+
+	func main() {
+		flag.Parse()
+
+		u, _ := user.Current
+
+		mytype := struct {
+			// Struct tags are used by Create to interactively fill in any missing data
+			Name string `Enter a name to use on the service`
+			UseTLS bool `Use TLS? (true|false)`
+			TLSCert tls.Certificate // Do not use struct tags, this will be filled out using key= and cert= tuples
+			Port int
+			Auth config.Auth `Enter the authentication method you would like to use: password|factotum|none`
+			Logdir config.Logdir
+			ListenAddress config.ListenAddress
+		}{u.Name, false, tls.Certificate{}, 564, "none", "", ""}
+
+		if flag.Lookup("conf") != nil {
+			if e := config.Marshall(&mytype, "myservice", false); e != nil {
+				log.Fatal(e)
+			}
+
+			os.Exit(0)
+		}
+
+		// Your error message should indicate that the user re-runs with -conf to create any missing entries
+		if e := config.Marshall(&mytype, "myservice", false); e != nil {
+			log.Fatal("unable to create config: %v\nRun program with -conf to create missing entries")
+		}
+
+		// [...]
 	}
-
-
-This will start a repl with the client over the io.ReadWriter, using the struct tags as the prompt
-
-	$ IP Address of service [localhost]: (enter to use default)
-	$ Port to use [564]: (enter to use default)
-	$ Do you wish to use TLS? [no]: (enter to use default)
 
 */
 package config
