@@ -1,55 +1,48 @@
 package config
 
 import (
-	"io"
-	"io/ioutil"
-	"os"
 	"testing"
+	
+	"github.com/altid/libs/config/types"
 )
 
-func buildConfig(rwc io.ReadWriter) (*Config, error) {
-	c := &Config{
-		Name: "zzyzx",
-		Values: []*Entry{
-			{
-				Key:   "address",
-				Value: "123.456.789.0",
-			},
-		},
+func TestMarshal(t *testing.T) {
+	conf := struct {
+		Address string     `IP address to dial`
+		Auth    types.Auth `Auth mechanism to use: password|factotum|none`
+		UseSSL  bool       `Use SSL?`
+		Foo     string     // Will use default
+	}{"127.0.0.1", "password", false, "bar"}
+
+	if e := Marshal(&conf, "zzyzx", "resources/marshal_config", true); e != nil {
+		t.Error(e)
 	}
 
-	return c, nil
+	if conf.Address != "test" {
+		t.Error("unable to set address field in conf")
+	}
+
+	if conf.Auth != "banana" {
+		t.Error("unable to set password based on auth mechanism")
+	}
+
+	if conf.UseSSL != true {
+		t.Error("unable to set UseSSL boolean")
+	}
 }
 
+/* Testing create requires a stdin/stdout
 func TestCreate(t *testing.T) {
-	conf, err := Mock(buildConfig, "zzyzx", true)
-	if err != nil {
-		t.Error(err)
-	}
+	conf := struct {
+		Address string `Enter the address you wish to connect on`
+		Port    int
+		Auth    Auth `Enter your authentication method: password|factotum|none`
+		Logdir     Logdir
+		Listen  ListenAddress
+	}{"irc.freenode.net", 1234, "none", "", ""}
 
-	if conf.Values[0].Key != "address" && conf.Values[0].Value != "123.456.789.0" {
-		t.Error("unable to create config successfully")
-	}
-}
-
-func buildReplConfig(rw io.ReadWriter) (*Config, error) {
-	repl := struct {
-		Address  string `IP address to dial`
-		Password string `password for service`
-		UseSSL   bool   `Use SSL?`
-		Foo      string // Will use default
-	}{"127.0.0.1", "password", false, "banana"}
-
-	rw = struct {
-		io.Reader
-		io.Writer
-	}{os.Stdin, ioutil.Discard}
-
-	return Repl(rw, repl, true)
-}
-
-func TestRepl(t *testing.T) {
-	if _, e := Mock(buildReplConfig, "zzyzx", true); e != nil {
+	if e := Create(&conf, "zzyzx", "resources/create_config", true); e != nil {
 		t.Error(e)
 	}
 }
+*/
