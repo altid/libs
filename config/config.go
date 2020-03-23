@@ -1,245 +1,168 @@
 package config
 
 import (
-	"crypto/tls"
-	"errors"
-	"flag"
-	"fmt"
-	"io"
 	"log"
 	"os"
+	"path"
 	"strings"
 
-	"github.com/altid/libs/auth"
+	"github.com/altid/libs/config/internal/build"
+	"github.com/altid/libs/config/internal/conf"
+	"github.com/altid/libs/config/internal/entry"
+	"github.com/altid/libs/config/internal/request"
+	"github.com/altid/libs/config/internal/util"
+	"github.com/altid/libs/fs"
 	"github.com/mischief/ndb"
 )
 
-// Errors
-const (
-	ErrBadConfigurator = "configurator nil or invalid, cannot continue"
-	ErrNoConfigure     = "unable to find or create config for this service. To create one, please run %s -conf"
-	ErrNoSuchKey       = "no such key"
-	ErrNoEntries       = "unable to find config entry for this service."
-	ErrMultiEntries    = "config contains duplicate entries for this service"
-)
-
-var createConfig = flag.Bool("conf", false, "Create configuration file for service")
-
-// Config defines a services' configuration in a given config file
-type Config struct {
-	Name   string
-	Values []*Entry
-	debug  func(value string, args ...interface{})
-}
-
-// Entry is a single tuple in a services configuration
-type Entry struct {
-	Key   string
-	Value string
-}
-
-// Configurator is called when no entry is found for a given service
-// It should query the user for each required value, returning a
-// complete and usable Config
-type Configurator func(io.ReadWriter) (*Config, error)
-
-// Mock returns a mock config for a given service for testing
-// It always calls Configurator to create a Config, and will not write to file
-func Mock(c Configurator, service string, debug bool) (*Config, error) {
+// Marshal will take a pointer to a struct as input, as well as the name of the service and attempt to fill the struct.
+// - The struct entries must be of the type string, int, bool,
+// - The tags of the struct will be used to indicate a query sent to the user
+// - Default entries to the struct will be used as defaults
+//
+//	type myconf struct {
+//		Name string `Username to use for the service`
+// 		Port int `Port to connect with`
+// 		UseSSL bool `Do you want to connect with SSL?`
+// 		Auth types.Auth `Auth mechanism to use: password|factotum|none`
+//		Logdir types.Logdir
+//      Address types.ListenAddress
+//	}{myusername, 1234, true, "none", "none"}
+//
+//  err := config.Marshal(myconf, "myservice", false)
+//  [...]
+//
+// The preceding example would search the config file for each lower case entry
+// If it cannot fill an entry, it returns an error
+// Idiomatically, the user should be prompted to rerun with the -conf flag
+// and the function Create should be called, and on success, exit the program
+func Marshal(requests interface{}, service string, confdir string, debug bool) error {
+	debugLog := func(string, ...interface{}) {}
 	if debug {
-		configLogger("mock starting")
-	}
-
-	conf, err := buildConfigFromConfigurator(c, service)
-	if err != nil {
-		return nil, err
-	}
-
-	if debug {
-		conf.debug = configLogger
-	} else {
-		conf.debug = func(string, ...interface{}) {}
-	}
-
-	conf.debug("success")
-
-	return conf, nil
-}
-
-// New returns a valid config for a given service. If one is not found, the Configurator
-// will be called to interactively create one. On success, the program will exit
-func New(c Configurator, service string, debug bool) (*Config, error) {
-	// Since this is a library to create services, we can expect there to be flags passed in
-	if debug {
-		configLogger("starting")
-	}
-
-	flag.Parse()
-	if *createConfig {
-		if debug {
-			configLogger("start configurator")
+		debugLog = func(format string, v ...interface{}) {
+			l := log.New(os.Stdout, "config: ", 0)
+			l.Printf(format+"\n", v...)
 		}
+	}
 
-		conf, err := createConfigFile(c, service)
+	// list all existing config entries
+	have, err := conf.FromConfig(debugLog, service, confdir)
+	if err != nil {
+		return err
+	}
+
+	if e := build.Marshal(debugLog, requests, have); e != nil {
+		return e
+	}
+
+	return nil
+}
+
+// Create takes a pointer to a struct, and attempts to create a config file entry on disk based on the struct
+// It is meant to be used with the -conf flag
+// The semantics are the same as Marshall, but it uses the struct tags to prompt the user to fill in the data for any missing entries
+// For example:
+//
+// 	Name string `Username to connect with`
+//
+// would prompt the user for a username, optionally offering the default value passed in
+// On success, the user should cleanly exit the program, as requests is not filled as it is in Marshall
+func Create(requests interface{}, service, confdir string, debug bool) error {
+	debugLog := func(string, ...interface{}) {}
+	if debug {
+		debugLog = func(format string, v ...interface{}) {
+			l := log.New(os.Stdout, "config: ", 0)
+			l.Printf(format+"\n", v...)
+		}
+	}
+
+	have, err := entry.FromConfig(debugLog, service, confdir)
+
+	// Make sure we correct any errors we encounter
+	switch {
+	case err == nil:
+		debugLog("fixing config file")
+	case os.IsNotExist(err):
+		dir, err := fs.UserConfDir()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		if debug {
-			conf.debug = configLogger
-		} else {
-			conf.debug = func(string, ...interface{}) {}
+		os.MkdirAll(path.Join(dir, "altid"), 0755)
+		os.Create(util.GetConf(service))
+		debugLog("creating config file")
+
+	// If we have multiple entries, something has indeed gone wrong
+	// The user needs to manually clean this up
+	case err.Error() == entry.ErrMultiEntries:
+		return err
+
+	// This is the expected case in this situation
+	case err.Error() == entry.ErrNoEntries:
+		debugLog("creating entry")
+	}
+
+	want, err := request.Build(requests)
+	if err != nil {
+		return err
+	}
+
+	c, err := conf.Create(debugLog, service, have, want)
+	if err != nil {
+		return err
+	}
+
+	return c.WriteToFile()
+}
+
+// GetListenAddress returns the listen_address of a server, or "" if none is found
+// If a port is set, e.g. listen_address = 192.168.0.4:8080 it will return 8080
+func GetListenAddress(service string) (string, string) {
+	conf, err := ndb.Open(util.GetConf(service))
+	if err != nil {
+		return "", "564"
+	}
+
+	listen := conf.Search("service", service).Search("listen_address")
+	if listen != "" {
+		if n := strings.Index(listen, ":"); n > 0 {
+			return listen[:n], listen[n+1:]
 		}
 
-		if e := writeToFile(conf); e != nil {
-			return nil, e
-		}
-
-		log.Println("configuration successful, exiting")
-		os.Exit(0)
+		return listen, "564"
 	}
 
-	conf, err := ndb.Open(getConfDir(service))
-	if err != nil {
-		return nil, fmt.Errorf(ErrNoConfigure, os.Args[0])
-	}
-
-	if entry := conf.Search("service", service).Search("service"); entry == "" {
-
-		return nil, fmt.Errorf(ErrNoConfigure, os.Args[0])
-	}
-
-	cf, err := parseConfig(service)
-	if err != nil {
-		return nil, err
-	}
-
-	if debug {
-		cf.debug = configLogger
-	} else {
-		cf.debug = func(string, ...interface{}) {}
-	}
-
-	cf.debug("success")
-	return cf, nil
+	return "", "564"
 }
 
-// Password queries the database for a password
-// the format in the config is auth=pass=mypassword or auth=factotum
-// when auth=factotum is found, it will attempt to query the factotum for a response
-func (c *Config) Password() (string, error) {
-	// The factotum bits should really move out of here
-	c.debug("request key=\"password\"")
-
-	pass, err := c.Search("auth")
+// GetLogDir returns a canonical directory for a user log, searching first altid/config
+// If no entry is found or the file is missing, it will return "none"
+func GetLogDir(service string) string {
+	conf, err := ndb.Open(util.GetConf(service))
 	if err != nil {
-		c.debug("response key=\"password\" error=\"%v\"", err)
-		return "", err
-	}
-
-	if len(pass) > 5 && pass[:5] == "pass=" {
-		pass = pass[5:]
-	}
-
-	if pass == "factotum" {
-		c.debug("request key=\"factotum\"")
-		userPwd, err := auth.Getuserpasswd(
-			"proto=pass service=%s",
-			c.Name,
-		)
-		if err != nil {
-			c.debug("response key=\"password\" error=\"%v\"", err)
-			return "", err
-		}
-
-		pass = userPwd.Password
-		c.debug("response key=\"factotum\" value=\"success\"")
-	}
-
-	c.debug("response key=\"password\" value=\"success\"")
-	return pass, nil
-}
-
-// SSLCert returns a tls.Certificate based on successfully finding
-// a cert and key file listen in the configuration
-func (c *Config) SSLCert() (tls.Certificate, error) {
-	c.debug("request type=ssl")
-	cert, err := c.Search("cert")
-	if err != nil {
-		c.debug("response type=ssl error=\"%v\"", err)
-		return tls.Certificate{}, err
-	}
-
-	key, err := c.Search("key")
-	if err != nil {
-		c.debug("response type=ssl error=\"%v\"", err)
-		return tls.Certificate{}, err
-	}
-
-	c.debug("response type=ssl value=\"success\"")
-	return tls.LoadX509KeyPair(cert, key)
-}
-
-// Search queries for an entry in the config matching key
-// Returning the value if it exists, or a "no such key" error
-func (c *Config) Search(key string) (string, error) {
-	c.debug("request key=\"%s\"", key)
-
-	if key == "service" {
-		c.debug("response key=\"%s\" value=\"%s\"", key, c.Name)
-		return c.Name, nil
-	}
-
-	for _, k := range c.Values {
-		if k.Key == key {
-			c.debug("response key=\"%s\" value=\"%s\"", key, k.Value)
-			return k.Value, nil
-		}
-	}
-
-	c.debug("response key=\"%s\" error=\"%s\"", ErrNoSuchKey)
-	return "", errors.New(ErrNoSuchKey)
-}
-
-// MustSearch returns a value or an empty string, if not found
-func (c *Config) MustSearch(key string) string {
-	val, err := c.Search(key)
-	if err != nil {
-		return ""
-	}
-
-	return val
-}
-
-// Log returns the configured Log, or "none"
-func (c *Config) Log() string {
-	c.debug("request key=\"log\"")
-
-	dir, err := c.Search("log")
-	if err != nil {
-		c.debug("response key=\"log\" value=\"none\"")
 		return "none"
 	}
 
-	c.debug("response key=\"log\" value=\"%s\"", dir)
-
-	return dir
-}
-
-// String returns our entry tuples in the form of key=value
-func (c *Config) String() string {
-	var entry strings.Builder
-
-	fmt.Fprintf(&entry, "service=%s", c.Name)
-
-	for _, item := range c.Values {
-		fmt.Fprintf(&entry, " %s=%s", item.Key, item.Value)
+	logdir := conf.Search("service", service).Search("log")
+	if logdir != "" {
+		return path.Join(logdir, service)
 	}
 
-	return entry.String()
+	return "none"
 }
 
-func configLogger(format string, v ...interface{}) {
-	l := log.New(os.Stdout, "config: ", 0)
-	l.Printf(format+"\n", v...)
+// ListAll returns a list of available services
+func ListAll() ([]string, error) {
+	var configs []string
+
+	conf, err := ndb.Open(util.GetConf(""))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, rec := range conf.Search("service", "") {
+		configs = append(configs, rec[0].Val)
+	}
+
+	return configs, nil
 }
