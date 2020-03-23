@@ -1,18 +1,18 @@
 package config
 
 import (
+	"crypto/tls"
 	"errors"
-	"fmt"
-	"io"
 	"log"
 	"os"
 	"path"
 
+	"github.com/altid/libs/auth"
 	"github.com/altid/libs/fs"
 	"github.com/mischief/ndb"
 )
 
-func getConfDir(service string) string {
+func getConf(service string) string {
 	confdir, err := fs.UserConfDir()
 	if err != nil {
 		log.Fatal(err)
@@ -21,85 +21,68 @@ func getConfDir(service string) string {
 	return path.Join(confdir, "altid", "config")
 }
 
-func parseConfig(service string) (*Config, error) {
-	conf, err := ndb.Open(getConfDir(service))
-	if err != nil {
-		return nil, err
-	}
-
-	recs := conf.Search("service", service)
-
-	switch len(recs) {
-	case 0:
-		return nil, errors.New(ErrNoEntries)
-	case 1:
-		return buildConfigFromNdb(recs[0], service)
-	default:
-		return nil, errors.New(ErrMultiEntries)
-	}
-}
-
-func buildConfigFromNdb(recs ndb.Record, service string) (*Config, error) {
-	var values []*Entry
-	c := &Config{
-		Name:   service,
-		Values: values,
-	}
-
-	for _, tup := range recs {
-		v := &Entry{
-			Key:   tup.Attr,
-			Value: tup.Val,
+func findAuth(debug func(string, ...interface{}), service string, c ndb.RecordSet) (string, error) {
+	switch c.Search("auth") {
+	case "password":
+		pass := c.Search("password")
+		if pass == "" {
+			return "", errors.New("unable to find password")
 		}
-		c.Values = append(c.Values, v)
-	}
 
-	return c, nil
+		return pass, nil
+	case "factotum":
+		debug("request key=\"factotum\"")
+		userPwd, err := auth.Getuserpasswd("proto=pass service=%s", service)
+		if err != nil {
+			debug("response key=\"password\" error=\"%v\"", err)
+			return "", err
+		}
+
+		debug("response key=\"factotum\" value=\"success\"")
+		return userPwd.Password, nil
+	// If we're here, either we have a "none" value, or auth isn't listed
+	default:
+		return "", nil
+	}
 }
 
-func createConfigFile(c Configurator, service string) (*Config, error) {
-	if c == nil {
-		return nil, errors.New(ErrBadConfigurator)
-	}
+func findTlsCert(debug func(string, ...interface{}), c ndb.RecordSet) (tls.Certificate, error) {
+	debug("request type=tls")
+	cert := c.Search("cert")
+	key := c.Search("key")
 
-	fp, err := os.OpenFile(getConfDir(service), os.O_CREATE, 0644)
-	if err != nil {
-		return nil, err
+	if cert == "" || key == "" {
+		return tls.Certificate{}, errors.New("missing cert/key entries in config")
 	}
-
-	fp.Close()
-	return buildConfigFromConfigurator(c, service)
+	return tls.LoadX509KeyPair(cert, key)
 }
 
-func buildConfigFromConfigurator(c Configurator, service string) (*Config, error) {
-	rw := struct {
-		io.Reader
-		io.Writer
-	}{os.Stdin, os.Stdout}
+func findLogdir(debug func(string, ...interface{}), c ndb.RecordSet) string {
+	debug("request key=\"log\"")
 
-	conf, err := c(rw)
-	if err != nil {
-		return nil, err
+	dir := c.Search("log")
+	if dir == "" {
+		debug("response key=\"log\" value=\"none\"")
+		return "none"
 	}
 
-	conf.Name = service
-
-	return conf, nil
+	debug("response key=\"log\" value=\"%s\"", dir)
+	return dir
 }
 
-func writeToFile(c *Config) error {
-	fp, err := os.OpenFile(getConfDir(c.Name), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
+func findListen(debug func(string, ...interface{}), c ndb.RecordSet) string {
+	debug("request key=\"listen_address\"")
+	dir := c.Search("listen_address")
+	if dir == "" {
+		debug("response key=\"listen_address\" value=\"none\"")
+		return "none"
 	}
 
-	c.debug("write file=\"%s\"", fp.Name())
+	debug("response key=\"listen_address\" value=\"%s\"", dir)
+	return dir
+}
 
-	defer fp.Close()
-	// NOTE(halfwit) We always want an extra newline to separate entries
-	if _, e := fmt.Fprintf(fp, "%s\n\n", c.String()); e != nil {
-		return e
-	}
-
-	return nil
+func logger(format string, v ...interface{}) {
+	l := log.New(os.Stdout, "config: ", 0)
+	l.Printf(format+"\n", v...)
 }
