@@ -2,14 +2,16 @@ package config
 
 import (
 	"testing"
+	
+	"github.com/altid/libs/config/types"
 )
 
 func TestMarshal(t *testing.T) {
 	conf := struct {
-		Address string `IP address to dial`
-		Auth    Auth   `Auth mechanism to use: password|factotum|none`
-		UseSSL  bool   `Use SSL?`
-		Foo     string // Will use default
+		Address string     `IP address to dial`
+		Auth    types.Auth `Auth mechanism to use: password|factotum|none`
+		UseSSL  bool       `Use SSL?`
+		Foo     string     // Will use default
 	}{"127.0.0.1", "password", false, "bar"}
 
 	if e := Marshal(&conf, "zzyzx", "resources/marshal_config", true); e != nil {
@@ -36,9 +38,8 @@ func TestCreate(t *testing.T) {
 		Port    int
 		Auth    Auth `Enter your authentication method: password|factotum|none`
 		Logdir     Logdir
-		Tls     tls.Certificate
 		Listen  ListenAddress
-	}{"irc.freenode.net", 1234, "none", "", tls.Certificate{}, ""}
+	}{"irc.freenode.net", 1234, "none", "", ""}
 
 	if e := Create(&conf, "zzyzx", "resources/create_config", true); e != nil {
 		t.Error(e)

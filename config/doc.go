@@ -8,8 +8,7 @@ Usage
 
 A service can marshall values to a struct through Marshall, as long as the entries follow these rules:
 - Nested structs will be ignored
-- Type must be bool, int, string, or one of tls.Certificate, Auth, Log, or ListenAddress
-- Type tls.Certificate must not have struct tags
+- Type must be bool, int, string, or one of Auth, Log, or ListenAddress
 - structs must have default values set
 
 Example:
@@ -23,6 +22,7 @@ Example:
 		"os/user"
 
 		"github.com/altid/libs/config"
+		"github.com/altid/libs/config/types"
 	)
 
 	var conf = flag.Bool("conf", false, "Create configuration file")
@@ -36,12 +36,11 @@ Example:
 			// Struct tags are used by Create to interactively fill in any missing data
 			Name string `Enter a name to use on the service`
 			UseTLS bool `Use TLS? (true|false)`
-			TLSCert tls.Certificate // Do not use struct tags, this will be filled out using key= and cert= tuples
 			Port int
-			Auth config.Auth `Enter the authentication method you would like to use: password|factotum|none`
-			Logdir config.Logdir
+			Auth types.Auth `Enter the authentication method you would like to use: password|factotum|none`
+			Logdir types.Logdir
 			ListenAddress config.ListenAddress
-		}{u.Name, false, tls.Certificate{}, 564, "none", "", ""}
+		}{u.Name, false, 564, "none", "", ""}
 
 		if flag.Lookup("conf") != nil {
 			if e := config.Marshall(&mytype, "myservice", false); e != nil {
