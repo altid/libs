@@ -1,27 +1,28 @@
-package config
+package entry
 
 import (
-	"crypto/tls"
 	"errors"
-	"log"
-	"os"
-	"path"
+	"strings"
 
 	"github.com/altid/libs/auth"
-	"github.com/altid/libs/fs"
+	"github.com/altid/libs/config/internal/request"
+	"github.com/altid/libs/config/types"
 	"github.com/mischief/ndb"
 )
 
-func getConf(service string) string {
-	confdir, err := fs.UserConfDir()
-	if err != nil {
-		log.Fatal(err)
+func Find(req *request.Request, entries []*Entry) (*Entry, bool) {
+	key := strings.ToLower(req.Key)
+
+	for _, entry := range entries {
+		if entry.Key == key {
+			return entry, true
+		}
 	}
 
-	return path.Join(confdir, "altid", "config")
+	return nil, false
 }
 
-func findAuth(debug func(string, ...interface{}), service string, c ndb.RecordSet) (string, error) {
+func findAuth(debug func(string, ...interface{}), service string, c ndb.RecordSet) (types.Auth, error) {
 	switch c.Search("auth") {
 	case "password":
 		pass := c.Search("password")
@@ -29,7 +30,7 @@ func findAuth(debug func(string, ...interface{}), service string, c ndb.RecordSe
 			return "", errors.New("unable to find password")
 		}
 
-		return pass, nil
+		return types.Auth(pass), nil
 	case "factotum":
 		debug("request key=\"factotum\"")
 		userPwd, err := auth.Getuserpasswd("proto=pass service=%s", service)
@@ -39,25 +40,14 @@ func findAuth(debug func(string, ...interface{}), service string, c ndb.RecordSe
 		}
 
 		debug("response key=\"factotum\" value=\"success\"")
-		return userPwd.Password, nil
+		return types.Auth(userPwd.Password), nil
 	// If we're here, either we have a "none" value, or auth isn't listed
 	default:
 		return "", nil
 	}
 }
 
-func findTlsCert(debug func(string, ...interface{}), c ndb.RecordSet) (tls.Certificate, error) {
-	debug("request type=tls")
-	cert := c.Search("cert")
-	key := c.Search("key")
-
-	if cert == "" || key == "" {
-		return tls.Certificate{}, errors.New("missing cert/key entries in config")
-	}
-	return tls.LoadX509KeyPair(cert, key)
-}
-
-func findLogdir(debug func(string, ...interface{}), c ndb.RecordSet) string {
+func findLogdir(debug func(string, ...interface{}), c ndb.RecordSet) types.Logdir {
 	debug("request key=\"log\"")
 
 	dir := c.Search("log")
@@ -67,10 +57,10 @@ func findLogdir(debug func(string, ...interface{}), c ndb.RecordSet) string {
 	}
 
 	debug("response key=\"log\" value=\"%s\"", dir)
-	return dir
+	return types.Logdir(dir)
 }
 
-func findListen(debug func(string, ...interface{}), c ndb.RecordSet) string {
+func findListen(debug func(string, ...interface{}), c ndb.RecordSet) types.ListenAddress {
 	debug("request key=\"listen_address\"")
 	dir := c.Search("listen_address")
 	if dir == "" {
@@ -79,10 +69,5 @@ func findListen(debug func(string, ...interface{}), c ndb.RecordSet) string {
 	}
 
 	debug("response key=\"listen_address\" value=\"%s\"", dir)
-	return dir
-}
-
-func logger(format string, v ...interface{}) {
-	l := log.New(os.Stdout, "config: ", 0)
-	l.Printf(format+"\n", v...)
+	return types.ListenAddress(dir)
 }
