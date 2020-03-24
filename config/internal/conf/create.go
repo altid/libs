@@ -67,7 +67,7 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 		Key: key,
 	}
 
-	debug("request key=\"%s\" default=\"%s\"", key, req.Defaults)
+	debug("request key=\"%s\" default=\"%v\"", key, req.Defaults)
 
 	switch {
 	case req.Defaults == nil:
@@ -80,14 +80,10 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 		fmt.Printf("%s [%v]: (press enter for default)\n", req.Prompt, req.Defaults)
 	}
 
-	rd := bufio.NewReader(os.Stdin)
-
-	value, err := rd.ReadString('\n')
+	value, err := readValue()
 	if err != nil {
 		return nil, err
 	}
-
-	value = value[:len(value)-1]
 
 	// User pressed enter for default
 	if value == "" || value == "\n" {
@@ -97,9 +93,6 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 	}
 
 	switch req.Defaults.(type) {
-	case int:
-		entry.Value, err = strconv.Atoi(value)
-		debug("response key=\"%s\" value=\"%d\"", entry.Key, entry.Value)
 	case bool:
 		entry.Value, err = strconv.ParseBool(value)
 		debug("response key=\"%s\" value=\"%t\"", entry.Key, entry.Value)
@@ -107,16 +100,118 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 		entry.Value = value
 		debug("response key=\"%s\" value=\"%s\"", entry.Key, entry.Value)
 	case types.Auth:
+		debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
 		entry.Value = types.Auth(value)
-		debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
 	case types.Logdir:
+		debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
 		entry.Value = types.Logdir(value)
-		debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
 	case types.ListenAddress:
-		entry.Value = types.ListenAddress(value)
 		debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
+		entry.Value = types.ListenAddress(value)
+	case float32:
+		v, err := strconv.ParseFloat(value, 32)
+		if err != nil {
+			return nil, err
+		}
 
+		entry.Value = v
+		debug("response key=\"%s\" value=\"%f\"", v)
+	case float64:
+		v, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		entry.Value = v
+		debug("response key=\"%s\" value=\"%f\"", v)
+	default:
+		v, e := tryInt(req.Defaults, value)
+		if e != nil {
+			return nil, e
+		}
+
+		entry.Value = v
+		debug("response key=\"%s\" value=\"%d\"", entry.Key, entry.Value)
 	}
 
 	return entry, nil
+}
+
+func readValue() (string, error) {
+	rd := bufio.NewReader(os.Stdin)
+
+	value, err := rd.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+
+	value = value[:len(value)-1]
+	return value, nil
+}
+
+func tryInt(req interface{}, value string) (v interface{}, err error) {
+	switch req.(type) {
+	case int:
+		v, err = strconv.Atoi(value)
+	case uint:
+		v, err = strconv.ParseUint(value, 0, 0)
+	case int8:
+		v, err = strconv.ParseInt(value, 0, 8)
+		if err != nil {
+			return nil, err
+		}
+
+		v = int8(v.(int))
+	case uint8:
+		v, err = strconv.ParseUint(value, 0, 8)
+		if err != nil {
+			return nil, err
+		}
+
+		v = uint8(v.(uint))
+	case int16:
+		v, err = strconv.ParseInt(value, 0, 16)
+		if err != nil {
+			return nil, err
+		}
+
+		v = int16(v.(int))
+	case uint16:
+		v, err = strconv.ParseUint(value, 0, 16)
+		if err != nil {
+			return nil, err
+		}
+
+		v = uint16(v.(uint))
+	case int32:
+		v, err = strconv.ParseInt(value, 0, 32)
+		if err != nil {
+			return nil, err
+		}
+
+		v = int32(v.(int))
+	case uint32:
+		v, err = strconv.ParseUint(value, 0, 32)
+		if err != nil {
+			return nil, err
+		}
+
+		v = uint32(v.(uint))
+	case int64:
+		v, err = strconv.ParseInt(value, 0, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		v = int64(v.(int))
+	case uint64:
+		v, err = strconv.ParseUint(value, 0, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		v = uint64(v.(uint))
+	}
+
+	return
 }
