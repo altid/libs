@@ -1,7 +1,6 @@
 package files
 
 import (
-	"errors"
 	"os"
 )
 
@@ -57,7 +56,7 @@ func (f *Files) Add(path string, h Handler) {
 func (f *Files) Stat(buffer, req string, uuid uint32) (os.FileInfo, error) {
 	h, ok := f.run[req]
 	if !ok {
-		return nil, errors.New("Unable to find handler for named file")
+		h = f.run["default"]
 	}
 
 	msg := &Message{
@@ -75,7 +74,7 @@ func (f *Files) Stat(buffer, req string, uuid uint32) (os.FileInfo, error) {
 func (f *Files) Normal(buffer, req string, uuid uint32) (interface{}, error) {
 	h, ok := f.run[req]
 	if !ok {
-		return nil, errors.New("Unable to find handler for named file")
+		h = f.run["default"]
 	}
 
 	msg := &Message{
