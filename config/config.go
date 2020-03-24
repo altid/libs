@@ -1,38 +1,22 @@
 package config
 
 import (
+	"log"
 	"os"
 	"path"
+	"strings"
 
+	"github.com/altid/libs/config/internal/build"
+	"github.com/altid/libs/config/internal/conf"
+	"github.com/altid/libs/config/internal/entry"
+	"github.com/altid/libs/config/internal/request"
+	"github.com/altid/libs/config/internal/util"
 	"github.com/altid/libs/fs"
 	"github.com/mischief/ndb"
 )
 
-// Errors
-const (
-	ErrBadConfigurator = "configurator nil or invalid, cannot continue"
-	ErrNoConfigure     = "unable to find or create config for this service. To create one, please run %s -conf"
-	ErrNoSuchKey       = "no such key"
-	ErrNoEntries       = "unable to find config entry for this service."
-	ErrMultiEntries    = "config contains duplicate entries for this service. Please edit your altid/config file"
-)
-
-// Auth matches an auth= tuple in a config
-// If the value matches factotum, it will use the factotum to return a password
-// If the value matches password, it will return the value of a password= tuple
-// If the value matches none, it will return an empty string
-type Auth string
-
-// Logdir is the directory that an Altid service can optionally store logs to
-// If this is unset in the config, it will be filled with "none"
-type Logdir string
-
-// ListenAddress is the listen_address tuple in a config
-// If this is unset in the config, it will be filled with "localhost"
-type ListenAddress string
-
 // Marshal will take a pointer to a struct as input, as well as the name of the service and attempt to fill the struct.
-// - The struct entries must be of the type string, int, bool, or tls.Certificate
+// - The struct entries must be of the type string, int, bool,
 // - The tags of the struct will be used to indicate a query sent to the user
 // - Default entries to the struct will be used as defaults
 //
@@ -40,9 +24,9 @@ type ListenAddress string
 //		Name string `Username to use for the service`
 // 		Port int `Port to connect with`
 // 		UseSSL bool `Do you want to connect with SSL?`
-// 		Auth config.Auth `Auth mechanism to use: password|factotum|none`
-//		Logdir config.Logdir
-//      Address config.ListenAddress
+// 		Auth types.Auth `Auth mechanism to use: password|factotum|none`
+//		Logdir types.Logdir
+//      Address types.ListenAddress
 //	}{myusername, 1234, true, "none", "none"}
 //
 //  err := config.Marshal(myconf, "myservice", false)
@@ -55,16 +39,19 @@ type ListenAddress string
 func Marshal(requests interface{}, service string, confdir string, debug bool) error {
 	debugLog := func(string, ...interface{}) {}
 	if debug {
-		debugLog = logger
+		debugLog = func(format string, v ...interface{}) {
+			l := log.New(os.Stdout, "config: ", 0)
+			l.Printf(format+"\n", v...)
+		}
 	}
 
 	// list all existing config entries
-	have, err := fromConfig(debugLog, service, confdir)
+	have, err := conf.FromConfig(debugLog, service, confdir)
 	if err != nil {
 		return err
 	}
 
-	if e := fillRequests(debugLog, requests, have); e != nil {
+	if e := build.Marshal(debugLog, requests, have); e != nil {
 		return e
 	}
 
@@ -83,13 +70,18 @@ func Marshal(requests interface{}, service string, confdir string, debug bool) e
 func Create(requests interface{}, service, confdir string, debug bool) error {
 	debugLog := func(string, ...interface{}) {}
 	if debug {
-		debugLog = logger
+		debugLog = func(format string, v ...interface{}) {
+			l := log.New(os.Stdout, "config: ", 0)
+			l.Printf(format+"\n", v...)
+		}
 	}
 
-	have, err := fromConfig(debugLog, service, confdir)
+	have, err := entry.FromConfig(debugLog, service, confdir)
 
 	// Make sure we correct any errors we encounter
 	switch {
+	case err == nil:
+		debugLog("fixing config file")
 	case os.IsNotExist(err):
 		dir, err := fs.UserConfDir()
 		if err != nil {
@@ -97,36 +89,56 @@ func Create(requests interface{}, service, confdir string, debug bool) error {
 		}
 
 		os.MkdirAll(path.Join(dir, "altid"), 0755)
-		os.Create(getConf(service))
+		os.Create(util.GetConf(service))
 		debugLog("creating config file")
 
 	// If we have multiple entries, something has indeed gone wrong
 	// The user needs to manually clean this up
-	case err.Error() == ErrMultiEntries:
+	case err.Error() == entry.ErrMultiEntries:
 		return err
-		
+
 	// This is the expected case in this situation
-	case err.Error() == ErrNoEntries:
+	case err.Error() == entry.ErrNoEntries:
 		debugLog("creating entry")
 	}
 
-	want, err := fromRequest(requests)
+	want, err := request.Build(requests)
 	if err != nil {
 		return err
 	}
 
-	c, err := createConfFile(debugLog, service, have, want)
+	c, err := conf.Create(debugLog, service, have, want)
 	if err != nil {
 		return err
 	}
 
-	return c.writeToFile()
+	return c.WriteToFile()
+}
+
+// GetListenAddress returns the listen_address of a server, or "" if none is found
+// If a port is set, e.g. listen_address = 192.168.0.4:8080 it will return 8080
+func GetListenAddress(service string) (string, string) {
+	conf, err := ndb.Open(util.GetConf(service))
+	if err != nil {
+		return "", "564"
+	}
+
+	listen := conf.Search("service", service).Search("listen_address")
+	if listen != "" {
+		if n := strings.Index(listen, ":"); n > 0 {
+			return listen[:n], listen[n+1:]
+		}
+
+		return listen, "564"
+	}
+
+	return "", "564"
 }
 
 // GetLogDir returns a canonical directory for a user log, searching first altid/config
 // If no entry is found or the file is missing, it will return "none"
 func GetLogDir(service string) string {
-	conf, err := ndb.Open(getConf(service))
+	conf, err := ndb.Open(util.GetConf(service))
 	if err != nil {
 		return "none"
 	}
@@ -143,7 +155,7 @@ func GetLogDir(service string) string {
 func ListAll() ([]string, error) {
 	var configs []string
 
-	conf, err := ndb.Open(getConf(""))
+	conf, err := ndb.Open(util.GetConf(""))
 	if err != nil {
 		return nil, err
 	}
