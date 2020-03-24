@@ -37,7 +37,29 @@ func Build(req interface{}) ([]*Request, error) {
 		case "string":
 			req.Defaults = d.String()
 		case "int":
-			req.Defaults = d.Int()
+			req.Defaults = d.Interface().(int)
+		case "uint":
+			req.Defaults = d.Interface().(uint)
+		case "int8":
+			req.Defaults = d.Interface().(int8)
+		case "uint8":
+			req.Defaults = d.Interface().(uint8)
+		case "int16":
+			req.Defaults = d.Interface().(int16)
+		case "uint16":
+			req.Defaults = d.Interface().(uint16)
+		case "int32":
+			req.Defaults = d.Interface().(int32)
+		case "uint32":
+			req.Defaults = d.Interface().(uint32)
+		case "int64":
+			req.Defaults = d.Interface().(int64)
+		case "uint64":
+			req.Defaults = d.Interface().(uint64)
+		case "float32":
+			req.Defaults = d.Interface().(float32)
+		case "float64":
+			req.Defaults = d.Interface().(float64)
 		case "bool":
 			req.Defaults = d.Bool()
 		default:
