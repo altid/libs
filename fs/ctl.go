@@ -370,6 +370,7 @@ func run(c *Control, ew *writer.WriteCloser, line string) {
 
 		if cmd.Heading == command.ServiceGroup {
 			serviceCommand(c, cmd, ew)
+			return
 		}
 
 		defaultCommand(c, cmd, ew, token[0])
