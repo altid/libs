@@ -58,7 +58,8 @@ func Marshal(requests interface{}, service string, confdir string, debug bool) e
 	return nil
 }
 
-// Create takes a pointer to a struct, and attempts to create a config file entry on disk based on the struct
+// Create takes a pointer to a struct, and will walk a user through creation of a config entry for the service
+// Upon success, it will print the config and instructions to stdout 
 // It is meant to be used with the -conf flag
 // The semantics are the same as Marshall, but it uses the struct tags to prompt the user to fill in the data for any missing entries
 // For example:
@@ -112,7 +113,7 @@ func Create(requests interface{}, service, confdir string, debug bool) error {
 		return err
 	}
 
-	return c.WriteToFile()
+	return c.WriteOut()
 }
 
 // GetListenAddress returns the listen_address of a server, or "" if none is found
