@@ -11,17 +11,11 @@ in a canonical way.
 
 ### How To Get
 
-#### Golang
-
 If you have a working Go toolchain, simply issue the following
 
 ```bash
 go get -u github.com/altid/libs
 ```
-
-#### Flutter
-
-The Flutter library is currently not supported
 
 ### Build Status
 
@@ -30,4 +24,3 @@ The Flutter library is currently not supported
  - ![Markup passing badge](https://github.com/altid/libs/workflows/markup/badge.svg)
  - ![Html passing badge](https://github.com/altid/libs/workflows/html/badge.svg)
  - ![Config passing badge](https://github.com/altid/libs/workflows/config/badge.svg)
- - ![Flutter passing badge](https://github.com/altid/libs/workflows/flutter/badge.svg)
