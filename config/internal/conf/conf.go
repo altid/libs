@@ -37,6 +37,18 @@ func FromConfig(debug func(string, ...interface{}), service string, confdir stri
 	return entry.FromConfig(debug, service, confdir)
 }
 
+// FixAuth is a helper func to correct the auth being set to the value of password in FromConfig
+func FixAuth(have []*entry.Entry, service string) {
+	for _, ent := range have {
+		if ent.Key != "auth" {
+			continue
+		}
+
+		value := entry.FindEntry("auth", service)
+		ent.Value = value.Value
+	}
+}
+
 func toString(item *entry.Entry) string {
 	switch item.Value.(type) {
 	case int, int8, int16, int32, int64:
