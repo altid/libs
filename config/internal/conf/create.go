@@ -21,7 +21,7 @@ func Create(debug func(string, ...interface{}), service string, have []*entry.En
 	// or query the user for input
 	for _, item := range want {
 		// if an entry exists in the conf, don't create another
-		if entry, ok := entry.Find(item, have); ok {
+		if entry, ok := entry.Find(item, have); ok && entry.Key != "auth" {
 			entries = append(entries, entry)
 			continue
 		}

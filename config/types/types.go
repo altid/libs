@@ -6,10 +6,22 @@ package types
 // If the value matches none, it will return an empty string
 type Auth string
 
+func (a *Auth) String() string {
+	return string(*a)
+}
+
 // Logdir is the directory that an Altid service can optionally store logs to
 // If this is unset in the config, it will be filled with "none"
 type Logdir string
 
+func (a *Logdir) String() string {
+	return string(*a)
+}
+
 // ListenAddress is the listen_address tuple in a config
 // If this is unset in the config, it will be filled with "localhost"
 type ListenAddress string
+
+func (a *ListenAddress) String() string {
+	return string(*a)
+}
