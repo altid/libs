@@ -78,6 +78,10 @@ func Create(requests interface{}, service, confdir string, debug bool) error {
 	}
 
 	have, err := entry.FromConfig(debugLog, service, confdir)
+	if err != nil {
+		return err
+	}
+	
 	conf.FixAuth(have, confdir)
 
 	// Make sure we correct any errors we encounter
