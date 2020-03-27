@@ -13,7 +13,6 @@ import (
 
 var factotum = flag.Bool("f", false, "Enable client authentication via a plan9 factotum")
 var dir = flag.String("m", "/tmp/altid", "Path to Altid services")
-var port = flag.Int("p", 564, "Port to listen on")
 var usetls = flag.Bool("t", false, "Use TLS")
 var debug = flag.Bool("d", false, "Debug")
 var chatty = flag.Bool("D", false, "Chatty")
@@ -28,10 +27,12 @@ func main() {
 
 	ctx := context.Background()
 
+	cert := ""
+	key := ""
 	// Send all our flags up to the libs
 	// if the build fails there isn't any chance to recover
 	// best approach will be just having the user try again
-	set := ninep.NewSettings(*debug, *chatty, *dir, *port, *factotum, *usetls)
+	set := ninep.NewSettings(*debug, *chatty, cert, key, *dir, *factotum, *usetls)
 	if e := set.BuildServices(ctx); e != nil {
 		log.Fatal(e)
 	}

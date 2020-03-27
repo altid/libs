@@ -15,18 +15,20 @@ type Settings struct {
 	debug    bool
 	chatty   bool
 	path     string
-	port     int
+	cert     string
+	key      string
 	factotum bool
 	usetls   bool
 	services map[string]*service
 }
 
-func NewSettings(debug, chatty bool, path string, port int, factotum, usetls bool) *Settings {
+func NewSettings(debug, chatty bool, cert, key, path string, factotum, usetls bool) *Settings {
 	return &Settings{
 		debug:    debug,
 		chatty:   chatty,
+		cert:     cert,
+		key:      key,
 		path:     path,
-		port:     port,
 		factotum: factotum,
 		usetls:   usetls,
 	}
@@ -41,23 +43,29 @@ func (s *Settings) BuildServices(ctx context.Context) error {
 	}
 
 	for _, entry := range list {
-		events, err := tail.WatchEvents(ctx, s.path, entry.Name)
+		events, err := tail.WatchEvents(ctx, s.path, entry)
 		if err != nil && s.debug {
-			serviceDebugLog("%s", err)
+			serviceDebugLog("%v", err)
 			continue
 		}
 
-		tabs, err := tabs.FromFile(path.Join(s.path, entry.Name))
+		tabs, err := tabs.FromFile(path.Join(s.path, entry))
 		if err != nil && s.debug {
-			serviceDebugLog("%s", err)
+			serviceDebugLog("%v", err)
 			continue
 		}
+
+		listen, port := config.GetListenAddress(entry)
 
 		srv := &service{
 			command:  make(chan *command.Command),
 			client:   &client.Manager{},
-			config:   entry,
+			name:     entry,
+			cert:     s.cert,
+			key:      s.key,
 			tabs:     tabs,
+			listen:   listen,
+			port:     port,
 			events:   events,
 			basedir:  s.path,
 			log:      s.debug,
@@ -73,7 +81,7 @@ func (s *Settings) BuildServices(ctx context.Context) error {
 			srv.debug = serviceDebugLog
 		}
 
-		services[entry.Name] = srv
+		services[entry] = srv
 	}
 
 	s.services = services

@@ -3,7 +3,7 @@ module github.com/altid/server
 go 1.14
 
 require (
-	github.com/altid/libs v0.0.2-pre-alpha
+	github.com/altid/libs v0.0.5-alpha
 	github.com/go9p/styx v0.0.0-20200314201655-4aa21a63d347
 	github.com/google/uuid v1.1.1
 	github.com/grandcat/zeroconf v1.0.0

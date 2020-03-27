@@ -8,7 +8,7 @@ import (
 )
 
 func registerFiles(s *service) (*files.Files, *routes.FeedHandler) {
-	h := files.Handle(path.Join(s.basedir, s.config.Name))
+	h := files.Handle(path.Join(s.basedir, s.name))
 	fh := routes.NewFeed()
 
 	h.Add("/", routes.NewDir())
