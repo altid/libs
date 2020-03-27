@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 
-	"github.com/altid/libs/config"
 	"github.com/altid/server/client"
 	"github.com/altid/server/command"
 	"github.com/altid/server/files"
@@ -19,12 +18,16 @@ import (
 type service struct {
 	client   *client.Manager
 	files    *files.Files
-	config   *config.Config
 	tabs     *tabs.Manager
 	feed     *routes.FeedHandler
 	command  chan *command.Command
 	events   chan *tail.Event
+	cert     string
+	key      string
 	basedir  string
+	listen   string
+	name     string
+	port     string
 	log      bool
 	chatty   bool
 	tls      bool
@@ -34,12 +37,8 @@ type service struct {
 
 // Add the service to the client.Aux (yay for self-reference?)
 func (s *service) run() error {
-	//addr, port := s.config.DialString() returns found or defaults
-	addr := ""
-	port := 564
-
 	t := &styx.Server{
-		Addr: addr + fmt.Sprintf(":%d", port),
+		Addr: fmt.Sprintf("%s:%s", s.listen, s.port),
 	}
 
 	//if s.factotum {
@@ -60,6 +59,7 @@ func (s *service) run() error {
 		c.Aux = s
 
 		defer s.client.Remove(c.UUID)
+		s.debug("client set default=\"%s\"", s.tabs.List()[0].Name)
 		c.SetBuffer(s.tabs.List()[0].Name)
 
 		s.debug("client start id=\"%d\"", c.UUID)
@@ -70,7 +70,7 @@ func (s *service) run() error {
 		s.debug("client stop id=\"%d\"", c.UUID)
 	})
 
-	fp, err := os.OpenFile(path.Join(s.basedir, s.config.Name, "ctl"), os.O_APPEND, 0644)
+	fp, err := os.OpenFile(path.Join(s.basedir, s.name, "ctl"), os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
@@ -80,17 +80,7 @@ func (s *service) run() error {
 
 	switch s.tls {
 	case true:
-		cert, err := s.config.Search("cert")
-		if err != nil {
-			return err
-		}
-
-		key, err := s.config.Search("key")
-		if err != nil {
-			return err
-		}
-
-		if e := t.ListenAndServeTLS(cert, key); e != nil {
+		if e := t.ListenAndServeTLS(s.cert, s.key); e != nil {
 			return e
 		}
 	case false:
