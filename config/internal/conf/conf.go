@@ -15,7 +15,7 @@ const tmpl = `Configuration successful!
 Please add the following line(s) to your {{.altid_config_path}}
 
 # Ensure only one service={{.service}} line is present in the file
-service={{.service}}{{range $key, $value := .}}{{if eq $key "service"}}{{else if eq $key "altid_config_path"}}{{else if eq $key "factotum_setup"}}{{else if eq $key "listen_address_link"}}{{else if eq $key "port"}}{{else if eq $key "password"}}{{else if eq $key "listen"}}{{else if eq $key "log"}}{{else if eq $key "tlscert"}}{{else if eq $key "listenaddress"}}{{else if eq $key "tlskey"}}{{else}} {{$key}}={{$value}}{{end}}{{end}}
+service={{.service}}{{range $key, $value := .}}{{if eq $key "service"}}{{else if eq $key "altid_config_path"}}{{else if eq $key "auth"}}{{if eq $value "password"}} auth=password{{else}}auth={{.value}}{{end}}{{else if eq $key "factotum_setup"}}{{else if eq $key "listen_address_link"}}{{else if eq $key "port"}}{{else if eq $key "password"}}{{else if eq $key "listen"}}{{else if eq $key "log"}}{{else if eq $key "tlscert"}}{{else if eq $key "listenaddress"}}{{else if eq $key "tlskey"}}{{else}} {{$key}}={{$value}}{{end}}{{end}}
 {{if .listen}}	# More info {{.listen_address_link}}
 	listen_address={{.listen}}
 {{end}}{{if .listenaddress}}	# More info {{.listen_address_link}}
