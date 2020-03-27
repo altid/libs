@@ -87,3 +87,13 @@ func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service str
 
 	return values, nil
 }
+
+func FindEntry(name, service string) *Entry {
+	ndb, _ := ndb.Open(util.GetConf(service))
+	val := ndb.Search("service", service).Search(name)
+
+	return &Entry{
+		Key:   name,
+		Value: val,
+	}
+}
