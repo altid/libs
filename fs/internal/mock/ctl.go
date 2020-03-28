@@ -60,7 +60,7 @@ func (c *Control) SetCommands(cmd ...*command.Command) error {
 }
 
 func (c *Control) BuildCommand(cmd string) (*command.Command, error) {
-	return command.BuildFrom(cmd, c.cmdlist)
+	return command.ParseCmd(cmd, c.cmdlist)
 }
 
 func (c *Control) CreateBuffer(name, doctype string) error {
@@ -142,7 +142,7 @@ func (c *Control) pushTab(tabname, doctype string) error {
 }
 
 func (c *Control) Errorwriter() (*writer.WriteCloser, error) {
-	w := writer.New(c.Event, &tab{}, "errors")
+	w := writer.New(c.Event, os.Stdout, "errors")
 
 	return w, nil
 }
