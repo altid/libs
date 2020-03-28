@@ -274,6 +274,7 @@ func parseEntryAlias(l *lexer) stateFn {
 			// We found another alias, stay in function
 			l.accept("|")
 			l.ignore()
+			return parseEntryAlias
 		}
 	}
 }
