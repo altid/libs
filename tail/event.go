@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"path"
 )
 
 // We may want to revisit more of these events, since we care about all events
@@ -89,17 +90,16 @@ func parseEvent(line []byte, name string) *Event {
 		etype = NotifyEvent
 	}
 
-	lines := bytes.Split(line, []byte("/"))
-
-	l := len(lines)
-	if l < 3 {
-		return nil
-	}
+	// Find up to service name
+	n := bytes.Index(line, []byte(name))
+	n += len(name)
+	line = line[n+1:]
+	line = bytes.TrimSpace(line)
 
 	e := &Event{
 		Service:   name,
 		EventType: etype,
-		Name:      string(lines[l-2]),
+		Name:      path.Dir(string(line)),
 	}
 
 	return e
