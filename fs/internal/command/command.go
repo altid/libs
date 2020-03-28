@@ -108,6 +108,10 @@ func PrintCtlFile(cmdlist []*Command, to io.WriteCloser) error {
 	return nil
 }
 
+func FindParts(cmd string) (string, string, []string, error) {
+	return parseCmd(cmd)
+}
+
 // So for this, we want to parse out a proper cmd - each arg can have spaces if it's wrapped in \" \"
 func ParseCmd(cmd string, cmdlist []*Command) (*Command, error) {
 	name, from, args, err := parseCmd(cmd)

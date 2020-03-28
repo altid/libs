@@ -56,6 +56,29 @@ func FindCommands(b []byte) ([]*Command, error) {
 	return cmdlist, nil
 }
 
+// FromString returns a partially filled command
+// It will have a Heading type of DefaultGroup
+func FromString(cmd string) (*Command, error) {
+	name, from, args, err := command.FindParts(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	if from != "" && len(args) < 1 {
+		args = strings.Fields(from)
+		from = ""
+	}
+
+	c := &Command{
+		Name:    name,
+		From:    from,
+		Args:    args,
+		Heading: DefaultGroup,
+	}
+
+	return c, nil
+}
+
 func (c *Command) String() string {
 	args := strings.Join(c.Args, " ")
 	if c.From != "" {
