@@ -19,7 +19,7 @@ media:
 `
 
 func TestParse(t *testing.T) {
-	cmdlist, err := Parse([]byte(data))
+	cmdlist, err := ParseCtlFile([]byte(data))
 	if err != nil {
 		t.Error(err)
 		return

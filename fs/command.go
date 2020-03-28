@@ -35,12 +35,11 @@ type Command struct {
 func FindCommands(b []byte) ([]*Command, error) {
 	var cmdlist []*Command
 
-	cl, err := command.Parse(b)
+	cl, err := command.ParseCtlFile(b)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("out of parse")
 	for _, cmd := range cl {
 		c := &Command{
 			Name:        cmd.Name,
@@ -60,9 +59,9 @@ func FindCommands(b []byte) ([]*Command, error) {
 func (c *Command) String() string {
 	args := strings.Join(c.Args, " ")
 	if c.From != "" {
-		return fmt.Sprintf("%s %s %s\n", c.Name, c.From, args)
+		return fmt.Sprintf("%s \"%s\" \"%s\"\n", c.Name, c.From, args)
 	}
-	return fmt.Sprintf("%s %s\n", c.Name, args)
+	return fmt.Sprintf("%s \"%s\"\n", c.Name, args)
 }
 
 // Bytes - Return a byte representation of a command

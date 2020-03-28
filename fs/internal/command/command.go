@@ -2,10 +2,8 @@ package command
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log"
-	"strings"
 	"text/template"
 )
 
@@ -24,19 +22,19 @@ const (
 var DefaultCommands = []*Command{
 	{
 		Name:        "open",
-		Args:        []string{"<current>", "<buffer>"},
+		Args:        []string{"<buffer>"},
 		Heading:     DefaultGroup,
 		Description: "Open and change buffers to a given service",
 	},
 	{
 		Name:        "close",
-		Args:        []string{"<current>", "<buffer>"},
+		Args:        []string{"<buffer>"},
 		Heading:     DefaultGroup,
 		Description: "Close a buffer and return to the last opened previously",
 	},
 	{
 		Name:        "buffer",
-		Args:        []string{"<current>", "<buffer>"},
+		Args:        []string{"<buffer>"},
 		Heading:     DefaultGroup,
 		Description: "Change to the named buffer",
 	},
@@ -72,68 +70,6 @@ type CmdList []*Command
 func (a CmdList) Len() int           { return len(a) }
 func (a CmdList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a CmdList) Less(i, j int) bool { return a[i].Heading < a[j].Heading }
-
-func BuildFrom(cmd string, cmdlist []*Command) (*Command, error) {
-	var name string
-	var from string
-	var args []string
-
-	items := strings.Fields(cmd)
-
-	if len(items) < 1 {
-		return nil, errors.New("command missing arguments")
-	}
-
-	name = items[0]
-	args = items[1:]
-
-	if len(items) > 2 {
-		from = items[1]
-		args = items[2:]
-	}
-
-	for _, comm := range cmdlist {
-
-		if comm.Name == name {
-			return newFrom(comm, from, args)
-		}
-
-		for _, alias := range comm.Alias {
-			if alias == name {
-				return newFrom(comm, from, args)
-			}
-		}
-	}
-
-	return nil, errors.New("command not supported")
-}
-
-func newFrom(comm *Command, from string, args []string) (*Command, error) {
-	if comm.Heading == ServiceGroup {
-		c := &Command{
-			Name:        comm.Name,
-			Description: comm.Description,
-			Heading:     ServiceGroup,
-			Args:        args,
-		}
-
-		return c, nil
-	}
-
-	if len(comm.Args) > 0 && len(comm.Args) != len(args) {
-		return nil, fmt.Errorf("expected %d arguments: received %d", len(comm.Args), len(args))
-	}
-
-	c := &Command{
-		Name:        comm.Name,
-		Description: comm.Description,
-		Heading:     comm.Heading,
-		Args:        args,
-		Alias:       comm.Alias,
-		From:        from,
-	}
-	return c, nil
-}
 
 func PrintCtlFile(cmdlist []*Command, to io.WriteCloser) error {
 	var last int
@@ -172,6 +108,29 @@ func PrintCtlFile(cmdlist []*Command, to io.WriteCloser) error {
 	return nil
 }
 
+// So for this, we want to parse out a proper cmd - each arg can have spaces if it's wrapped in \" \"
+func ParseCmd(cmd string, cmdlist []*Command) (*Command, error) {
+	name, from, args, err := parseCmd(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, comm := range cmdlist {
+
+		if comm.Name == name {
+			return newFrom(comm, from, args)
+		}
+
+		for _, alias := range comm.Alias {
+			if alias == name {
+				return newFrom(comm, from, args)
+			}
+		}
+	}
+
+	return nil, errors.New("command not supported")
+}
+
 func cmdHeading(to io.WriteCloser, heading ComGroup) {
 	switch heading {
 	case ActionGroup:
@@ -185,4 +144,27 @@ func cmdHeading(to io.WriteCloser, heading ComGroup) {
 	default:
 		log.Fatal("Group not implemented")
 	}
+}
+
+func newFrom(comm *Command, from string, args []string) (*Command, error) {
+	if comm.Heading == ServiceGroup {
+		c := &Command{
+			Name:        comm.Name,
+			Description: comm.Description,
+			Heading:     ServiceGroup,
+			Args:        args,
+		}
+
+		return c, nil
+	}
+
+	c := &Command{
+		Name:        comm.Name,
+		Description: comm.Description,
+		Heading:     comm.Heading,
+		Args:        args,
+		Alias:       comm.Alias,
+		From:        from,
+	}
+	return c, nil
 }
