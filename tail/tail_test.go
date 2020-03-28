@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"testing"
-	"time"
 )
 
 func TestTail(t *testing.T) {
@@ -66,20 +65,21 @@ func TestTail(t *testing.T) {
 func mockEvents(fp *os.File, dir string) {
 	first := path.Join(dir, "test1", "feed")
 	fp.WriteString(first + "\n")
+	fp.Sync()
 
-	time.Sleep(125 * time.Millisecond)
 	second := path.Join(dir, "test2", "feed")
 	fp.WriteString(second + "\n")
+	fp.Sync()
 
-	time.Sleep(125 * time.Millisecond)
 	third := path.Join(dir, "test3", "document")
 	fp.WriteString(third + "\n")
+	fp.Sync()
 
-	time.Sleep(125 * time.Millisecond)
 	fourth := path.Join(dir, "test4", "notification")
 	fp.WriteString(fourth + "\n")
+	fp.Sync()
 
-	time.Sleep(125 * time.Millisecond)
 	fifth := path.Join(dir, "test5", "banana")
 	fp.WriteString(fifth + "\n")
+	fp.Sync()
 }
