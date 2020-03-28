@@ -72,7 +72,7 @@ func (c *Control) SetCommands(cmd ...*command.Command) error {
 }
 
 func (c *Control) BuildCommand(cmd string) (*command.Command, error) {
-	return command.BuildFrom(cmd, c.cmdlist)
+	return command.ParseCmd(cmd, c.cmdlist)
 }
 
 func (c *Control) Cleanup() {

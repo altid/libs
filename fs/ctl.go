@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"strings"
 	"sync"
 
 	"github.com/altid/libs/fs/internal/command"
@@ -17,22 +16,8 @@ import (
 )
 
 // Controller is our main type for controlling a session
-// Open is called when a control message starting with 'open' or 'join' is written to the ctl file
-// Close is called when a control message starting with 'close or 'part' is written to the ctl file
-// Link is called when a control message starting with 'link' is written to the ctl file
-// Default is called when any other control message is written to the ctl file.
-// If a client attempts to write an invalid control message, it will return a generic error
-// When Open is called, a file will be created with a path of `mountpoint/msg/document (or feed)`, containing initially a file named what you've set doctype to.. Calls to open are expected to populate that file, as well as create any supplementary files needed, such as title, aside, status, input, etc
-// When Link is called, the content of the current buffer is expected to change, and the name of the current tab will be removed, replaced with msg
-// The main document or feed file is also symlinked into the given log directory, under service/msgs, so for example, an expensive parse would only have to be completed once for a given request, even across separate runs; or a chat log could have history from previous sessions accessible.
-// The message provided to all three functions is all of the message, less 'open', 'join', 'close', or 'part'.
 type Controller interface {
-	Open(c *Control, msg string) error
-	Close(c *Control, msg string) error
-	Link(c *Control, from, msg string) error
-	Default(c *Control, cmd *Command) error
-	Restart(c *Control) error
-	Refresh(c *Control) error
+	Run(*Control, *Command) error
 	Quit()
 }
 
@@ -311,7 +296,20 @@ func dispatch(c *Control) {
 	for {
 		select {
 		case line := <-c.req:
-			run(c, ew, line)
+			cmd, err := c.run.BuildCommand(line)
+			if err != nil {
+				fmt.Fprintf(ew, "%v\n", err)
+				continue
+			}
+
+			real := translate(cmd)
+
+			if real.Heading == ServiceGroup {
+				serviceCommand(c, real, ew)
+				continue
+			}
+
+			c.ctl.Run(c, real)
 		case <-c.done:
 			return
 		case <-c.ctx.Done():
@@ -320,94 +318,29 @@ func dispatch(c *Control) {
 	}
 }
 
-func run(c *Control, ew *writer.WriteCloser, line string) {
-	c.Lock()
-	defer c.Unlock()
-
-	token := strings.Fields(line)
-	if len(token) < 1 {
-		return
-	}
-
-	switch token[0] {
-	case "open":
-		if len(token) < 2 {
-			return
-		}
-
-		if e := c.ctl.Open(c, token[1]); e != nil {
-			c.debug(ctlError, token[1], e)
-			fmt.Fprintf(ew, "open: %v\n", e)
-		}
-	case "close":
-		if len(token) < 2 {
-			return
-		}
-
-		// We need to get to these still somehow
-		if e := c.ctl.Close(c, token[1]); e != nil {
-			c.debug(ctlError, token[1], e)
-			fmt.Fprintf(ew, "close: %v\n", e)
-		}
-
-	case "link":
-		if len(token) < 2 {
-			return
-		}
-
-		if e := c.ctl.Link(c, token[1], token[2]); e != nil {
-			c.debug(ctlError, token[1], e)
-			fmt.Fprintf(ew, "link: %v\n", e)
-		}
-
-	default:
-		cmd, err := c.run.BuildCommand(line)
-		if err != nil {
-			c.debug(ctlError, token[0], errors.New("unsupported command"))
-			fmt.Fprintf(ew, "unsupported command: %s", token[0])
-			return
-		}
-
-		if cmd.Heading == command.ServiceGroup {
-			serviceCommand(c, cmd, ew)
-			return
-		}
-
-		defaultCommand(c, cmd, ew, token[0])
-	}
-}
-
-func serviceCommand(c *Control, cmd *command.Command, ew *writer.WriteCloser) {
+func serviceCommand(c *Control, cmd *Command, ew *writer.WriteCloser) {
 	switch cmd.Args[0] {
 	case "quit":
 		// Close our local listeners, then
 		close(c.done)
 		c.ctl.Quit()
-	case "restart":
-		c.ctl.Restart(c)
-	case "reload":
-		c.ctl.Refresh(c)
+	// Eventually we may want to access these
+	case "reload", "restart":
+		c.ctl.Run(c, cmd)
 	default:
 		fmt.Fprintf(ew, "unsupported command: %s", cmd.Args[0])
 	}
 }
 
-func defaultCommand(c *Control, cmd *command.Command, ew *writer.WriteCloser, name string) {
-	cmd2 := &Command{
+func translate(cmd *command.Command) *Command {
+	return &Command{
 		Name:        cmd.Name,
 		Description: cmd.Description,
+		From:        cmd.From,
 		Args:        cmd.Args,
 		Alias:       cmd.Alias,
-		From:        cmd.From,
+		Heading:     ComGroup(cmd.Heading),
 	}
-
-	cmd2.Heading = ComGroup(cmd.Heading)
-	c.debug(ctlDefault, cmd2)
-	if e := c.ctl.Default(c, cmd2); e != nil {
-		c.debug(ctlError, name, e)
-		fmt.Fprintf(ew, "%s: %v\n", name, e)
-	}
-
 }
 
 func ctlLogger(msg ctlMsg, args ...interface{}) {
