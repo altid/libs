@@ -22,16 +22,17 @@ func TestCommands(t *testing.T) {
 	cmdlist = append(cmdlist, testMakeCmd("baz", []string{"<2>", "<1>"}, ActionGroup, []string{}))
 	cmdlist = append(cmdlist, testMakeCmd("banana", []string{}, MediaGroup, []string{}))
 	cmdlist = append(cmdlist, testMakeCmd("nocomm", []string{}, ActionGroup, []string{"yacomm", "maybecomm"}))
+	cmdlist = append(cmdlist, testMakeCmd("quit", nil, DefaultGroup, nil))
 
 	if e := c.SetCommands(cmdlist...); e != nil {
 		t.Error(e)
 	}
 
 	time.AfterFunc(time.Second*1, func() {
-		reqs <- "foo current test"
-		reqs <- "bar current test this"
-		reqs <- "baz current test this"
-		reqs <- "nocomm current jump up jump up and get down"
+		reqs <- `foo "current" "test"`
+		reqs <- `bar current test this`
+		reqs <- `baz "current" "test" "this"`
+		reqs <- `nocomm "current" jump up jump up and get down`
 		reqs <- "foo current too many args should log error"
 		reqs <- "banana current"
 		reqs <- "test quit"
