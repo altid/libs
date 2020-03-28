@@ -2,6 +2,7 @@ package ninep
 
 import (
 	"os"
+	"path"
 
 	"github.com/altid/server/command"
 	"github.com/altid/server/tail"
@@ -17,11 +18,11 @@ func (s *service) listenCommands(fp *os.File) {
 		case command.OtherCmd:
 			cmd.WriteOut(fp)
 		case command.OpenCmd:
-			c.SetBuffer(cmd.Args[0])
+			c.SetBuffer(path.Join(cmd.Args))
 			cmd.WriteOut(fp)
 			s.update(cmd.UUID)
 		case command.BufferCmd:
-			c.SetBuffer(cmd.Args[0])
+			c.SetBuffer(path.Join(cmd.Args))
 			s.update(cmd.UUID)
 		case command.CloseCmd:
 			// Pop back to the last buffer
@@ -34,7 +35,7 @@ func (s *service) listenCommands(fp *os.File) {
 			s.update(cmd.UUID)
 			cmd.WriteOut(fp)
 		case command.LinkCmd:
-			c.SetBuffer(cmd.Args[1])
+			c.SetBuffer(path.Join(cmd.Args))
 			cmd.WriteOut(fp)
 			s.update(cmd.UUID)
 		case command.ReloadCmd:

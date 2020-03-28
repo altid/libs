@@ -46,6 +46,7 @@ func (th *TabsHandler) Normal(msg *files.Message) (interface{}, error) {
 func (*TabsHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	return os.Stat(path.Join(msg.Service, "tabs"))
 }
+
 func (t *tab) ReadAt(p []byte, off int64) (n int, err error) {
 	if off > t.size {
 		return n, io.EOF
