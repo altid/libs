@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 
@@ -20,8 +21,6 @@ type Handler interface {
 }
 
 type inputter interface {
-	AddErr(format string, args ...interface{})
-	Errs() []error
 	Stop(context.Context)
 }
 
@@ -30,6 +29,7 @@ type Input struct {
 	h     Handler
 	r     io.ReadCloser
 	run   inputter
+	err   io.Writer
 	fname string
 	buff  string
 	ctx   context.Context
@@ -46,7 +46,7 @@ const (
 // NewInput takes a Handler and the name of a buffer.
 // This function returns an Input, or nil as well as any errors encountered
 // If debug is true, it will write to stdout for all messages/errors received
-func NewInput(h Handler, dir, buffer string, debug bool) (*Input, error) {
+func NewInput(h Handler, dir, buffer string, ew io.Writer, debug bool) (*Input, error) {
 	// make directory for input on path
 	if e := os.MkdirAll(dir, 0755); e != nil {
 		return nil, e
@@ -71,6 +71,7 @@ func NewInput(h Handler, dir, buffer string, debug bool) (*Input, error) {
 			run:   defaults.NewInput(ew, fp),
 			h:     h,
 			r:     r,
+			err:   ew,
 			fname: inpath,
 			buff:  buffer,
 			debug: func(inputMsg, ...interface{}) {},
@@ -88,13 +89,14 @@ func NewInput(h Handler, dir, buffer string, debug bool) (*Input, error) {
 
 // NewMockInput returns a faked input file for testing
 // All writes to `reqs` will trigger the Handler internally
-func NewMockInput(h Handler, buffer string, debug bool, reqs chan string) (*Input, error) {
+func NewMockInput(h Handler, buffer string, ew io.Writer, debug bool, reqs chan string) (*Input, error) {
 	mci := mock.NewInput(reqs)
 
 	i := &Input{
 		h:     h,
 		r:     mci,
 		run:   mci,
+		err:   ew,
 		fname: buffer,
 		buff:  buffer,
 		debug: func(inputMsg, ...interface{}) {},
@@ -125,7 +127,7 @@ func (i *Input) StartContext(ctx context.Context) {
 		for msg := range inputs {
 			l := markup.NewLexer(msg)
 			if e := i.h.Handle(i.buff, l); e != nil {
-				errors <- e
+				fmt.Fprintf(i.err, "%v", e)
 			}
 		}
 	}()
@@ -141,14 +143,14 @@ func (i *Input) StartContext(ctx context.Context) {
 				return
 			case err := <-errors:
 				i.debug(inputerr, i.fname, err)
-				i.run.AddErr("input error on %s: %v", i.fname, err)
+				fmt.Fprintf(i.err, "input error on %s: %v", i.fname, err)
 			case inputs <- scanner.Bytes():
 				i.debug(inputnorm, i.fname, scanner.Bytes())
 			}
 		}
 
 		if e := scanner.Err(); e != io.EOF && e != nil {
-			i.run.AddErr("input error: %s: %v", i.fname, e)
+			fmt.Fprintf(i.err, "input error: %s: %v", i.fname, e)
 		}
 	}()
 }
@@ -158,16 +160,13 @@ func (i *Input) Stop() {
 	i.run.Stop(i.ctx)
 }
 
-// Errs returns a list of any errors encountered during input's runtime
-func (i *Input) Errs() []error {
-	return i.run.Errs()
-}
-
 func inputLogging(msg inputMsg, args ...interface{}) {
+	l := log.New(os.Stdout, "input: ", 0)
+
 	switch msg {
 	case inputnorm:
-		fmt.Printf("input: chan=\"%s\" msg=\"%s\"\n", args[0], args[1])
+		l.Printf("input: chan=\"%s\" msg=\"%s\"\n", args[0], args[1])
 	case inputerr:
-		fmt.Printf("input: chan=\"%s\", err=\"%v\"\n", args[0], args[1])
+		l.Printf("input: chan=\"%s\", err=\"%v\"\n", args[0], args[1])
 	}
 }
