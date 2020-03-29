@@ -6,7 +6,7 @@ in a canonical way.
 ### Overview
 
 
-[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs) [![Flutter](https://img.shields.io/pub/v/altid_lib)](https://pub.dev/packages/altid_lib) [![Go Report Card](https://goreportcard.com/badge/github.com/altid/libs)](https://goreportcard.com/report/github.com/altid/libs) [![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/altid/libs) [![Go Report Card](https://goreportcard.com/badge/github.com/altid/libs)](https://goreportcard.com/report/github.com/altid/libs) [![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
 
 
 ### How To Get
