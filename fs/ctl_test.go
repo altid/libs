@@ -27,7 +27,7 @@ func TestWriters(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &testctrl{}
 
-	c, err := Mock(ctl, reqs, "test", false)
+	c, err := Mock(ctl, reqs, "test", true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -39,12 +39,18 @@ func TestWriters(t *testing.T) {
 		// be an Open called before MainWriter (generally you call MainWriter in your client's Open method);
 		// So we explicitly call c.CreateBuffer to avoid in the mock client tests
 		c.CreateBuffer("foo", "feed")
+
+		if e := c.Input("foo"); e != nil {
+			t.Error(e)
+		}
+
 		mw, err := c.MainWriter("foo", "feed")
 		if err != nil {
 			t.Error(err)
 		}
 
 		mw.Write([]byte("test"))
+		mw.Write([]byte("input:foo:There is no spood"))
 		mw.Close()
 		reqs <- "test quit"
 	}()

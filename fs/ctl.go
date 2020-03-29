@@ -166,6 +166,7 @@ func New(ctl interface{}, logdir, mtpt, service, doctype string, debug bool) (*C
 			c.debug = ctlLogger
 		}
 
+		// Some services don't use input
 		input, ok := ctl.(input.Handler)
 		if ok {
 			c.input = input
