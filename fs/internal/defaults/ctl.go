@@ -198,9 +198,10 @@ func (c *Control) popTab(tabname string) error {
 	for n := range c.tablist {
 		if c.tablist[n] == tabname {
 			c.tablist = append(c.tablist[:n], c.tablist[n+1:]...)
-			return tabs(c)
+			return writetabs(c)
 		}
 	}
+
 	return fmt.Errorf("entry not found: %s", tabname)
 }
 
@@ -210,14 +211,13 @@ func (c *Control) pushTab(tabname string) error {
 			return fmt.Errorf("entry already exists: %s", tabname)
 		}
 	}
-	c.tablist = append(c.tablist, tabname)
 
-	return tabs(c)
+	c.tablist = append(c.tablist, tabname)
+	return writetabs(c)
 }
 
-func tabs(c *Control) error {
+func writetabs(c *Control) error {
 	tabdata := strings.Join(c.tablist, "\n") + "\n"
-
 	if _, e := c.tabs.Seek(0, io.SeekStart); e != nil {
 		return e
 	}
