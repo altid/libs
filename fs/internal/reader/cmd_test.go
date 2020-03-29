@@ -31,7 +31,9 @@ func TestCmd(t *testing.T) {
 	go sendData(fp)
 
 	lines := bufio.NewReader(rd)
-	if _, e := lines.ReadString('\n'); e != nil {
-		t.Error(e)
+	for i := 0; i < 100; i++ {
+		if _, e := lines.ReadString('\n'); e != nil {
+			t.Error(e)
+		}
 	}
 }
