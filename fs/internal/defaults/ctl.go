@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -215,7 +216,13 @@ func (c *Control) pushTab(tabname string) error {
 }
 
 func tabs(c *Control) error {
-	if _, e := c.tabs.WriteString(strings.Join(c.tablist, "\n") + "\n"); e != nil {
+	tabdata := strings.Join(c.tablist, "\n") + "\n"
+
+	if _, e := c.tabs.Seek(0, io.SeekStart); e != nil {
+		return e
+	}
+
+	if _, e := c.tabs.WriteString(tabdata); e != nil {
 		return e
 	}
 
@@ -223,7 +230,7 @@ func tabs(c *Control) error {
 		return e
 	}
 
-	return nil
+	return c.tabs.Truncate(int64(len(tabdata)))
 }
 
 func (c *Control) Errorwriter() (*writer.WriteCloser, error) {
