@@ -3,6 +3,7 @@ package defaults
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/altid/libs/fs/input"
 	"github.com/altid/libs/fs/internal/command"
 	"github.com/altid/libs/fs/internal/reader"
 	"github.com/altid/libs/fs/internal/util"
@@ -24,36 +26,77 @@ import (
 type Control struct {
 	event   *os.File
 	tabs    *os.File
+	errors  *os.File
 	cmdlist []*command.Command
 	scanner *bufio.Scanner
 	done    chan struct{}
 	rundir  string
 	logdir  string
 	doctype string
-	tablist []string
+	tablist []*tab
 	req     chan string
 	ctx     context.Context
 }
 
+type tab struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	name   string
+	input  *os.File
+}
+
 func NewControl(ctx context.Context, r, l, d string, t []string, req chan string) *Control {
+	var tablist []*tab
+
 	if _, err := os.Stat(r); os.IsNotExist(err) {
 		os.MkdirAll(r, 0755)
 	}
 
 	ef, _ := os.OpenFile(path.Join(r, "event"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	tf, _ := os.OpenFile(path.Join(r, "tabs"), os.O_CREATE|os.O_WRONLY, 0644)
+	ew, _ := os.OpenFile(path.Join(r, "errors"), os.O_CREATE|os.O_WRONLY, 0644)
+
+	for _, name := range t {
+		tctx, cancel := context.WithCancel(ctx)
+		tablist = append(tablist, &tab{
+			name:   name,
+			ctx:    tctx,
+			cancel: cancel,
+		})
+	}
 
 	return &Control{
 		ctx:     ctx,
 		done:    make(chan struct{}),
 		rundir:  r,
 		event:   ef,
+		errors:  ew,
 		logdir:  l,
 		doctype: d,
 		tabs:    tf,
-		tablist: t,
+		tablist: tablist,
 		req:     req,
 	}
+}
+
+func (c *Control) Input(handler input.Handler, buffer string) error {
+	for _, t := range c.tablist {
+		if t.name == buffer {
+			fp := path.Join(c.rundir, buffer, "input")
+
+			ti, err := os.Open(fp)
+			if err != nil {
+				return err
+			}
+
+			util.RunInput(t.ctx, buffer, handler, c.errors, ti)
+			t.input = ti
+
+			return nil
+		}
+	}
+
+	return errors.New("Input called on buffer before creation")
 }
 
 func (c *Control) Event(eventmsg string) error {
@@ -90,7 +133,9 @@ func (c *Control) Cleanup() {
 		}
 	}
 
+	c.tabs.Close()
 	c.event.Close()
+	c.errors.Close()
 	os.RemoveAll(c.rundir)
 }
 
@@ -196,8 +241,10 @@ func (c *Control) Notification(buff, from, msg string) error {
 
 func (c *Control) popTab(tabname string) error {
 	for n := range c.tablist {
-		if c.tablist[n] == tabname {
+		if c.tablist[n].name == tabname {
+			c.tablist[n].cancel()
 			c.tablist = append(c.tablist[:n], c.tablist[n+1:]...)
+
 			return writetabs(c)
 		}
 	}
@@ -207,22 +254,35 @@ func (c *Control) popTab(tabname string) error {
 
 func (c *Control) pushTab(tabname string) error {
 	for n := range c.tablist {
-		if c.tablist[n] == tabname {
+		if c.tablist[n].name == tabname {
 			return fmt.Errorf("entry already exists: %s", tabname)
 		}
 	}
 
-	c.tablist = append(c.tablist, tabname)
+	ctx, cancel := context.WithCancel(c.ctx)
+	t := &tab{
+		name:   tabname,
+		ctx:    ctx,
+		cancel: cancel,
+	}
+
+	c.tablist = append(c.tablist, t)
+
 	return writetabs(c)
 }
 
 func writetabs(c *Control) error {
-	tabdata := strings.Join(c.tablist, "\n") + "\n"
+	var sb strings.Builder
+
+	for _, tab := range c.tablist {
+		sb.WriteString(tab.name + "\n")
+	}
+
 	if _, e := c.tabs.Seek(0, io.SeekStart); e != nil {
 		return e
 	}
 
-	if _, e := c.tabs.WriteString(tabdata); e != nil {
+	if _, e := c.tabs.WriteString(sb.String()); e != nil {
 		return e
 	}
 
@@ -230,7 +290,7 @@ func writetabs(c *Control) error {
 		return e
 	}
 
-	return c.tabs.Truncate(int64(len(tabdata)))
+	return c.tabs.Truncate(int64(sb.Len()))
 }
 
 func (c *Control) Errorwriter() (*writer.WriteCloser, error) {
