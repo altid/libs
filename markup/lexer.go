@@ -2,6 +2,7 @@ package markup
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 )
@@ -62,13 +63,15 @@ func NewStringLexer(src string) *Lexer {
 // Any URL will be turned from `[some text](someurl)` to `some text (some url)`
 // IMG will be turned from `![some text](someimage)` to `some text (some image)`
 // color tags will be removed and the raw text will be output
-func (l *Lexer) Bytes() []byte {
+func (l *Lexer) Bytes() ([]byte, error) {
 	var dst bytes.Buffer
 	for {
 		i := l.Next()
 		switch i.ItemType {
+		case ErrorText:
+			return nil, fmt.Errorf("%s", i.Data)
 		case EOF:
-			return dst.Bytes()
+			return dst.Bytes(), nil
 		case ColorCode, ImagePath:
 			continue
 		case URLLink, ImageLink:
@@ -83,9 +86,13 @@ func (l *Lexer) Bytes() []byte {
 }
 
 // String is the same as Bytes, but returns a string
-func (l *Lexer) String() string {
-	b := l.Bytes()
-	return string(b)
+func (l *Lexer) String() (string, error) {
+	b, err := l.Bytes()
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
 }
 
 // Item is returned from a call to Next()
@@ -117,7 +124,7 @@ func (l *Lexer) nextChar() byte {
 	rune, width := utf8.DecodeRune(l.src[l.pos:])
 	l.width = width
 	l.pos += l.width
-	
+
 	return byte(rune)
 }
 
@@ -177,7 +184,7 @@ func lexStrike(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: no closing stikeout tag")
 			return nil
 		case '~':
 			l.accept("~")
@@ -201,7 +208,7 @@ func lexUnderline(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: no closing underline tag")
 			return nil
 		case '_':
 			l.accept("_")
@@ -225,7 +232,7 @@ func lexEmphasis(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: no closing emphasis tag")
 			return nil
 		case '-':
 			l.accept("-")
@@ -251,7 +258,7 @@ func lexBold(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: no closing bold tag")
 			return nil
 		case '*':
 			l.accept("*")
@@ -285,7 +292,7 @@ func lexColorText(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: no closing color tag")
 			return nil
 		case ']':
 			l.accept("]")
@@ -328,9 +335,10 @@ func lexColorStrikeout(l *Lexer) stateFn {
 		case ']':
 			l.emit(ColorText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: no closing strikeout tag")
 			return nil
 		case '\\':
 			l.accept("\\")
@@ -355,12 +363,11 @@ func lexColorEmphasis(l *Lexer) stateFn {
 		switch l.peek() {
 		case '-', '\\':
 			l.emit(ColorTextEmphasis)
-		case ']':
-			l.emit(ColorText)
 		}
+
 		switch l.nextChar() {
-		case EOF:
-			l.emit(EOF)
+		case EOF, ']':
+			l.error("incorrect input: no closing emphasis tag")
 			return nil
 		case '\\':
 			l.accept("\\")
@@ -371,11 +378,6 @@ func lexColorEmphasis(l *Lexer) stateFn {
 			l.ignore()
 
 			return lexColorText
-		case ']':
-			l.accept("]")
-			l.ignore()
-
-			return lexColorCode
 		}
 	}
 }
@@ -390,7 +392,7 @@ func lexColorUnderline(l *Lexer) stateFn {
 		}
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: no closing underline tag")
 			return nil
 		case '\\':
 			l.accept("\\")
@@ -418,9 +420,10 @@ func lexColorBold(l *Lexer) stateFn {
 		case ']':
 			l.emit(ColorText)
 		}
+
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: no closing bold tag")
 			return nil
 		case '\\':
 			l.accept("\\")
@@ -458,7 +461,7 @@ func lexMaybeURL(l *Lexer) stateFn {
 
 	switch l.nextChar() {
 	case EOF:
-		l.emit(EOF)
+		l.error("incorrect input: malformed URL")
 		return nil
 	case '!':
 		return lexImageLinkText
@@ -475,7 +478,7 @@ func lexURLText(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: malformed URL")
 			return nil
 		case ']':
 			return lexURLLink
@@ -494,7 +497,7 @@ func lexURLLink(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: malfored URL")
 			return nil
 		case ')':
 			l.accept(")")
@@ -517,7 +520,7 @@ func lexImageLinkText(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: malformed image tag")
 			return nil
 		case ']':
 			return lexImageLinkPath
@@ -536,7 +539,7 @@ func lexImageLinkPath(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: malformed image tag")
 			return nil
 		case ')':
 			return lexImageLink
@@ -555,7 +558,7 @@ func lexImageLink(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: malformed image tag")
 			return nil
 		case ')':
 			l.accept(")")
@@ -589,7 +592,7 @@ func lexImageText(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: malformed image tag")
 			return nil
 		case ']':
 			return lexImagePath
@@ -608,7 +611,7 @@ func lexImagePath(l *Lexer) stateFn {
 
 		switch l.nextChar() {
 		case EOF:
-			l.emit(EOF)
+			l.error("incorrect input: malformed image tag")
 			return nil
 		case ')':
 			l.accept(")")
@@ -647,7 +650,7 @@ func (l *Lexer) accept(valid string) bool {
 	if strings.IndexByte(valid, l.nextChar()) >= 0 {
 		return true
 	}
-	
+
 	l.backup()
 	return false
 }
@@ -659,4 +662,12 @@ func (l *Lexer) acceptRun(valid string) {
 			return
 		}
 	}
+}
+
+func (l *Lexer) error(err string) {
+	l.src = []byte(err)
+	l.start = 0
+	l.pos = len(l.src)
+
+	l.emit(ErrorText)
 }
