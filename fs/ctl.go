@@ -9,6 +9,7 @@ import (
 	"path"
 	"sync"
 
+	"github.com/altid/libs/fs/input"
 	"github.com/altid/libs/fs/internal/command"
 	"github.com/altid/libs/fs/internal/defaults"
 	"github.com/altid/libs/fs/internal/mock"
@@ -17,6 +18,12 @@ import (
 
 // Controller is our main type for controlling a session
 type Controller interface {
+	Manager
+	input.Handler
+}
+
+// Manager wraps all interactions with the `ctl` file
+type Manager interface {
 	Run(*Control, *Command) error
 	Quit()
 }
@@ -26,6 +33,7 @@ type runner interface {
 	SetCommands(cmd ...*command.Command) error
 	BuildCommand(string) (*command.Command, error)
 	Event(string) error
+	Input(input.Handler, string) error
 	CreateBuffer(string, string) error
 	DeleteBuffer(string, string) error
 	HasBuffer(string, string) bool
@@ -42,13 +50,15 @@ type writercloser interface {
 
 // Control type can be used to manage a running ctl file session
 type Control struct {
-	ctx   context.Context
-	req   chan string
-	ctl   Controller
-	done  chan struct{}
-	run   runner
-	write writercloser
-	debug func(ctlMsg, ...interface{})
+	ctx    context.Context
+	cancel context.CancelFunc
+	req    chan string
+	ctl    Manager
+	input  input.Handler
+	done   chan struct{}
+	run    runner
+	write  writercloser
+	debug  func(ctlMsg, ...interface{})
 	sync.Mutex
 }
 
@@ -66,12 +76,18 @@ const (
 	ctlDefault
 )
 
-// MockCtlFile returns a type that can be used for testing services
+// Mock returns a type that can be used for testing services
 // it will track in-memory and behave like a file-backed control
 // It will wait for messages on reqs which act as ctl messages
+// A special message of `input <from> <msg>` will be be sent as input
 // By default it writes to Stdout + Stderr with each WriteCloser
 // If debug is true, all logs will be written to stdout
-func MockCtlFile(ctx context.Context, ctl Controller, reqs chan string, service string, debug bool) (*Control, error) {
+func Mock(ctl interface{}, reqs chan string, service string, debug bool) (*Control, error) {
+	manager, ok := ctl.(Manager)
+	if !ok {
+		return nil, errors.New("missing Run/Quit methods on ctl")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
 
 	done := make(chan struct{})
 	cmds := make(chan string)
@@ -79,13 +95,19 @@ func MockCtlFile(ctx context.Context, ctl Controller, reqs chan string, service 
 	t := mock.NewControl(ctx, errs, reqs, cmds, done)
 
 	c := &Control{
-		ctx:   ctx,
-		ctl:   ctl,
-		done:  make(chan struct{}),
-		req:   cmds,
-		run:   t,
-		write: t,
-		debug: func(ctlMsg, ...interface{}) {},
+		ctx:    ctx,
+		cancel: cancel,
+		ctl:    manager,
+		done:   make(chan struct{}),
+		req:    cmds,
+		run:    t,
+		write:  t,
+		debug:  func(ctlMsg, ...interface{}) {},
+	}
+
+	input, ok := ctl.(input.Handler)
+	if ok {
+		c.input = input
 	}
 
 	if debug {
@@ -105,35 +127,48 @@ func MockCtlFile(ctx context.Context, ctl Controller, reqs chan string, service 
 	return c, nil
 }
 
-// CreateCtlFile sets up a ready-to-listen ctl file
+// New sets up a ready-to-listen ctl file
 // logdir is the directory to store copies of the contents of files created; specifically doctype. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
 // mtpt is the directory to create the file system in
 // service is the subdirectory inside mtpt for the runtime fs
 // This will return an error if a ctl file exists at the given directory, or if doctype is invalid.
-func CreateCtlFile(ctx context.Context, ctl Controller, logdir, mtpt, service, doctype string, debug bool) (*Control, error) {
+func New(ctl interface{}, logdir, mtpt, service, doctype string, debug bool) (*Control, error) {
 	if doctype != "document" && doctype != "feed" {
 		return nil, fmt.Errorf("unknown doctype: %s", doctype)
+	}
+
+	manager, ok := ctl.(Manager)
+	if !ok {
+		return nil, errors.New("ctl missing Run/Quit method(s)")
 	}
 
 	rundir := path.Join(mtpt, service)
 
 	if _, e := os.Stat(path.Join(rundir, "ctl")); os.IsNotExist(e) {
 		var tab []string
+
 		req := make(chan string)
+		ctx, cancel := context.WithCancel(context.Background())
 		rtc := defaults.NewControl(ctx, rundir, logdir, doctype, tab, req)
 
 		c := &Control{
-			ctx:   ctx,
-			req:   req,
-			done:  make(chan struct{}),
-			run:   rtc,
-			ctl:   ctl,
-			write: rtc,
-			debug: func(ctlMsg, ...interface{}) {},
+			ctx:    ctx,
+			cancel: cancel,
+			req:    req,
+			done:   make(chan struct{}),
+			run:    rtc,
+			ctl:    manager,
+			write:  rtc,
+			debug:  func(ctlMsg, ...interface{}) {},
 		}
 
 		if debug {
 			c.debug = ctlLogger
+		}
+
+		input, ok := ctl.(input.Handler)
+		if ok {
+			c.input = input
 		}
 
 		cmdlist := command.DefaultCommands
@@ -149,6 +184,13 @@ func CreateCtlFile(ctx context.Context, ctl Controller, logdir, mtpt, service, d
 	}
 
 	return nil, fmt.Errorf("Control file already exist at %s", rundir)
+}
+
+// Input starts an input file in the named buffer
+// If Input is called before a buffer is created, an error will be returned
+// If the Controller sent to Input does not implement a Handler this will panic
+func (c *Control) Input(buffer string) error {
+	return c.run.Input(c.input, buffer)
 }
 
 // Event appends the given string to the events file of Control's working directory.
@@ -282,6 +324,12 @@ func (c *Control) MainWriter(buffer, doctype string) (*writer.WriteCloser, error
 	return c.write.FileWriter(buffer, doctype)
 }
 
+// Context returns the underlying context of the service
+// This will be closed after Quit() is called
+func (c *Control) Context() context.Context {
+	return c.ctx
+}
+
 func dispatch(c *Control) {
 	// TODO: wrap with waitgroups
 	// If close is requested on a file which is currently being opened, cancel open request
@@ -321,6 +369,7 @@ func dispatch(c *Control) {
 func serviceCommand(c *Control, cmd *Command, ew *writer.WriteCloser) {
 	switch cmd.Args[0] {
 	case "quit":
+		defer c.cancel()
 		// Close our local listeners, then
 		close(c.done)
 		c.ctl.Quit()

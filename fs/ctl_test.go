@@ -1,12 +1,10 @@
 package fs
 
 import (
-	"context"
 	"testing"
 )
 
 type testctrl struct {
-	cancel context.CancelFunc
 }
 
 func (c *testctrl) Run(ctrl *Control, cmd *Command) error {
@@ -23,17 +21,13 @@ func (c *testctrl) Run(ctrl *Control, cmd *Command) error {
 	return nil
 }
 
-func (c *testctrl) Quit() {
-	c.cancel()
-}
+func (c *testctrl) Quit() {}
 
 func TestWriters(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	reqs := make(chan string)
-	ctl := &testctrl{cancel}
+	ctl := &testctrl{}
 
-	c, err := MockCtlFile(ctx, ctl, reqs, "test", false)
+	c, err := Mock(ctl, reqs, "test", false)
 	if err != nil {
 		t.Error(err)
 	}
