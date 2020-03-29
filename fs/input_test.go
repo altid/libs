@@ -10,7 +10,10 @@ import (
 type inputTestCtrl struct{}
 
 func (i *inputTestCtrl) Handle(path string, c *markup.Lexer) error {
-	d := c.String()
+	d, err := c.String()
+	if err != nil {
+		return err
+	}
 
 	switch d {
 	case "foo bar baz":
