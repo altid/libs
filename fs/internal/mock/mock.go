@@ -4,10 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"sort"
+	"strings"
 
+	"github.com/altid/libs/fs/input"
 	"github.com/altid/libs/fs/internal/command"
+	"github.com/altid/libs/fs/internal/util"
 	"github.com/altid/libs/fs/internal/writer"
 )
 
@@ -15,6 +20,9 @@ type tab struct {
 	name    string
 	doctype string
 	data    []byte
+	input   chan string
+	cancel  context.CancelFunc
+	ctx     context.Context
 }
 
 type Control struct {
@@ -36,6 +44,15 @@ func (t *tab) Close() error {
 	return nil
 }
 
+func (t *tab) Read(p []byte) (n int, err error) {
+	select {
+	case b := <-t.input:
+		return copy(p, []byte(b)), nil
+	case <-t.ctx.Done():
+		return 0, io.EOF
+	}
+}
+
 func NewControl(ctx context.Context, errs chan error, reqs, cmds chan string, done chan struct{}) *Control {
 	return &Control{
 		ctx:  ctx,
@@ -49,6 +66,17 @@ func NewControl(ctx context.Context, errs chan error, reqs, cmds chan string, do
 func (c *Control) Cleanup() {}
 
 func (c *Control) Event(ev string) error { return nil }
+
+func (c *Control) Input(handler input.Handler, buffer string) error {
+	for _, t := range c.tabs {
+		if t.name == buffer {
+			util.RunInput(t.ctx, buffer, handler, t, ioutil.Discard)
+			return nil
+		}
+	}
+
+	return errors.New("Input called on buffer before creation")
+}
 
 func (c *Control) SetCommands(cmd ...*command.Command) error {
 	for _, comm := range cmd {
@@ -95,7 +123,21 @@ func (c *Control) Listen() error {
 	for {
 		select {
 		case cmd := <-c.reqs:
-			c.cmds <- cmd
+			t := strings.Split(cmd, ":")
+			if t[0] != "input" {
+				c.cmds <- cmd
+				continue
+			}
+
+			if len(t) < 2 {
+				continue
+			}
+
+			for _, item := range c.tabs {
+				if item.name == t[1] {
+					item.input <- t[2]
+				}
+			}
 		case err := <-c.err:
 			return err
 		case <-c.done:
@@ -117,7 +159,10 @@ func (c *Control) Notification(string, string, string) error {
 func (c *Control) popTab(tabname string) error {
 	for n := range c.tabs {
 		if c.tabs[n].name == tabname {
+			defer close(c.tabs[n].input)
+			c.tabs[n].cancel()
 			c.tabs = append(c.tabs[:n], c.tabs[n+1:]...)
+
 			return nil
 		}
 	}
@@ -132,9 +177,14 @@ func (c *Control) pushTab(tabname, doctype string) error {
 		}
 	}
 
+	ctx, cancel := context.WithCancel(c.ctx)
+
 	t := &tab{
+		input:   make(chan string),
 		name:    tabname,
 		doctype: doctype,
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 
 	c.tabs = append(c.tabs, t)

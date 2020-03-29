@@ -1,12 +1,10 @@
 package fs
 
 import (
-	"context"
 	"testing"
 )
 
 type testctrl struct {
-	cancel context.CancelFunc
 }
 
 func (c *testctrl) Run(ctrl *Control, cmd *Command) error {
@@ -23,17 +21,13 @@ func (c *testctrl) Run(ctrl *Control, cmd *Command) error {
 	return nil
 }
 
-func (c *testctrl) Quit() {
-	c.cancel()
-}
+func (c *testctrl) Quit() {}
 
 func TestWriters(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	reqs := make(chan string)
-	ctl := &testctrl{cancel}
+	ctl := &testctrl{}
 
-	c, err := MockCtlFile(ctx, ctl, reqs, "test", false)
+	c, err := Mock(ctl, reqs, "test", true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -45,12 +39,18 @@ func TestWriters(t *testing.T) {
 		// be an Open called before MainWriter (generally you call MainWriter in your client's Open method);
 		// So we explicitly call c.CreateBuffer to avoid in the mock client tests
 		c.CreateBuffer("foo", "feed")
+
+		if e := c.Input("foo"); e != nil {
+			t.Error(e)
+		}
+
 		mw, err := c.MainWriter("foo", "feed")
 		if err != nil {
 			t.Error(err)
 		}
 
 		mw.Write([]byte("test"))
+		mw.Write([]byte("input:foo:There is no spood"))
 		mw.Close()
 		reqs <- "test quit"
 	}()
