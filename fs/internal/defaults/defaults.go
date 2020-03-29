@@ -84,7 +84,7 @@ func (c *Control) Input(handler input.Handler, buffer string) error {
 		if t.name == buffer {
 			fp := path.Join(c.rundir, buffer, "input")
 
-			ti, err := os.Open(fp)
+			ti, err := os.OpenFile(fp, os.O_CREATE|os.O_RDONLY, 0644)
 			if err != nil {
 				return err
 			}
