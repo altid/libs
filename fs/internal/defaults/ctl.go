@@ -39,8 +39,8 @@ func NewControl(ctx context.Context, r, l, d string, t []string, req chan string
 		os.MkdirAll(r, 0755)
 	}
 
-	ef, _ := os.OpenFile(path.Join(r, "event"), os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
-	tf, _ := os.OpenFile(path.Join(r, "tabs"), os.O_RDWR, 0644)
+	ef, _ := os.OpenFile(path.Join(r, "event"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	tf, _ := os.OpenFile(path.Join(r, "tabs"), os.O_CREATE|os.O_WRONLY, 0644)
 
 	return &Control{
 		ctx:     ctx,
