@@ -1,16 +1,14 @@
 package fs
 
 import (
-	"context"
 	"testing"
 )
 
 func TestCommands(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
 	reqs := make(chan string)
-	ctl := &testctrl{cancel}
+	ctl := &testctrl{}
 
-	c, err := MockCtlFile(ctx, ctl, reqs, "cmdtest", false)
+	c, err := Mock(ctl, reqs, "cmdtest", false)
 	if err != nil {
 		t.Error(err)
 	}
