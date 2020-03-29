@@ -21,44 +21,43 @@ import (
 )
 
 type Control struct {
+	event   *os.File
+	tabs    *os.File
 	cmdlist []*command.Command
 	scanner *bufio.Scanner
 	done    chan struct{}
 	rundir  string
 	logdir  string
 	doctype string
-	tabs    []string
+	tablist []string
 	req     chan string
 	ctx     context.Context
 }
 
 func NewControl(ctx context.Context, r, l, d string, t []string, req chan string) *Control {
+	if _, err := os.Stat(r); os.IsNotExist(err) {
+		os.MkdirAll(r, 0755)
+	}
+
+	ef, _ := os.OpenFile(path.Join(r, "event"), os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+	tf, _ := os.OpenFile(path.Join(r, "tabs"), os.O_RDWR, 0644)
+
 	return &Control{
 		ctx:     ctx,
 		done:    make(chan struct{}),
 		rundir:  r,
+		event:   ef,
 		logdir:  l,
 		doctype: d,
-		tabs:    t,
+		tabs:    tf,
+		tablist: t,
 		req:     req,
 	}
 }
 
 func (c *Control) Event(eventmsg string) error {
-	file := path.Join(c.rundir, "event")
-	if _, err := os.Stat(path.Dir(file)); os.IsNotExist(err) {
-		os.MkdirAll(path.Dir(file), 0755)
-	}
-
-	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
-	if err != nil {
-		return err
-	}
-
-	defer f.Close()
-	f.WriteString(eventmsg + "\n")
-
-	return nil
+	_, err := c.event.WriteString(eventmsg + "\n")
+	return err
 }
 
 func (c *Control) SetCommands(cmd ...*command.Command) error {
@@ -90,6 +89,7 @@ func (c *Control) Cleanup() {
 		}
 	}
 
+	c.event.Close()
 	os.RemoveAll(c.rundir)
 }
 
@@ -194,9 +194,9 @@ func (c *Control) Notification(buff, from, msg string) error {
 }
 
 func (c *Control) popTab(tabname string) error {
-	for n := range c.tabs {
-		if c.tabs[n] == tabname {
-			c.tabs = append(c.tabs[:n], c.tabs[n+1:]...)
+	for n := range c.tablist {
+		if c.tablist[n] == tabname {
+			c.tablist = append(c.tablist[:n], c.tablist[n+1:]...)
 			return tabs(c)
 		}
 	}
@@ -204,28 +204,24 @@ func (c *Control) popTab(tabname string) error {
 }
 
 func (c *Control) pushTab(tabname string) error {
-	for n := range c.tabs {
-		if c.tabs[n] == tabname {
+	for n := range c.tablist {
+		if c.tablist[n] == tabname {
 			return fmt.Errorf("entry already exists: %s", tabname)
 		}
 	}
-	c.tabs = append(c.tabs, tabname)
+	c.tablist = append(c.tablist, tabname)
 
 	return tabs(c)
 }
 
 func tabs(c *Control) error {
-	// Create truncates and opens file in a single step, utilize this.
-	file := path.Join(c.rundir, "tabs")
-
-	f, err := os.Create(file)
-	if err != nil {
-		return err
+	if _, e := c.tabs.WriteString(strings.Join(c.tablist, "\n") + "\n"); e != nil {
+		return e
 	}
 
-	defer f.Close()
-	f.WriteString(strings.Join(c.tabs, "\n") + "\n")
-	c.Event(file)
+	if e := c.Event(path.Join(c.rundir, "tabs")); e != nil {
+		return e
+	}
 
 	return nil
 }
