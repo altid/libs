@@ -2,6 +2,7 @@ package fs
 
 import (
 	"fmt"
+	"io/ioutil"
 	"testing"
 
 	"github.com/altid/libs/markup"
@@ -30,7 +31,8 @@ func TestInput(t *testing.T) {
 	reqs := make(chan string)
 	ctl := &inputTestCtrl{}
 
-	i, err := NewMockInput(ctl, "foo", false, reqs)
+	ew, _ := ioutil.TempFile("", "")
+	i, err := NewMockInput(ctl, "foo", ew, false, reqs)
 	if err != nil {
 		t.Error(err)
 	}
@@ -43,10 +45,5 @@ func TestInput(t *testing.T) {
 	reqs <- "-foo bar baz-"
 	reqs <- "/baz bar foo/"
 
-	if e := i.Errs(); len(e) > 0 {
-		for _, err := range e {
-			t.Error(err)
-		}
-	}
 	i.Stop()
 }
