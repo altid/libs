@@ -42,7 +42,7 @@ type tab struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	name   string
-	input  *os.File
+	input  io.ReadCloser
 }
 
 func NewControl(ctx context.Context, r, l, d string, t []string, req chan string) *Control {
@@ -82,17 +82,18 @@ func NewControl(ctx context.Context, r, l, d string, t []string, req chan string
 func (c *Control) Input(handler input.Handler, buffer string) error {
 	for _, t := range c.tablist {
 		if t.name == buffer {
-			fp := path.Join(c.rundir, buffer, "input")
+			if t.input != nil {
+				return errors.New("input already started")
+			}
 
-			ti, err := os.OpenFile(fp, os.O_CREATE|os.O_RDONLY, 0644)
+			fp := path.Join(c.rundir, buffer, "input")
+			rd, err := reader.New(fp)
 			if err != nil {
 				return err
 			}
 
-			util.RunInput(t.ctx, buffer, handler, c.errors, ti)
-			t.input = ti
-
-			return nil
+			t.input = rd
+			return util.RunInput(t.ctx, buffer, handler, rd, c.errors)
 		}
 	}
 
