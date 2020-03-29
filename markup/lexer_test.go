@@ -38,7 +38,7 @@ func TestLexer(t *testing.T) {
 	for i := 0; i < 50000; i++ {
 		f := fuzz.New()
 
-		myData := make([]byte, 50)
+		myData := make([]byte, 200)
 		f.Fuzz(&myData)
 		l := markup.NewLexer(myData)
 
@@ -49,7 +49,12 @@ func TestLexer(t *testing.T) {
 			case markup.EOF:
 				return
 			case markup.ErrorText:
-				t.Error(i.Data)
+				// This is just interesting, really
+				// Since we could theoretically get fuzzed data
+				// That is incorrectly formatted
+				// The real error is a timeout
+				t.Log(i.Data)
+				return
 			}
 		}
 	}

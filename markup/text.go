@@ -1,6 +1,7 @@
 package markup
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"regexp"
@@ -220,20 +221,17 @@ func doWritef(w io.WriteCloser, format string, args ...interface{}) (n int, err 
 }
 
 func escape(msg []byte) []byte {
-	var offset int
+	var b bytes.Buffer
 
-	result := make([]byte, len(msg)*2)
-
-	for i, c := range msg {
+	for _, c := range msg {
 		switch c {
 		case '*', '#', '_', '-', '~', '\\', '/', '(', ')', '`', '[', ']', '!':
-			result[i+offset] = '\\'
-			offset++
+			b.WriteRune('\'')
 		}
-		result[i+offset] = c
+		b.WriteByte(c)
 	}
 
-	return result[:len(msg)+offset]
+	return b.Bytes()
 }
 
 // EscapeString returns a properly escaped Altid markup string

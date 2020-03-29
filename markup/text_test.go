@@ -51,10 +51,6 @@ func TestUrl(t *testing.T) {
 	}
 }
 
-func TestImage(t *testing.T) {
-	// TODO: New image testing
-}
-
 func TestNotifier(t *testing.T) {
 	c := markup.NewNotifier("#foo", "bar - the place to be!", "baz is a *real* friend")
 	foo, bar, baz := c.Parse()
