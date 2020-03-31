@@ -23,6 +23,20 @@ func TestSpecial(t *testing.T) {
 		t.Error(e)
 	}
 
+	myData = []byte("Test **bold text** only")
+	l = markup.NewLexer(myData)
+
+	if _, e := l.String(); e != nil {
+		t.Error(e)
+	}
+
+	myData = []byte("Test **bold text* only")
+	l = markup.NewLexer(myData)
+
+	if _, e := l.String(); e == nil {
+		t.Error("no error on incorrectly formatted text")
+	}
+
 	myData = []byte("Test closing **bold and _strong tag_** correctly")
 	l = markup.NewLexer(myData)
 
@@ -43,6 +57,7 @@ func TestSpecial(t *testing.T) {
 	if _, e := l.String(); e != nil {
 		t.Error(e)
 	}
+
 }
 
 func TestLexer(t *testing.T) {

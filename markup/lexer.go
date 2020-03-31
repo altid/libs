@@ -195,7 +195,7 @@ func lexStrike(l *Lexer) stateFn {
 func lexEmphasis(l *Lexer) stateFn {
 	for {
 		switch l.peek() {
-		case '_', '\\':
+		case '_', '\\', '*':
 			l.emit(EmphasisText)
 		}
 
@@ -206,8 +206,8 @@ func lexEmphasis(l *Lexer) stateFn {
 			return nil
 		case '\\':
 			l.escape()
-		case '_':
-			l.accept("_")
+		case '_', '*':
+			l.accept("_*")
 			l.ignore()
 
 			return lexText
@@ -252,9 +252,7 @@ func lexBold(l *Lexer) stateFn {
 		case '\\':
 			l.escape()
 		case '*':
-			l.accept("*")
 			l.ignore()
-
 			// There could be malformed input here with no closing, `**hello world* how are you`
 			if l.peek() != '*' {
 				l.error("unexpected single '*' inside bold token")
@@ -279,6 +277,7 @@ func lexStrong(l *Lexer) stateFn {
 		switch l.nextChar() {
 		case EOF:
 			l.error("incorrect input: no closing strong tag")
+			
 			return nil
 		case '\\':
 			l.escape()
@@ -454,15 +453,10 @@ func lexColorMaybeBold(l *Lexer) stateFn {
 }
 
 func lexColorBold(l *Lexer) stateFn {
-	l.acceptRun("*")
-	l.ignore()
-
 	for {
 		switch l.peek() {
 		case '*', '\\', '_':
 			l.emit(ColorTextBold)
-		case ']':
-			l.emit(ColorText)
 		}
 
 		switch l.nextChar() {
@@ -472,17 +466,18 @@ func lexColorBold(l *Lexer) stateFn {
 		case '_':
 			l.accept("_")
 			l.ignore()
-			
+
 			return lexColorStrong
 		case '\\':
 			l.escape()
 		case '*':
+			l.ignore()
+			// There could be malformed input here with no closing tag
 			if l.peek() != '*' {
 				l.error("unexpected single '*' inside bold token")
 				return nil
 			}
 
-			l.accept("*")
 			l.accept("*")
 			l.ignore()
 
