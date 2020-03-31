@@ -13,7 +13,7 @@ const (
 	ColorCode
 	ColorText
 	ColorTextBold
-	ColorTextUnderline
+	ColorTextStrong
 	ColorTextStrike
 	ColorTextEmphasis
 	URLLink
@@ -24,10 +24,12 @@ const (
 	BoldText
 	StrikeText
 	EmphasisText
-	UnderlineText
+	StrongText
 	ErrorText
 	EOF
 )
+
+var escapable = "\\!([])*_~`"
 
 type stateFn func(*Lexer) stateFn
 
@@ -130,22 +132,30 @@ func (l *Lexer) nextChar() byte {
 
 func lexText(l *Lexer) stateFn {
 	for {
-		if strings.IndexByte("\\%[!*-~_", l.peek()) >= 0 {
-			if l.pos > l.start {
-				l.emit(NormalText)
-			}
+		// pre-emptively emit our normal type here on any potential match
+		switch l.peek() {
+		case '\\', '%', '[', '!', '*', '~', '_':
+			l.emit(NormalText)
 		}
 
 		switch l.nextChar() {
 		case EOF:
-			if l.pos > l.start {
-				l.emit(NormalText)
-			}
+			l.emit(NormalText)
 			l.emit(EOF)
 
 			return nil
 		case '\\':
-			return lexBack
+			l.escape()
+		case '~':
+			l.accept("~")
+			l.ignore()
+
+			return lexStrike
+		case '_':
+			l.accept("_")
+			l.ignore()
+
+			return lexEmphasis
 		case '%':
 			return lexMaybeColor
 		case '[':
@@ -153,39 +163,26 @@ func lexText(l *Lexer) stateFn {
 		case '!':
 			return lexMaybeImage
 		case '*':
-			return lexBold
-		case '-':
-			return lexEmphasis
-		case '~':
-			return lexStrike
-		case '_':
-			return lexUnderline
+			return lexMaybeBold
 		}
 	}
 }
 
-func lexBack(l *Lexer) stateFn {
-	l.ignore()
-	l.accept("\\!([])*_-~`")
-
-	return lexText
-}
-
 func lexStrike(l *Lexer) stateFn {
-	l.backup()
-	l.emit(NormalText)
-	l.accept("~")
-	l.ignore()
-
 	for {
-		if l.peek() == '~' {
+		// Fire off Strike on match
+		switch l.peek() {
+		case '~', '\\':
 			l.emit(StrikeText)
 		}
 
 		switch l.nextChar() {
 		case EOF:
 			l.error("incorrect input: no closing stikeout tag")
+
 			return nil
+		case '\\':
+			l.escape()
 		case '~':
 			l.accept("~")
 			l.ignore()
@@ -195,21 +192,20 @@ func lexStrike(l *Lexer) stateFn {
 	}
 }
 
-func lexUnderline(l *Lexer) stateFn {
-	l.backup()
-	l.emit(NormalText)
-	l.accept("_")
-	l.ignore()
-
+func lexEmphasis(l *Lexer) stateFn {
 	for {
-		if l.peek() == '_' {
-			l.emit(UnderlineText)
+		switch l.peek() {
+		case '_', '\\':
+			l.emit(EmphasisText)
 		}
 
 		switch l.nextChar() {
 		case EOF:
-			l.error("incorrect input: no closing underline tag")
+			l.error("incorrect input: no closing emphasis tag")
+
 			return nil
+		case '\\':
+			l.escape()
 		case '_':
 			l.accept("_")
 			l.ignore()
@@ -219,40 +215,28 @@ func lexUnderline(l *Lexer) stateFn {
 	}
 }
 
-func lexEmphasis(l *Lexer) stateFn {
-	l.backup()
-	l.emit(NormalText)
-	l.accept("-")
+// See if we're at ** or not
+func lexMaybeBold(l *Lexer) stateFn {
 	l.ignore()
 
-	for {
-		if l.peek() == '-' {
-			l.emit(EmphasisText)
-		}
+	switch l.nextChar() {
+	case EOF:
+		l.error("found no closing tag for '*'")
+		return nil
+	case '*':
+		l.accept("*")
+		l.ignore()
 
-		switch l.nextChar() {
-		case EOF:
-			l.error("incorrect input: no closing emphasis tag")
-			return nil
-		case '-':
-			l.accept("-")
-			l.ignore()
-
-			return lexText
-		}
+		return lexBold
+	default:
+		return lexEmphasis
 	}
 }
 
-// NOTE(halfwit): We would want to check for any possible token to switch state here in theory
-// For the time being we'll hope everything is escaped
 func lexBold(l *Lexer) stateFn {
-	l.backup()
-	l.emit(NormalText)
-	l.accept("*")
-	l.ignore()
-
 	for {
-		if l.peek() == '*' {
+		switch l.nextChar() {
+		case '_', '\\', '*':
 			l.emit(BoldText)
 		}
 
@@ -260,7 +244,21 @@ func lexBold(l *Lexer) stateFn {
 		case EOF:
 			l.error("incorrect input: no closing bold tag")
 			return nil
+		case '_':
+			l.accept("_")
+			l.ignore()
+
+			return lexStrong
+		case '\\':
+			l.escape()
 		case '*':
+			// There could be malformed input here with no closing, `**hello world* how are you`
+			if l.peek() != '*' {
+				l.error("unexpected single '*' inside bold token")
+				return nil
+			}
+
+			l.accept("*")
 			l.accept("*")
 			l.ignore()
 
@@ -269,12 +267,49 @@ func lexBold(l *Lexer) stateFn {
 	}
 }
 
+func lexStrong(l *Lexer) stateFn {
+	for {
+		switch l.peek() {
+		case '_', '\\':
+			l.emit(StrongText)
+		}
+
+		switch l.nextChar() {
+		case EOF:
+			l.error("incorrect input: no closing strong tag")
+			return nil
+		case '\\':
+			l.escape()
+		case '_':
+			l.accept("_")
+			l.ignore()
+
+			// Exit bold tag as well if we are at the end
+			if bytes.HasPrefix(l.src[l.start:], []byte("**")) {
+				l.accept("*")
+				l.accept("*")
+				l.ignore()
+
+				return lexText
+			}
+
+			return lexBold
+		}
+	}
+}
+
 func lexMaybeColor(l *Lexer) stateFn {
 	switch l.nextChar() {
 	case EOF:
+		// Benign, just send what we have and EOF
+		l.emit(NormalText)
 		l.emit(EOF)
+
 		return nil
 	case '[':
+		l.accept("[")
+		l.ignore()
+
 		return lexColorText
 	default:
 		return lexText
@@ -282,11 +317,9 @@ func lexMaybeColor(l *Lexer) stateFn {
 }
 
 func lexColorText(l *Lexer) stateFn {
-	l.accept("[")
-	l.ignore()
-
 	for {
-		if strings.IndexByte("*~-_]\\", l.peek()) >= 0 {
+		switch l.peek() {
+		case ']', '*', '_', '~', '\\':
 			l.emit(ColorText)
 		}
 
@@ -299,30 +332,23 @@ func lexColorText(l *Lexer) stateFn {
 			l.ignore()
 
 			return lexColorCode
-		case '\\': // eat a single slash
-			l.accept("\\")
-			l.ignore()
-			l.accept("\\!([])*_-~`")
 		case '*':
 			l.accept("*")
 			l.ignore()
 
-			return lexColorBold
+			return lexColorMaybeBold
 		case '_':
 			l.accept("_")
 			l.ignore()
 
-			return lexColorUnderline
+			return lexColorEmphasis
 		case '~':
 			l.accept("~")
 			l.ignore()
 
 			return lexColorStrikeout
-		case '-':
-			l.accept("-")
-			l.ignore()
-
-			return lexColorEmphasis
+		case '\\': // eat a single slash
+			l.escape()
 		}
 	}
 }
@@ -332,28 +358,20 @@ func lexColorStrikeout(l *Lexer) stateFn {
 		switch l.peek() {
 		case '~', '\\':
 			l.emit(ColorTextStrike)
-		case ']':
-			l.emit(ColorText)
 		}
 
 		switch l.nextChar() {
-		case EOF:
+		case EOF, ']':
 			l.error("incorrect input: no closing strikeout tag")
+
 			return nil
 		case '\\':
-			l.accept("\\")
-			l.ignore()
-			l.accept("\\!([])*_-~`")
+			l.escape()
 		case '~':
 			l.accept("~")
 			l.ignore()
 
 			return lexColorText
-		case ']':
-			l.accept("]")
-			l.ignore()
-
-			return lexColorCode
 		}
 	}
 }
@@ -361,7 +379,7 @@ func lexColorStrikeout(l *Lexer) stateFn {
 func lexColorEmphasis(l *Lexer) stateFn {
 	for {
 		switch l.peek() {
-		case '-', '\\':
+		case '_', '*', '\\':
 			l.emit(ColorTextEmphasis)
 		}
 
@@ -370,49 +388,73 @@ func lexColorEmphasis(l *Lexer) stateFn {
 			l.error("incorrect input: no closing emphasis tag")
 			return nil
 		case '\\':
-			l.accept("\\")
-			l.ignore()
-			l.accept("\\!([])*_-~`")
-		case '-':
-			l.accept("-")
-			l.ignore()
-
-			return lexColorText
-		}
-	}
-}
-
-func lexColorUnderline(l *Lexer) stateFn {
-	for {
-		switch l.peek() {
-		case '_', '\\':
-			l.emit(ColorTextUnderline)
-		case ']':
-			l.emit(ColorText)
-		}
-		switch l.nextChar() {
-		case EOF:
-			l.error("incorrect input: no closing underline tag")
-			return nil
-		case '\\':
-			l.accept("\\")
-			l.ignore()
-			l.accept("\\!([])*_-~`")
+			l.escape()
 		case '_':
 			l.accept("_")
 			l.ignore()
 
 			return lexColorText
-		case ']':
-			l.accept("]")
+		case '*':
+			l.accept("*")
 			l.ignore()
 
-			return lexColorCode
+			return lexColorText
 		}
 	}
 }
 
+func lexColorStrong(l *Lexer) stateFn {
+	for {
+		switch l.peek() {
+		case '_', '\\':
+			l.emit(ColorTextStrong)
+		}
+		switch l.nextChar() {
+		case EOF, ']':
+			l.error("could not parse: no closing strong tag")
+
+			return nil
+		case '\\':
+			l.escape()
+		case '_':
+			l.accept("_")
+			l.ignore()
+
+			// Exit bold tag as well if we are at the end
+			if bytes.HasPrefix(l.src[l.start:], []byte("**")) {
+				l.accept("*")
+				l.accept("*")
+				l.ignore()
+
+				return lexColorText
+			}
+
+			return lexColorBold
+		}
+	}
+}
+
+func lexColorMaybeBold(l *Lexer) stateFn {
+	l.ignore()
+
+	switch l.nextChar() {
+	case EOF, ']':
+		l.error("found no closing tag for '*'")
+		return nil
+	case '*':
+		l.accept("*")
+		l.ignore()
+
+		return lexColorBold
+	default:
+		return lexColorEmphasis
+	}
+}
+
 func lexColorBold(l *Lexer) stateFn {
+	l.acceptRun("*")
+	l.ignore()
+
 	for {
 		switch l.peek() {
 		case '*', '\\':
@@ -422,33 +464,47 @@ func lexColorBold(l *Lexer) stateFn {
 		}
 
 		switch l.nextChar() {
-		case EOF:
+		case EOF, ']':
 			l.error("incorrect input: no closing bold tag")
 			return nil
 		case '\\':
-			l.accept("\\")
-			l.ignore()
-			l.accept("\\!([])*_-~`")
+			l.escape()
 		case '*':
+			if l.peek() != '*' {
+				l.error("unexpected single '*' inside bold token")
+				return nil
+			}
+
+			l.accept("*")
 			l.accept("*")
 			l.ignore()
 
 			return lexColorText
-		case ']':
-			l.accept("]")
-			l.ignore()
-
-			return lexColorCode
 		}
 	}
 }
 
 func lexColorCode(l *Lexer) stateFn {
-	l.acceptRun("](")
+	l.accept("]")
+	l.accept("(")
 	l.ignore()
 	// Hex code
-	l.acceptRun("#1234567890,")
+
+	if l.peek() == '#' {
+		l.accept("#")
+		l.acceptRun("1234567890,")
+	}
+
 	l.acceptRun("abcdefghijklmnopqrstuvwxyz,")
+
+	if l.peek() != ')' {
+		// Give a reasonably good error
+		err := fmt.Sprintf("unsupported color tag %s", l.src[l.start:l.pos])
+		l.error(err)
+
+		return nil
+	}
+
 	l.emit(ColorCode)
 	l.accept(")")
 	l.ignore()
@@ -623,6 +679,11 @@ func lexImagePath(l *Lexer) stateFn {
 }
 
 func (l *Lexer) emit(t byte) {
+	// Short circuit null writes
+	if l.pos <= l.start && t != EOF {
+		return
+	}
+
 	l.items <- Item{
 		t,
 		l.src[l.start:l.pos],
@@ -662,6 +723,12 @@ func (l *Lexer) acceptRun(valid string) {
 			return
 		}
 	}
+}
+
+func (l *Lexer) escape() {
+	l.accept("\\")
+	l.ignore()
+	l.accept(escapable)
 }
 
 func (l *Lexer) error(err string) {
