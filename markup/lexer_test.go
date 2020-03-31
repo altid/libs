@@ -9,6 +9,7 @@ import (
 
 func TestSpecial(t *testing.T) {
 	myData := []byte("A string with an un_escaped underscore")
+
 	l := markup.NewLexer(myData)
 
 	if _, e := l.String(); e == nil {
@@ -42,7 +43,6 @@ func TestSpecial(t *testing.T) {
 	if _, e := l.String(); e != nil {
 		t.Error(e)
 	}
-
 }
 
 func TestLexer(t *testing.T) {
