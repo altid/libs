@@ -58,7 +58,7 @@ func Marshal(requests interface{}, service string, configFile string, debug bool
 // Create takes a pointer to a struct, and will walk a user through creation of a config entry for the service
 // Upon success, it will print the config and instructions to stdout
 // It is meant to be used with the -conf flag
-// 
+//
 //	conf := struct {
 //		Address string     `altid:"address,prompt:IP address to dial"`
 //		Auth    types.Auth `altid:"auth,prompt:Auth mechanism to use"`
@@ -69,10 +69,10 @@ func Marshal(requests interface{}, service string, configFile string, debug bool
 //	if e := config.Create(&conf, "zzyzx", "", false); e != nil {
 //		log.Fatal(e)
 //	}
-//  
+//
 //  os.Exit()
 //
-// Notably, Create will parse entries for altid struct tags with the field "prompt". These will prompt a user 
+// Notably, Create will parse entries for altid struct tags with the field "prompt". These will prompt a user
 // for the value on the command line, optionally with a whitelisted array of selections to pick from
 // Selection of an item not on a whitelist will return an error after 3 attempts
 // The `pick` option to a types.Auth will be ignored, and will always be one of `password|factotum|none`
@@ -111,13 +111,13 @@ func Create(requests interface{}, service, configFile string, debug bool) error 
 		debugLog("creating entry")
 	}
 
-	conf.FixAuth(have, configFile)
+	conf.FixAuth(have, service, configFile)
 	want, err := request.Build(requests)
 	if err != nil {
 		return err
 	}
 
-	c, err := conf.Create(debugLog, service, have, want)
+	c, err := conf.Create(debugLog, service, have, want, configFile)
 	if err != nil {
 		return err
 	}
