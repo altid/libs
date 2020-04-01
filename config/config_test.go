@@ -9,7 +9,7 @@ import (
 func TestMarshal(t *testing.T) {
 	conf := struct {
 		Address string     `altid:"address,prompt:IP address to dial"`
-		Auth    types.Auth `altid:"auth,prompt:mechanism to use,pick:password|factotum|none"`
+		Auth    types.Auth `altid:"auth,prompt:mechanism to use"`
 		UseSSL  bool       `altid:"usessl,prompt:use ssl?"`
 		Foo     string     // Will use default
 	}{"127.0.0.1", "password", false, "bar"}

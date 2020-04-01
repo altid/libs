@@ -1,7 +1,6 @@
 package conf
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"text/template"
@@ -45,24 +44,9 @@ func FixAuth(have []*entry.Entry, service string) {
 		}
 
 		value := entry.FindEntry("auth", service)
-		ent.Value = value.Value
-	}
-}
 
-func toString(item *entry.Entry) string {
-	switch item.Value.(type) {
-	case int, int8, int16, int32, int64:
-		return fmt.Sprintf("%d", item.Value)
-	case uint, uint8, uint16, uint32, uint64:
-		return fmt.Sprintf("%d", item.Value)
-	case float32, float64:
-		return fmt.Sprintf("%g", item.Value)
-	case bool:
-		return fmt.Sprintf("%t", item.Value)
-	case types.Auth:
-		return fmt.Sprintf("%s", item.Value)
-	default:
-		return fmt.Sprintf("%s", item.Value)
+		// ndb lookup returns string
+		ent.Value = types.Auth(value.Value.(string))
 	}
 }
 
@@ -81,7 +65,7 @@ func (c *Conf) WriteOut() error {
 	}
 
 	for _, entry := range c.entries {
-		m[entry.Key] = toString(entry)
+		m[entry.Key] = entry.String()
 	}
 
 	tp := template.Must(template.New("entry").Parse(tmpl))

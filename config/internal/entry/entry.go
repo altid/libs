@@ -2,9 +2,11 @@ package entry
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/altid/libs/config/internal/util"
+	"github.com/altid/libs/config/types"
 	"github.com/mischief/ndb"
 )
 
@@ -43,6 +45,23 @@ func FromConfig(debug func(string, ...interface{}), service string, cf string) (
 		return fromNdb(debug, recs, service)
 	default:
 		return nil, errors.New(ErrMultiEntries)
+	}
+}
+
+func (item *Entry) String() string {
+	switch item.Value.(type) {
+	case int, int8, int16, int32, int64:
+		return fmt.Sprintf("%d", item.Value)
+	case uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", item.Value)
+	case float32, float64:
+		return fmt.Sprintf("%g", item.Value)
+	case bool:
+		return fmt.Sprintf("%t", item.Value)
+	case types.Auth:
+		return fmt.Sprintf("%s", item.Value)
+	default:
+		return fmt.Sprintf("%s", item.Value)
 	}
 }
 
