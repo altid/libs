@@ -12,7 +12,11 @@ import (
 
 func TestCreate(t *testing.T) {
 	test := &struct {
-		Auth   types.Auth
+		// Ideally, we would test the enum on auth as well
+		// But without stdin/stdout rigged up for testing
+		// this is not possible. Manual testing occurs in lieu
+		// of automated testing for this specific instance
+		Auth   types.Auth `altid:"auth,no_prompt"`
 		Log    types.Logdir
 		Listen types.ListenAddress
 		Name   string

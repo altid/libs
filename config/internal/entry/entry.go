@@ -2,9 +2,11 @@ package entry
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/altid/libs/config/internal/util"
+	"github.com/altid/libs/config/types"
 	"github.com/mischief/ndb"
 )
 
@@ -22,11 +24,11 @@ type Entry struct {
 	Value interface{}
 }
 
-func FromConfig(debug func(string, ...interface{}), service string, confdir string) ([]*Entry, error) {
+func FromConfig(debug func(string, ...interface{}), service string, cf string) ([]*Entry, error) {
 	dir := util.GetConf(service)
 
-	if confdir != "" {
-		dir = confdir
+	if cf != "" {
+		dir = cf
 	}
 
 	conf, err := ndb.Open(dir)
@@ -43,6 +45,23 @@ func FromConfig(debug func(string, ...interface{}), service string, confdir stri
 		return fromNdb(debug, recs, service)
 	default:
 		return nil, errors.New(ErrMultiEntries)
+	}
+}
+
+func (item *Entry) String() string {
+	switch item.Value.(type) {
+	case int, int8, int16, int32, int64:
+		return fmt.Sprintf("%d", item.Value)
+	case uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", item.Value)
+	case float32, float64:
+		return fmt.Sprintf("%g", item.Value)
+	case bool:
+		return fmt.Sprintf("%t", item.Value)
+	case types.Auth:
+		return fmt.Sprintf("%s", item.Value)
+	default:
+		return fmt.Sprintf("%s", item.Value)
 	}
 }
 
@@ -88,9 +107,9 @@ func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service str
 	return values, nil
 }
 
-func FindEntry(name, service string) *Entry {
-	ndb, _ := ndb.Open(util.GetConf(service))
-	val := ndb.Search("service", service).Search(name)
+func FindEntry(name, config string) *Entry {
+	ndb, _ := ndb.Open(config)
+	val := ndb.Search("service", "auth").Search(name)
 
 	return &Entry{
 		Key:   name,

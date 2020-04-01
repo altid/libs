@@ -2,7 +2,6 @@ package entry
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/altid/libs/auth"
 	"github.com/altid/libs/config/internal/request"
@@ -11,10 +10,8 @@ import (
 )
 
 func Find(req *request.Request, entries []*Entry) (*Entry, bool) {
-	key := strings.ToLower(req.Key)
-
 	for _, entry := range entries {
-		if entry.Key == key {
+		if entry.Key == req.Key {
 			return entry, true
 		}
 	}
@@ -48,15 +45,15 @@ func findAuth(debug func(string, ...interface{}), service string, c ndb.RecordSe
 }
 
 func findLogdir(debug func(string, ...interface{}), c ndb.RecordSet) types.Logdir {
-	debug("request key=\"log\"")
+	debug("request key=\"logdir\"")
 
-	dir := c.Search("log")
+	dir := c.Search("logdir")
 	if dir == "" {
-		debug("response key=\"log\" value=\"none\"")
+		debug("response key=\"logdir\" value=\"none\"")
 		return "none"
 	}
 
-	debug("response key=\"log\" value=\"%s\"", dir)
+	debug("response key=\"logdir\" value=\"%s\"", dir)
 	return types.Logdir(dir)
 }
 
