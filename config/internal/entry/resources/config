@@ -1,0 +1,5 @@
+service=banana auth=password
+	password=banana2
+	port=1234
+	logdir=none
+	listen_address=none
