@@ -88,6 +88,12 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 			break
 		}
 
+		if i < 2 {
+			fmt.Println("unknown value selected, try again.")
+			continue
+		}
+
+		return nil, errors.New("multiple unknown values entered, exiting")
 	}
 
 	switch req.Defaults.(type) {
