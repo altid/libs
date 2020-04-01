@@ -16,27 +16,24 @@ import (
 )
 
 // Marshal will take a pointer to a struct as input, as well as the name of the service and attempt to fill the struct.
-// - The struct entries must be of the type string, int, bool,
-// - The tags of the struct will be used to indicate a query sent to the user
-// - Default entries to the struct will be used as defaults
+// The struct tags with a matching altid prefix will be marshalled, according to the defaults set
+// The first value of the tag must be the Altid config name you wish to retrieve, such as listen_address
+// Other fields include prompt/no_prompt:, and pick:
+// Pick will return an error if a value other than one listed exists in the config/defaults
 //
-//	type myconf struct {
-//		Name string `Username to use for the service`
-// 		Port int `Port to connect with`
-// 		UseSSL bool `Do you want to connect with SSL?`
-// 		Auth types.Auth `Auth mechanism to use: password|factotum|none`
-//		Logdir types.Logdir
-//      Address types.ListenAddress
-//	}{myusername, 1234, true, "none", "none"}
+//	conf := struct {
+//		Address string     `altid:"address,prompt:IP address to dial"`
+//		Auth    types.Auth `altid:"auth,prompt:Auth mechanism to use,pick:password|factotum|none"`
+//		UseSSL  bool       `altid:"usessl,prompt:Use SSL?,pick:true|false"`
+//		Foo     string     // Will use default
+//	}{"127.0.0.1", "password", false, "bar"}
 //
-//  err := config.Marshal(myconf, "myservice", false)
+//	if e := config.Marshal(&conf, "zzyzx", "", false); e != nil {
+//		log.Fatal(e)
+//	}
 //  [...]
 //
-// The preceding example would search the config file for each lower case entry
-// If it cannot fill an entry, it returns an error
-// Idiomatically, the user should be prompted to rerun with the -conf flag
-// and the function Create should be called, and on success, exit the program
-func Marshal(requests interface{}, service string, confdir string, debug bool) error {
+func Marshal(requests interface{}, service string, configFile string, debug bool) error {
 	debugLog := func(string, ...interface{}) {}
 	if debug {
 		debugLog = func(format string, v ...interface{}) {
@@ -46,7 +43,7 @@ func Marshal(requests interface{}, service string, confdir string, debug bool) e
 	}
 
 	// list all existing config entries
-	have, err := conf.FromConfig(debugLog, service, confdir)
+	have, err := conf.FromConfig(debugLog, service, configFile)
 	if err != nil {
 		return err
 	}
@@ -59,16 +56,27 @@ func Marshal(requests interface{}, service string, confdir string, debug bool) e
 }
 
 // Create takes a pointer to a struct, and will walk a user through creation of a config entry for the service
-// Upon success, it will print the config and instructions to stdout 
+// Upon success, it will print the config and instructions to stdout
 // It is meant to be used with the -conf flag
-// The semantics are the same as Marshall, but it uses the struct tags to prompt the user to fill in the data for any missing entries
-// For example:
+// 
+//	conf := struct {
+//		Address string     `altid:"address,prompt:IP address to dial"`
+//		Auth    types.Auth `altid:"auth,prompt:Auth mechanism to use"`
+//		UseSSL  bool       `altid:"usessl,prompt:Use SSL?,pick:true|false"`
+//		Foo     string     // Will use default
+//	}{"127.0.0.1", "password", false, "bar"}
 //
-// 	Name string `Username to connect with`
+//	if e := config.Create(&conf, "zzyzx", "", false); e != nil {
+//		log.Fatal(e)
+//	}
+//  
+//  os.Exit()
 //
-// would prompt the user for a username, optionally offering the default value passed in
-// On success, the user should cleanly exit the program, as requests is not filled as it is in Marshall
-func Create(requests interface{}, service, confdir string, debug bool) error {
+// Notably, Create will parse entries for altid struct tags with the field "prompt". These will prompt a user 
+// for the value on the command line, optionally with a whitelisted array of selections to pick from
+// Selection of an item not on a whitelist will return an error after 3 attempts
+// The `pick` option to a types.Auth will be ignored, and will always be one of `password|factotum|none`
+func Create(requests interface{}, service, configFile string, debug bool) error {
 	debugLog := func(string, ...interface{}) {}
 	if debug {
 		debugLog = func(format string, v ...interface{}) {
@@ -77,12 +85,12 @@ func Create(requests interface{}, service, confdir string, debug bool) error {
 		}
 	}
 
-	have, err := entry.FromConfig(debugLog, service, confdir)
+	have, err := entry.FromConfig(debugLog, service, configFile)
 	if err != nil {
 		return err
 	}
-	
-	conf.FixAuth(have, confdir)
+
+	conf.FixAuth(have, configFile)
 
 	// Make sure we correct any errors we encounter
 	switch {
