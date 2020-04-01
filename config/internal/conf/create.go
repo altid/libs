@@ -26,6 +26,7 @@ func Create(debug func(string, ...interface{}), service string, have []*entry.En
 			continue
 		}
 
+		// This is ugly, we'll have to make this a separate function once we have time
 		switch item.Defaults.(type) {
 		case types.Auth:
 			// Clean this up later if we can
@@ -53,22 +54,20 @@ func Create(debug func(string, ...interface{}), service string, have []*entry.En
 						Prompt:   "Enter password:",
 						Defaults: "password",
 					}
-					if en, ok := entry.Find(i, have); ok {
-						entries = append(entries, en)
-						continue
-					}
 
-					pass, err := fillEntry(debug, i)
-					if err != nil {
-						return nil, err
-					}
+					if d, ok := entry.Find(i, have); ok {
+						entries = append(entries, d)
+					} else {
+						pass, err := fillEntry(debug, i)
+						if err != nil {
+							return nil, err
+						}
 
-					entries = append(entries, pass)
+						entries = append(entries, pass)
+					}
 				}
 			}
-
 		}
-
 		entry, err := fillEntry(debug, item)
 		if err != nil {
 			return nil, err
