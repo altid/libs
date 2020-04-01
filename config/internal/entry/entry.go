@@ -107,12 +107,12 @@ func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service str
 	return values, nil
 }
 
-func FindEntry(name, config string) *Entry {
+func FixAuth(name, config string) *Entry {
 	ndb, _ := ndb.Open(config)
-	val := ndb.Search("service", "auth").Search(name)
+	val := ndb.Search("service", name).Search("auth")
 
 	return &Entry{
-		Key:   name,
+		Key:   "auth",
 		Value: val,
 	}
 }
