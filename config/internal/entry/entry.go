@@ -22,11 +22,11 @@ type Entry struct {
 	Value interface{}
 }
 
-func FromConfig(debug func(string, ...interface{}), service string, confdir string) ([]*Entry, error) {
+func FromConfig(debug func(string, ...interface{}), service string, cf string) ([]*Entry, error) {
 	dir := util.GetConf(service)
 
-	if confdir != "" {
-		dir = confdir
+	if cf != "" {
+		dir = cf
 	}
 
 	conf, err := ndb.Open(dir)
@@ -88,9 +88,9 @@ func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service str
 	return values, nil
 }
 
-func FindEntry(name, service string) *Entry {
-	ndb, _ := ndb.Open(util.GetConf(service))
-	val := ndb.Search("service", service).Search(name)
+func FindEntry(name, config string) *Entry {
+	ndb, _ := ndb.Open(config)
+	val := ndb.Search("service", "auth").Search(name)
 
 	return &Entry{
 		Key:   name,

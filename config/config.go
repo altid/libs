@@ -68,7 +68,7 @@ func Marshal(requests interface{}, service string, confdir string, debug bool) e
 //
 // would prompt the user for a username, optionally offering the default value passed in
 // On success, the user should cleanly exit the program, as requests is not filled as it is in Marshall
-func Create(requests interface{}, service, confdir string, debug bool) error {
+func Create(requests interface{}, service, configFile string, debug bool) error {
 	debugLog := func(string, ...interface{}) {}
 	if debug {
 		debugLog = func(format string, v ...interface{}) {
@@ -77,12 +77,12 @@ func Create(requests interface{}, service, confdir string, debug bool) error {
 		}
 	}
 
-	have, err := entry.FromConfig(debugLog, service, confdir)
+	have, err := entry.FromConfig(debugLog, service, configFile)
 	if err != nil {
 		return err
 	}
 	
-	conf.FixAuth(have, confdir)
+	conf.FixAuth(have, configFile)
 
 	// Make sure we correct any errors we encounter
 	switch {
