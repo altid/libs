@@ -26,28 +26,14 @@ func Create(debug func(string, ...interface{}), service string, have []*entry.En
 			continue
 		}
 
+		switch item.Defaults.(type) {
+		case types.Auth:
+			item.Pick = []string{"password", "factotum", "none"}
+		}
+
 		entry, err := fillEntry(debug, item)
 		if err != nil {
 			return nil, err
-		}
-
-		// We want to catch auth, since it require additional fields
-		switch item.Defaults.(type) {
-		case types.Auth:
-			if entry.Value.(types.Auth) == "password" {
-				i := &request.Request{
-					Key:      "password",
-					Prompt:   "Enter password:",
-					Defaults: "none",
-				}
-
-				pass, err := fillEntry(debug, i)
-				if err != nil {
-					return nil, err
-				}
-
-				entries = append(entries, pass)
-			}
 		}
 
 		entries = append(entries, entry)
@@ -76,20 +62,32 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 		entry.Value = req.Defaults
 		fmt.Printf("using default %s=%v\n", key, req.Defaults)
 		return entry, nil
+	case len(req.Pick) > 0:
+		fmt.Printf("%s (%s) [%v]: (press enter for default)\n", req.Prompt, strings.Join(req.Pick, "|"), req.Defaults)
 	default:
 		fmt.Printf("%s [%v]: (press enter for default)\n", req.Prompt, req.Defaults)
 	}
 
-	value, err := readValue()
-	if err != nil {
-		return nil, err
-	}
+	var value string
+	var err error
 
-	// User pressed enter for default
-	if value == "" || value == "\n" {
-		entry.Value = req.Defaults
-		debug("response key=\"%s\" value=\"%v\"", entry.Key, entry.Value)
-		return entry, nil
+	for i := 0; i < 3; i++ {
+		value, err = readValue()
+		if err != nil {
+			return nil, err
+		}
+
+		// User pressed enter for default
+		if value == "" || value == "\n" {
+			entry.Value = req.Defaults
+			debug("response key=\"%s\" value=\"%v\"", entry.Key, entry.Value)
+			return entry, nil
+		}
+
+		if checkPicks(value, req.Pick) {
+			break
+		}
+
 	}
 
 	switch req.Defaults.(type) {
@@ -214,4 +212,18 @@ func tryInt(req interface{}, value string) (v interface{}, err error) {
 	}
 
 	return
+}
+
+func checkPicks(value string, picks []string) bool {
+	if len(picks) < 1 {
+		return true
+	}
+
+	for _, pick := range picks {
+		if value == pick {
+			return true
+		}
+	}
+
+	return false
 }
