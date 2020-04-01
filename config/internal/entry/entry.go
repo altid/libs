@@ -108,6 +108,9 @@ func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service str
 }
 
 func FixAuth(name, config string) *Entry {
+	if config == "" {
+		config = util.GetConf("")
+	}
 	ndb, _ := ndb.Open(config)
 	val := ndb.Search("service", name).Search("auth")
 
