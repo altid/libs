@@ -14,7 +14,7 @@ import (
 )
 
 // Monster function, clean up later
-func Create(debug func(string, ...interface{}), service string, have []*entry.Entry, want []*request.Request) (*Conf, error) {
+func Create(debug func(string, ...interface{}), service string, have []*entry.Entry, want []*request.Request, configFile string) (*Conf, error) {
 	var entries []*entry.Entry
 
 	// Range through and fill each entry with either the config data
@@ -28,7 +28,45 @@ func Create(debug func(string, ...interface{}), service string, have []*entry.En
 
 		switch item.Defaults.(type) {
 		case types.Auth:
+			// Clean this up later if we can
 			item.Pick = []string{"password", "factotum", "none"}
+			if _, ok := entry.Find(item, have); !ok && item.Defaults.(types.Auth) == "password" {
+				// We have no entry, check the defaults and send if there's a password
+				i := &request.Request{
+					Key:      "password",
+					Prompt:   "Enter password:",
+					Defaults: "password",
+				}
+
+				pass, err := fillEntry(debug, i)
+				if err != nil {
+					return nil, err
+				}
+
+				entries = append(entries, pass)
+			} else {
+				// we have an entry, see if it was set to password in the config
+				en := entry.FixAuth(service, configFile)
+				if en.Value.(string) == "password" {
+					i := &request.Request{
+						Key:      "password",
+						Prompt:   "Enter password:",
+						Defaults: "password",
+					}
+					if en, ok := entry.Find(i, have); ok {
+						entries = append(entries, en)
+						continue
+					}
+
+					pass, err := fillEntry(debug, i)
+					if err != nil {
+						return nil, err
+					}
+
+					entries = append(entries, pass)
+				}
+			}
+
 		}
 
 		entry, err := fillEntry(debug, item)
