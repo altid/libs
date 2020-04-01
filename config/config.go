@@ -86,11 +86,6 @@ func Create(requests interface{}, service, configFile string, debug bool) error 
 	}
 
 	have, err := entry.FromConfig(debugLog, service, configFile)
-	if err != nil {
-		return err
-	}
-
-	conf.FixAuth(have, configFile)
 
 	// Make sure we correct any errors we encounter
 	switch {
@@ -116,6 +111,7 @@ func Create(requests interface{}, service, configFile string, debug bool) error 
 		debugLog("creating entry")
 	}
 
+	conf.FixAuth(have, configFile)
 	want, err := request.Build(requests)
 	if err != nil {
 		return err
