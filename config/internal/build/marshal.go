@@ -57,7 +57,18 @@ func push(requests interface{}, entry *entry.Entry) error {
 	for i := 0; i < t.NumField(); i++ {
 		f := t.FieldByIndex([]int{i})
 
-		if strings.ToLower(f.Name) != entry.Key {
+		tag := f.Tag.Get("altid")
+		if tag == "" {
+			continue
+		}
+
+		// Use the tag, Luke
+		req, err := request.ParseTag(tag)
+		if err != nil {
+			continue
+		}
+
+		if req.Key != entry.Key {
 			continue
 		}
 

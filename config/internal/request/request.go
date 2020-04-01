@@ -1,16 +1,21 @@
 package request
 
 import (
+	"encoding/csv"
+	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/altid/libs/config/types"
 )
 
 type Request struct {
+	Field    string
 	Key      string
 	Prompt   string
 	Defaults interface{}
+	Pick     []string
 }
 
 func Build(req interface{}) ([]*Request, error) {
@@ -21,21 +26,30 @@ func Build(req interface{}) ([]*Request, error) {
 
 	for i := 0; i < t.NumField(); i++ {
 		f := t.FieldByIndex([]int{i})
-		req := &Request{
-			Key:    f.Name,
-			Prompt: string(f.Tag),
+
+		// Not in an altid tag, skip
+		tag := f.Tag.Get("altid")
+		if tag == "" {
+			continue
 		}
 
+		req, err := ParseTag(tag)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Field = f.Name
 		d := reflect.Indirect(s).Field(i)
+
 		switch f.Type.Name() {
+		case "string":
+			req.Defaults = d.String()
 		case "Auth":
 			req.Defaults = d.Interface().(types.Auth)
 		case "Logdir":
 			req.Defaults = d.Interface().(types.Logdir)
 		case "ListenAddress":
 			req.Defaults = d.Interface().(types.ListenAddress)
-		case "string":
-			req.Defaults = d.String()
 		case "int":
 			req.Defaults = d.Interface().(int)
 		case "uint":
@@ -70,4 +84,37 @@ func Build(req interface{}) ([]*Request, error) {
 	}
 
 	return reqs, nil
+}
+
+func ParseTag(tag string) (*Request, error) {
+	r := &Request{}
+
+	// key prompt pick
+	vals, err := csv.NewReader(strings.NewReader(tag)).Read()
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(vals) {
+	case 0:
+		return nil, errors.New("tag contained no values")
+	case 1:
+		r.Key = vals[0]
+		return r, nil
+	}
+
+	for _, val := range vals[1:] {
+		switch {
+		case val == "no_prompt":
+			break
+		case strings.HasPrefix(val, "prompt:"):
+			r.Prompt = strings.TrimPrefix(val, "prompt:")
+		case strings.HasPrefix(val, "pick:"):
+			opts := strings.TrimPrefix(val, "pick:")
+			r.Pick = strings.Split(opts, "|")
+		}
+	}
+
+	r.Key = vals[0]
+	return r, nil
 }
