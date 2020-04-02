@@ -84,7 +84,7 @@ func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service str
 			v.Value = pass
 		case "logdir":
 			v.Value = findLogdir(debug, recs)
-		case "listen_dir":
+		case "listen_address":
 			v.Value = findListen(debug, recs)
 		}
 
