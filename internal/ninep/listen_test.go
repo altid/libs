@@ -38,11 +38,10 @@ func TestListenCommands(t *testing.T) {
 		Args:    []string{"test"},
 	}
 
+	time.Sleep(time.Millisecond * 100)
 	if c.Current() != "test" {
 		t.Error("unable to set buffer with open")
 	}
-
-	time.Sleep(time.Millisecond * 100)
 
 	cmds <- &command.Command{
 		UUID:    c.UUID,
@@ -50,8 +49,6 @@ func TestListenCommands(t *testing.T) {
 		From:    "test",
 		Args:    []string{"test2"},
 	}
-
-	time.Sleep(time.Millisecond * 100)
 
 	cmds <- &command.Command{
 		UUID:    c.UUID,
@@ -61,7 +58,6 @@ func TestListenCommands(t *testing.T) {
 	}
 
 	time.Sleep(time.Millisecond * 100)
-
 	if c.Current() != "test" {
 		t.Error("unable to change buffer")
 	}
@@ -76,10 +72,8 @@ func TestListenCommands(t *testing.T) {
 		From:    "test",
 		Args:    []string{c.Current()},
 	}
-	
-	time.Sleep(time.Millisecond * 100)
-	t.Log(c.Current())
 
+	time.Sleep(time.Millisecond * 100)
 	if c.Current() != "test2" {
 		t.Error("unable to change back to old buffer after close")
 	}

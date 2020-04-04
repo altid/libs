@@ -2,6 +2,7 @@ package ninep
 
 import (
 	"io"
+	"time"
 
 	"github.com/altid/server/command"
 	"github.com/altid/server/tail"
@@ -17,24 +18,19 @@ func (s *service) listenCommands(fp io.WriteCloser) {
 		case command.OtherCmd:
 			go cmd.WriteOut(fp)
 		case command.OpenCmd:
-			c.SetBuffer(cmd.Args[0])
 			go cmd.WriteOut(fp)
+			c.SetBuffer(cmd.Args[0])
 			s.update(cmd.UUID)
 		case command.BufferCmd:
 			c.SetBuffer(cmd.Args[0])
 			s.update(cmd.UUID)
 		case command.CloseCmd:
-			if cmd.Args[0] == c.Current() {
-				if e := c.Previous(); e != nil {
-					c.SetBuffer("none")
-				}
-			}
-
+			go cmd.WriteOut(fp)
+			c.Previous()
 			s.update(cmd.UUID)
-			go cmd.WriteOut(fp)
 		case command.LinkCmd:
-			c.SetBuffer(cmd.Args[1])
 			go cmd.WriteOut(fp)
+			c.SetBuffer(cmd.Args[1])
 			s.update(cmd.UUID)
 		case command.ReloadCmd:
 			// TODO (halfwit): We want to recreate everything but save our client connections
@@ -55,7 +51,9 @@ func (s *service) listenEvents() {
 		case tail.NotifyEvent:
 			t.Alert = true
 		case tail.DocEvent:
+			// This may be useful in the future
 		case tail.FeedEvent:
+			// This may be useful in the future
 		default:
 		}
 
@@ -80,6 +78,10 @@ func (s *service) sendFeeds(e *tail.Event) {
 }
 
 func (s *service) update(uuid uint32) {
-	s.debug("feed update id=\"%d\"", uuid)
-	s.feed.Done(uuid)
+	// Take a short nap before we send EOF
+	// to allow internal changes to proliferate
+	time.AfterFunc(time.Millisecond*50, func() {
+		s.debug("feed update id=\"%d\"", uuid)
+		s.feed.Done(uuid)
+	})
 }
