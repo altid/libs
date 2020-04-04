@@ -13,7 +13,7 @@ type mytype struct {
 
 func TestFiles(t *testing.T) {
 	fp, _ := ioutil.TempFile(os.TempDir(), "test")
-	fp.WriteString("Bunch of test data")
+	fp.WriteString("Bunch of test data\nMaybe make it a few lines\nOf random content")
 
 	m := &mytype{fp.Name()}
 

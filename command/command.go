@@ -14,23 +14,25 @@ type CmdType int
 const (
 	OtherCmd CmdType = iota
 	OpenCmd
-	ReloadCmd
-	BufferCmd
 	CloseCmd
+	BufferCmd
 	LinkCmd
 	QuitCmd
+	ReloadCmd
+	RestartCmd
 )
 
 // There are more possible commands, but these are the only ones
 // the server itself intercepts in any meaningful way
 var items = map[string]CmdType{
-	"open":   OpenCmd,
-	"close":  CloseCmd,
-	"buffer": BufferCmd,
-	"link":   LinkCmd,
-	"quit":   QuitCmd,
-	"reload": ReloadCmd,
-	"other":  OtherCmd,
+	"other":   OtherCmd,
+	"open":    OpenCmd,
+	"close":   CloseCmd,
+	"buffer":  BufferCmd,
+	"link":    LinkCmd,
+	"quit":    QuitCmd,
+	"reload":  ReloadCmd,
+	"restart": RestartCmd,
 }
 
 // Command is a ctl message
@@ -40,29 +42,28 @@ type Command struct {
 	CmdType CmdType
 	// Arguments for known commands, such as buffer/open/close/link
 	Args []string
-	// The raw command bytes
-	Data []byte
+	// The active buffer of the client who sent the command
+	From string
 }
 
 // New - helper func with varargs
 //
-//		cmdChannel <- New(clientuuid, BufferCmd, nil, "newbuffer")
-//		cmdChannel <- New(clientuuid, CloseCmd, nil, "oldbuffer")
-//		cmdChannel <- New(clientuuid, OtherCmd, []byte("emote I swapped buffers"))
-//		cmdChannel <- New(clientuuid, LinkCmd, nil, "newbuffer", "oldbuffer")
+//		cmdChannel <- New(clientuuid, BufferCmd, "somebuffer", "newbuffer")
+//		cmdChannel <- New(clientuuid, CloseCmd, "somebuffer", "oldbuffer")
+//		cmdChannel <- New(clientuuid, LinkCmd, "oldbuffer", "newbuffer")
 //
-func New(uuid uint32, cmdType CmdType, data []byte, args ...string) *Command {
+func New(uuid uint32, cmdType CmdType, from string, args ...string) *Command {
 	return &Command{
 		UUID:    uuid,
 		CmdType: cmdType,
-		Data:    data,
+		From:    from,
 		Args:    args,
 	}
 }
 
 // FromBytes returns a command from byte input, or an error if it was unable to parse
-func FromBytes(uuid uint32, b []byte) (*Command, error) {
-	return FromString(uuid, string(b))
+func FromBytes(uuid uint32, from string, b []byte) (*Command, error) {
+	return FromString(uuid, from, string(b))
 }
 
 // FromString retruns a command from string input, or an error if it was unable to parse
@@ -70,37 +71,29 @@ func FromBytes(uuid uint32, b []byte) (*Command, error) {
 //		cmdChannel <- FromString(clientuuid, "buffer newbuffer")
 //		cmdChannel <- FromString(clientuuid, "link new old")
 //
-func FromString(uuid uint32, s string) (*Command, error) {
+func FromString(uuid uint32, from, s string) (*Command, error) {
 	c := &Command{
+		From: from,
 		UUID: uuid,
-		Data: []byte(s),
 	}
 
 	t := strings.Fields(s)
 
-	var ok bool
-	c.CmdType, ok = items[t[0]]
+	ct, ok := items[t[0]]
 	if !ok {
+		c.Args = t[1:]
 		c.CmdType = OtherCmd
 		return c, nil
 	}
 
+	c.CmdType = ct
+
 	switch c.CmdType {
-	case OpenCmd:
-		return add(c, t, 1)
-	case CloseCmd:
-		return add(c, t, 1)
-	case BufferCmd:
-		return add(c, t, 1)
-	case LinkCmd:
-		return add(c, t, 2)
-	case QuitCmd:
-		return c, nil
-	case ReloadCmd:
-		return c, nil
-	default:
-		panic("should not happen")
+	case OpenCmd, BufferCmd, CloseCmd, LinkCmd:
+		c.Args = t[1:]
 	}
+
+	return c, nil
 }
 
 // WriteOut will write the command correctly to the Writer
@@ -113,7 +106,9 @@ func (c *Command) WriteOut(w io.Writer) error {
 			return errors.New("incorrect arguments to open")
 		}
 
-		fmt.Fprintf(w, "open %s\n", c.Args[0])
+		fmt.Fprintf(w, "open %s %s\n", c.From, c.Args[0])
+	case RestartCmd:
+		return errors.New("restart command not writable. Did you mean service restart?")
 	case ReloadCmd:
 		return errors.New("reload command not writable. Did you mean service reload?")
 	case BufferCmd:
@@ -121,43 +116,24 @@ func (c *Command) WriteOut(w io.Writer) error {
 			return errors.New("incorrect arguments to buffer")
 		}
 
-		fmt.Fprintf(w, "buffer %s\n", c.Args[0])
+		fmt.Fprintf(w, "buffer %s %s\n", c.From, c.Args[0])
 	case CloseCmd:
 		if len(c.Args) != 1 {
 			return errors.New("incorrect arguments to close")
 		}
 
-		fmt.Fprintf(w, "close %s\n", c.Args[0])
+		fmt.Fprintf(w, "close %s %s\n", c.From, c.Args[0])
 	case LinkCmd:
-		if len(c.Args) != 2 {
+		if len(c.Args) != 1 {
 			return errors.New("missing to/from argument pair")
 		}
 
-		fmt.Fprintf(w, "link %s %s\n", c.Args[0], c.Args[1])
+		fmt.Fprintf(w, "link %s %s\n", c.From, c.Args[0])
 	case QuitCmd:
 		fmt.Fprint(w, "quit")
 	default:
-		fmt.Fprintf(w, "%s\n", c.Data)
+		fmt.Fprintf(w, "%s %s %s\n", c.Args[0], c.From, c.Args[1])
 	}
 
 	return nil
-}
-
-func add(c *Command, t []string, count int) (*Command, error) {
-	// don't count the command token, just the args
-	if len(t)-1 != count {
-		return nil, fmt.Errorf("missing argument(s) to command %s", t[0])
-	}
-
-	switch count {
-	// Open, close, buffer take 1 argument
-	// t[0] holds the command name
-	case 1:
-		c.Args = t[1:2]
-	// Link takes 2 arguments
-	case 2:
-		c.Args = t[1:3]
-	}
-
-	return c, nil
 }
