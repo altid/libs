@@ -34,6 +34,7 @@ func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
 		data: buff,
 		size: int64(len(buff)),
 		path: fp,
+		curr: msg.Buffer,
 	}
 
 	return c, nil
@@ -50,6 +51,7 @@ type ctl struct {
 	uuid uint32
 	data []byte
 	path string
+	curr string
 }
 
 func (c *ctl) ReadAt(b []byte, off int64) (n int, err error) {
@@ -76,26 +78,21 @@ func (c *ctl) WriteAt(p []byte, off int64) (int, error) {
 		return 0, err
 	}
 
-	value = value[:len(value)-1]
+	value = strings.TrimSuffix(value, "\n")
 
 	switch cmd {
 	case "refresh":
-		c.cmds <- command.New(c.uuid, command.ReloadCmd, p)
+		c.cmds <- command.New(c.uuid, command.ReloadCmd, c.curr, value)
 	case "buffer":
-		c.cmds <- command.New(c.uuid, command.BufferCmd, p, value)
+		c.cmds <- command.New(c.uuid, command.BufferCmd, c.curr, value)
 	case "close":
-		c.cmds <- command.New(c.uuid, command.CloseCmd, p, value)
+		c.cmds <- command.New(c.uuid, command.CloseCmd, c.curr, value)
 	case "link":
-		t := strings.Fields(value)
-		if len(t) != 2 {
-			return 0, errors.New("link requires two arguments")
-		}
-		c.cmds <- command.New(c.uuid, command.LinkCmd, p, t[0], t[1])
+		c.cmds <- command.New(c.uuid, command.LinkCmd, c.curr, value)
 	case "open":
-		c.cmds <- command.New(c.uuid, command.OpenCmd, p, value)
-
+		c.cmds <- command.New(c.uuid, command.OpenCmd, c.curr, value)
 	default:
-		c.cmds <- command.New(c.uuid, command.OtherCmd, p)
+		c.cmds <- command.New(c.uuid, command.OtherCmd, c.curr, cmd, value)
 	}
 
 	return len(p), nil
