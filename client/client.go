@@ -1,5 +1,9 @@
 package client
 
+import (
+	"errors"
+)
+
 // Client represents a unique client attatched to a server
 // The Aux can be used to store additional data
 type Client struct {
@@ -36,6 +40,20 @@ func (c *Client) SetBuffer(buffer string) {
 	}
 
 	c.current = buffer
+}
+
+// Previous sets the current to the last item in the history
+// if there are no previous buffers, it returns an error
+func (c *Client) Previous() error {
+	length := len(c.history)
+	if length < 1 {
+		return errors.New("previous: client has no history")
+	}
+
+	c.current = c.history[length-1]
+	c.history = c.history[:length-1]
+
+	return nil
 }
 
 // Current returns the client's current buffer

@@ -1,13 +1,13 @@
 package ninep
 
 import (
-	"os"
+	"io"
 
 	"github.com/altid/server/command"
 	"github.com/altid/server/tail"
 )
 
-func (s *service) listenCommands(fp *os.File) {
+func (s *service) listenCommands(fp io.WriteCloser) {
 	defer fp.Close()
 
 	for cmd := range s.command {
@@ -15,33 +15,32 @@ func (s *service) listenCommands(fp *os.File) {
 
 		switch cmd.CmdType {
 		case command.OtherCmd:
-			cmd.WriteOut(fp)
+			go cmd.WriteOut(fp)
 		case command.OpenCmd:
 			c.SetBuffer(cmd.Args[0])
-			cmd.WriteOut(fp)
+			go cmd.WriteOut(fp)
 			s.update(cmd.UUID)
 		case command.BufferCmd:
 			c.SetBuffer(cmd.Args[0])
 			s.update(cmd.UUID)
 		case command.CloseCmd:
-			// Pop back to the last buffer
-			history := c.History()
-			if len(history) < 1 {
-				c.SetBuffer("none")
-			} else {
-				c.SetBuffer(history[len(history)-1])
+			if cmd.Args[0] == c.Current() {
+				if e := c.Previous(); e != nil {
+					c.SetBuffer("none")
+				}
 			}
+
 			s.update(cmd.UUID)
-			cmd.WriteOut(fp)
+			go cmd.WriteOut(fp)
 		case command.LinkCmd:
 			c.SetBuffer(cmd.Args[1])
-			cmd.WriteOut(fp)
+			go cmd.WriteOut(fp)
 			s.update(cmd.UUID)
 		case command.ReloadCmd:
 			// TODO (halfwit): We want to recreate everything but save our client connections
 			// possibly we'll be loading more services, etc
 		case command.QuitCmd:
-			cmd.WriteOut(fp)
+			go cmd.WriteOut(fp)
 		}
 	}
 }
