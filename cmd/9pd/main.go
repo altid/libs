@@ -16,6 +16,8 @@ var dir = flag.String("m", "/tmp/altid", "Path to Altid services")
 var usetls = flag.Bool("t", false, "Use TLS")
 var debug = flag.Bool("d", false, "Debug")
 var chatty = flag.Bool("D", false, "Chatty")
+var cert string
+var key string
 
 func main() {
 	flag.Parse()
@@ -27,8 +29,11 @@ func main() {
 
 	ctx := context.Background()
 
-	cert := ""
-	key := ""
+	if *usetls {
+		cert = ""
+		key = ""
+	}
+
 	// Send all our flags up to the libs
 	// if the build fails there isn't any chance to recover
 	// best approach will be just having the user try again
