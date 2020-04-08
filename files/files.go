@@ -2,12 +2,17 @@ package files
 
 import (
 	"os"
+
+	"github.com/altid/server/internal/command"
+	"github.com/altid/server/internal/message"
+	"github.com/altid/server/internal/routes"
+	"github.com/altid/server/internal/tabs"
 )
 
 // Handler represents calls to a synthetic file
 type Handler interface {
-	Stat(msg *Message) (os.FileInfo, error)
-	Normal(msg *Message) (interface{}, error)
+	Stat(msg *message.Message) (os.FileInfo, error)
+	Normal(msg *message.Message) (interface{}, error)
 }
 
 // Files facilitates access to the functions of the sythetic files
@@ -16,40 +21,21 @@ type Files struct {
 	service string
 }
 
-// Message contains information about which file is being requested
-// The UUID should be set to the client which is requesting the file
-type Message struct {
-	Service string
-	Buffer  string
-	Target  string
-	UUID    uint32
-}
+func NewFiles(dir string, cmd chan *command.Command, tabs *tabs.Manager) *Files {
+	run := make(map[string]Handler)
 
-// Handle listens for calls to its Stat and Normal functions, and returns a stat or os.File
-// Writes and Reads to real files will be rooted at `dir`
-// Many resulting files are synthesized on demand, others map to a real file that may or may not
-// be rooted at the given directory
-// For example, to send a command to open a buffer
-//
-// 		h := Handle("/path/to/my/server")
-//
-//		fp, err := h.Normal("mybuffer", "ctl")
-//		if err != nil {
-//			log.Fatal(err)
-//		}
-//
-//		defer fp.Close()
-//		fp.WriteString("open foo")
-func Handle(dir string) *Files {
+	run["/"] = routes.NewDir()
+	run["/ctl"] = routes.NewCtl(cmd)
+	run["/error"] = routes.NewError()
+	run["/input"] = routes.NewInput()
+	run["/tabs"] = routes.NewTabs(tabs)
+	run["default"] = routes.NewNormal()
+	run["/feed"] = routes.NewFeed()
+
 	return &Files{
 		service: dir,
-		run:     make(map[string]Handler),
+		run: run,
 	}
-}
-
-// Add a Handler to the stack
-func (f *Files) Add(path string, h Handler) {
-	f.run[path] = h
 }
 
 // Stat will synthesize an os.FileInfo (stat) for the named file, if available
@@ -59,7 +45,7 @@ func (f *Files) Stat(buffer, req string, uuid uint32) (os.FileInfo, error) {
 		h = f.run["default"]
 	}
 
-	msg := &Message{
+	msg := &message.Message{
 		Service: f.service,
 		Buffer:  buffer,
 		Target:  req,
@@ -77,7 +63,7 @@ func (f *Files) Normal(buffer, req string, uuid uint32) (interface{}, error) {
 		h = f.run["default"]
 	}
 
-	msg := &Message{
+	msg := &message.Message{
 		Service: f.service,
 		Buffer:  buffer,
 		Target:  req,
