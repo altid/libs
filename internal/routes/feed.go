@@ -2,12 +2,13 @@ package routes
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
 	"sync"
 
-	"github.com/altid/server/files"
+	"github.com/altid/server/internal/message"
 )
 
 // FeedHandler wraps a `feed` file with special blocking read semantics
@@ -48,8 +49,10 @@ func (fh *FeedHandler) Done(uuid uint32) {
 
 // Normal returns a readwritecloser tied to "feed", which tails it
 // until a new file is read by the client
-func (fh *FeedHandler) Normal(msg *files.Message) (interface{}, error) {
+func (fh *FeedHandler) Normal(msg *message.Message) (interface{}, error) {
 	f := &feed{
+		fh:   fh,
+		uuid: msg.UUID,
 		path: path.Join(msg.Service, msg.Buffer, "feed"),
 		buff: path.Join(msg.Service, msg.Buffer),
 	}
@@ -59,7 +62,7 @@ func (fh *FeedHandler) Normal(msg *files.Message) (interface{}, error) {
 }
 
 // Stat returns a normal stat to an underlying feed file
-func (*FeedHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*FeedHandler) Stat(msg *message.Message) (os.FileInfo, error) {
 	return os.Lstat(path.Join(msg.Service, msg.Buffer, "feed"))
 }
 
@@ -87,6 +90,7 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 			return
 		}
 
+		fmt.Println("Tailin'")
 		if err == io.EOF {
 			f.tailing = true
 			f.event = make(chan struct{})
@@ -101,6 +105,7 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 
 	// If the loop is live
 	for range f.event {
+		fmt.Println("Loopin'")
 		n, err = fp.ReadAt(p, off)
 		switch err {
 		case io.EOF:
@@ -112,6 +117,7 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 		}
 	}
 
+	fmt.Println("End of filin'")
 	return 0, io.EOF
 }
 

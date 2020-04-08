@@ -5,14 +5,14 @@ import (
 	"os"
 	"path"
 
-	"github.com/altid/server/files"
+	"github.com/altid/server/internal/message"
 )
 
 type InputHandler struct{}
 
 func NewInput() *InputHandler { return &InputHandler{} }
 
-func (*InputHandler) Normal(msg *files.Message) (interface{}, error) {
+func (*InputHandler) Normal(msg *message.Message) (interface{}, error) {
 	fp := path.Join(msg.Service, msg.Buffer, "input")
 	i := &input{
 		path: fp,
@@ -21,7 +21,7 @@ func (*InputHandler) Normal(msg *files.Message) (interface{}, error) {
 	return i, nil
 }
 
-func (*InputHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*InputHandler) Stat(msg *message.Message) (os.FileInfo, error) {
 	return os.Stat(path.Join(msg.Service, msg.Buffer, "input"))
 }
 

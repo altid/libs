@@ -9,8 +9,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/altid/server/command"
-	"github.com/altid/server/files"
+	"github.com/altid/server/internal/command"
+	"github.com/altid/server/internal/message"
 )
 
 // CtlHandler with access to Command
@@ -20,7 +20,7 @@ type CtlHandler struct {
 
 func NewCtl(cmds chan *command.Command) *CtlHandler { return &CtlHandler{cmds} }
 
-func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
+func (ch *CtlHandler) Normal(msg *message.Message) (interface{}, error) {
 	fp := path.Join(msg.Service, "ctl")
 
 	buff, err := ioutil.ReadFile(fp)
@@ -40,7 +40,7 @@ func (ch *CtlHandler) Normal(msg *files.Message) (interface{}, error) {
 	return c, nil
 }
 
-func (*CtlHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*CtlHandler) Stat(msg *message.Message) (os.FileInfo, error) {
 	return os.Lstat(path.Join(msg.Service, "ctl"))
 }
 

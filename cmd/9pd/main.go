@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"log"
 	"os"
 
 	_ "net/http/pprof"
 
-	"github.com/altid/server/internal/ninep"
+	"github.com/altid/server"
+	"github.com/altid/server/settings"
 )
 
 var factotum = flag.Bool("f", false, "Enable client authentication via a plan9 factotum")
@@ -30,28 +32,30 @@ func main() {
 	ctx := context.Background()
 
 	if *usetls {
-		cert = ""
-		key = ""
+		// TODO(halfwit) config.ServerTLS()
 	}
 
 	// Send all our flags up to the libs
 	// if the build fails there isn't any chance to recover
 	// best approach will be just having the user try again
-	set := ninep.NewSettings(*debug, *chatty, cert, key, *dir, *factotum, *usetls)
-	if e := set.BuildServices(ctx); e != nil {
-		log.Fatal(e)
-	}
+	set := settings.NewSettings(*dir, *factotum, tls.Certificate{})
 
 	// This will error if there are no services running
 	// in the future we may want to facilitate service discovery
 	// during run time
-	srv, err := ninep.NewServer(ctx, set)
-	if err != nil {
-		log.Fatal(err)
-	}
+	srv := server.NewServer(ctx, &service{
+		listen: *dir,
+		chatty: *chatty,
+		tls:    *usetls,
+	})
+	
+	srv.Logger = log.Printf
 
-	if e := srv.Run(); e != nil {
+	if e := srv.Config(set); e != nil {
 		log.Fatal(e)
 	}
 
+	if e := srv.Listen(); e != nil {
+		log.Fatal(e)
+	}
 }

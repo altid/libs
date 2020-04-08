@@ -8,8 +8,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/altid/server/files"
-	"github.com/altid/server/tabs"
+	"github.com/altid/server/internal/message"
+	"github.com/altid/server/internal/tabs"
 )
 
 type TabsHandler struct {
@@ -24,15 +24,11 @@ type tab struct {
 
 func NewTabs(manager *tabs.Manager) *TabsHandler { return &TabsHandler{manager} }
 
-func (th *TabsHandler) Normal(msg *files.Message) (interface{}, error) {
+func (th *TabsHandler) Normal(msg *message.Message) (interface{}, error) {
 	var b bytes.Buffer
 
-	for _, tab := range th.manager.List() {
-		if tab.Alert {
-			b.WriteString("!")
-		}
-
-		fmt.Fprintf(&b, "%s [%d]\n", tab.Name, tab.Unread)
+	for _, t := range th.manager.List() {
+		fmt.Fprintf(&b, "%s\n", t.String())
 	}
 
 	t := &tab{
@@ -43,7 +39,7 @@ func (th *TabsHandler) Normal(msg *files.Message) (interface{}, error) {
 	return t, nil
 }
 
-func (*TabsHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*TabsHandler) Stat(msg *message.Message) (os.FileInfo, error) {
 	return os.Stat(path.Join(msg.Service, "tabs"))
 }
 func (t *tab) ReadAt(p []byte, off int64) (n int, err error) {
