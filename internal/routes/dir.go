@@ -7,7 +7,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/altid/server/files"
+	"github.com/altid/server/internal/message"
 )
 
 type DirHandler struct{}
@@ -22,7 +22,7 @@ type dir struct {
 
 func NewDir() *DirHandler { return &DirHandler{} }
 
-func (*DirHandler) Normal(msg *files.Message) (interface{}, error) {
+func (*DirHandler) Normal(msg *message.Message) (interface{}, error) {
 	c := make(chan os.FileInfo)
 	done := make(chan struct{})
 	fp := path.Join(msg.Service, msg.Buffer)
@@ -53,7 +53,7 @@ func (*DirHandler) Normal(msg *files.Message) (interface{}, error) {
 	return d, nil
 }
 
-func (*DirHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*DirHandler) Stat(msg *message.Message) (os.FileInfo, error) {
 	fp := path.Join(msg.Service, msg.Buffer)
 
 	_, count, err := listDir(msg, fp)
@@ -68,7 +68,7 @@ func (*DirHandler) Stat(msg *files.Message) (os.FileInfo, error) {
 	return d, nil
 }
 
-func listDir(msg *files.Message, fp string) ([]os.FileInfo, int64, error) {
+func listDir(msg *message.Message, fp string) ([]os.FileInfo, int64, error) {
 	var count int64
 
 	list, err := ioutil.ReadDir(fp)
