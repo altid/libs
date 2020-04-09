@@ -66,7 +66,7 @@ func TestWriteOut(t *testing.T) {
 		t.Error("reload should return error on WriteOut")
 	}
 
-	h := New(0, OtherCmd, "foo", "cmd")
+	h := New(0, OtherCmd, "foo", "cmd", "bar")
 	if e := h.WriteOut(ioutil.Discard); e != nil {
 		t.Error(e)
 	}
