@@ -6,7 +6,6 @@ import (
 )
 
 func TestManager(t *testing.T) {
-	// FromFile
 	m, err := FromFile("resources")
 	if err != nil {
 		t.Error(err)
