@@ -47,11 +47,19 @@ jobs:
 
     - name: tabs test
       run: go test -v .
-      working-directory: tabs
+      working-directory: internal/tabs
 
     - name: tail test
       run: go test -v .
-      working-directory: tail
+      working-directory: internal/tail
+    
+    - name: routes test
+      run: go test -v .
+      working-directory: internal/routes
+      
+    - name: commands test
+      run: go test -v .
+      working-directory: internal/command
 
 # Windows builds currently seem broken for go
 #  windows:
@@ -90,11 +98,11 @@ jobs:
 #
 #    - name: tabs test
 #      run: go test -v .
-#      working-directory: tabs
+#      working-directory: internal/tabs
 #
 #    - name: tail test
 #      run: go test -v .
-#      working-directory: tail
+#      working-directory: internal/tail
 
   linux:
     name: Linux tests
@@ -132,8 +140,16 @@ jobs:
 
     - name: tabs test
       run: go test -v .
-      working-directory: tabs
+      working-directory: internal/tabs
 
     - name: tail test
       run: go test -v .
-      working-directory: tail
+      working-directory: internal/tail
+    
+    - name: routes test
+      run: go test -v .
+      working-directory: internal/routes
+      
+    - name: commands test
+      run: go test -v .
+      working-directory: internal/command
