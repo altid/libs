@@ -134,7 +134,7 @@ func (c *Command) WriteOut(w io.Writer) error {
 	case QuitCmd:
 		fmt.Fprintln(w, "quit")
 	default:
-		fmt.Fprintf(w, "%s %s %s\n", c.Args[0], c.From, c.Args[1])
+		fmt.Fprintf(w, "%s %s %s\n", c.Args[0], c.From, strings.Join(c.Args[1:], " "))
 	}
 
 	return nil
