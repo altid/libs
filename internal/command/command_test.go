@@ -33,6 +33,7 @@ func TestFromBytes(t *testing.T) {
 	if c, e := FromBytes(0, "mybuffer", []byte("some other command")); e != nil || c.CmdType != OtherCmd {
 		t.Errorf("from bytes failed on other test %v", e)
 	}
+}
 
 func TestWriteOut(t *testing.T) {
 	a := New(0, LinkCmd, "foo", "bar")
