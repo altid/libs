@@ -2,7 +2,6 @@ package routes
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -90,7 +89,6 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 			return
 		}
 
-		fmt.Println("Tailin'")
 		if err == io.EOF {
 			f.tailing = true
 			f.event = make(chan struct{})
@@ -105,7 +103,6 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 
 	// If the loop is live
 	for range f.event {
-		fmt.Println("Loopin'")
 		n, err = fp.ReadAt(p, off)
 		switch err {
 		case io.EOF:
@@ -117,7 +114,6 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 		}
 	}
 
-	fmt.Println("End of filin'")
 	return 0, io.EOF
 }
 

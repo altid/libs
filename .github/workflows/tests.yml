@@ -48,10 +48,6 @@ jobs:
     - name: tabs test
       run: go test -v .
       working-directory: internal/tabs
-
-    - name: tail test
-      run: go test -v .
-      working-directory: internal/tail
     
     - name: routes test
       run: go test -v .
@@ -99,10 +95,6 @@ jobs:
 #    - name: tabs test
 #      run: go test -v .
 #      working-directory: internal/tabs
-#
-#    - name: tail test
-#      run: go test -v .
-#      working-directory: internal/tail
 
   linux:
     name: Linux tests
@@ -141,10 +133,6 @@ jobs:
     - name: tabs test
       run: go test -v .
       working-directory: internal/tabs
-
-    - name: tail test
-      run: go test -v .
-      working-directory: internal/tail
     
     - name: routes test
       run: go test -v .
