@@ -70,4 +70,9 @@ func TestWriteOut(t *testing.T) {
 	if e := h.WriteOut(ioutil.Discard); e != nil {
 		t.Error(e)
 	}
+
+	i := New(0, OtherCmd, "foo", "bar")
+	if e := i.WriteOut(ioutil.Discard); e != nil {
+		t.Error(e)
+	}
 }
