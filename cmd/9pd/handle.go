@@ -1,35 +1,41 @@
-package ninep
+package main
 
 import (
 	"os"
 	"path"
 
 	"github.com/altid/server/client"
+	"github.com/altid/server/files"
 	"github.com/go9p/styx"
 )
 
 type handler struct {
-	c      *client.Client
-	target string
+	c       *client.Client
+	f       *files.Files
+	basedir string
+	target  string
 }
 
+// TODO: Give server access to the client manager
 func (h *handler) walk() (os.FileInfo, error) {
-	service := h.c.Aux.(*service)
-	return service.files.Stat(h.c.Current(), h.target, uint32(h.c.UUID))
+	return h.f.Stat(h.c.Current(), h.target, uint32(h.c.UUID))
 }
 
 func (h *handler) open() (interface{}, error) {
-	service := h.c.Aux.(*service)
-	return service.files.Normal(h.c.Current(), h.target, uint32(h.c.UUID))
+	return h.f.Normal(h.c.Current(), h.target, uint32(h.c.UUID))
 }
 
 func (h *handler) path() string {
-	service := h.c.Aux.(*service)
-	return path.Join(service.basedir, h.c.Current(), h.target)
+	return path.Join(h.basedir, h.c.Current(), h.target)
 }
 
-func handleReq(c *client.Client, req styx.Request) {
-	h := &handler{c, req.Path()}
+func handleReq(c *client.Client, r *files.Files, req styx.Request, base string) {
+	h := &handler{
+		c:       c,
+		f:       r,
+		basedir: base,
+		target:  req.Path(),
+	}
 
 	switch msg := req.(type) {
 	case styx.Twalk:

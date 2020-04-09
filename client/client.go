@@ -38,6 +38,19 @@ func (c *Client) SetBuffer(buffer string) {
 	c.current = buffer
 }
 
+// Previous sets the current to the last item in the history
+// if there are no previous buffers, it is set to "none"
+func (c *Client) Previous() {
+	length := len(c.history)
+	if length < 1 {
+		c.current = "none"
+		return
+	}
+
+	c.current = c.history[length-1]
+	c.history = c.history[:length-1]
+}
+
 // Current returns the client's current buffer
 func (c *Client) Current() string {
 	return c.current

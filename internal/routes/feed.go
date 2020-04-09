@@ -2,12 +2,13 @@ package routes
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
 	"sync"
 
-	"github.com/altid/server/files"
+	"github.com/altid/server/internal/message"
 )
 
 // FeedHandler wraps a `feed` file with special blocking read semantics
@@ -38,38 +39,37 @@ func (fh *FeedHandler) Send(uuid uint32) {
 // Done sends EOF for any blocking reads to a client on a `feed`
 func (fh *FeedHandler) Done(uuid uint32) {
 	if _, ok := fh.feeds[uuid]; ok {
+		close(fh.feeds[uuid])
+
 		fh.Lock()
 		defer fh.Unlock()
-
-		close(fh.feeds[uuid])
 		delete(fh.feeds, uuid)
 	}
 }
 
 // Normal returns a readwritecloser tied to "feed", which tails it
 // until a new file is read by the client
-func (fh *FeedHandler) Normal(msg *files.Message) (interface{}, error) {
-	event := make(chan struct{})
+func (fh *FeedHandler) Normal(msg *message.Message) (interface{}, error) {
 	f := &feed{
-		event: event,
-		path:  path.Join(msg.Service, msg.Buffer, "feed"),
-		buff:  path.Join(msg.Service, msg.Buffer),
+		fh:   fh,
+		uuid: msg.UUID,
+		path: path.Join(msg.Service, msg.Buffer, "feed"),
+		buff: path.Join(msg.Service, msg.Buffer),
 	}
-
-	// Feed to match this specific client
-	fh.feeds[msg.UUID] = event
 
 	return f, nil
 
 }
 
 // Stat returns a normal stat to an underlying feed file
-func (*FeedHandler) Stat(msg *files.Message) (os.FileInfo, error) {
+func (*FeedHandler) Stat(msg *message.Message) (os.FileInfo, error) {
 	return os.Lstat(path.Join(msg.Service, msg.Buffer, "feed"))
 }
 
 // feed files are special in that they're blocking
 type feed struct {
+	fh      *FeedHandler
+	uuid    uint32
 	tailing bool
 	path    string
 	buff    string
@@ -90,21 +90,34 @@ func (f *feed) ReadAt(p []byte, off int64) (n int, err error) {
 			return
 		}
 
+		fmt.Println("Tailin'")
 		if err == io.EOF {
 			f.tailing = true
+			f.event = make(chan struct{})
+
+			f.fh.Lock()
+			defer f.fh.Unlock()
+			f.fh.feeds[f.uuid] = f.event
 		}
+
 		return n, nil
 	}
 
+	// If the loop is live
 	for range f.event {
+		fmt.Println("Loopin'")
 		n, err = fp.ReadAt(p, off)
-		if err == io.EOF {
+		switch err {
+		case io.EOF:
 			return n, nil
+		case nil:
+			return
+		default:
+			return 0, err
 		}
-
-		return
 	}
 
+	fmt.Println("End of filin'")
 	return 0, io.EOF
 }
 

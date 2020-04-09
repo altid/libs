@@ -58,4 +58,10 @@ func TestManager(t *testing.T) {
 	if len(client1.History()) != 2 || client1.History()[0] != "banana" {
 		t.Error("incorrect history")
 	}
+
+	client1.Previous()
+
+	if client1.Current() != "foo" {
+		t.Error("Unable to return to previous buffer")
+	}
 }
