@@ -93,6 +93,7 @@ func parseEvent(line []byte, name string) *Event {
 	// Find up to service name
 	n := bytes.Index(line, []byte(name))
 	n += len(name)
+
 	line = line[n+1:]
 	line = bytes.TrimSpace(line)
 

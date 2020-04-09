@@ -32,7 +32,7 @@ func (r *runner) item() error {
 	for _, event := range eventlist {
 		r.events <- event
 	}
-
+	
 	r.t.size = hs.Size()
 	return nil
 }
