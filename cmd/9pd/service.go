@@ -6,26 +6,29 @@ import (
 	"log"
 	"os"
 
-	"github.com/altid/server/client"
-	"github.com/altid/server/files"
+	"github.com/altid/server"
 
 	"github.com/go9p/styx"
 )
 
 type service struct {
+	addr   string
 	listen string
 	port   string
 	chatty bool
 	tls    bool
 	log    bool
-	client *client.Manager
 	cert   string
 	key    string
 }
 
-func (s *service) Run(ctx context.Context, r *files.Files) error {
+func (s *service) Address() (string, string) {
+	return s.addr, s.port
+}
+
+func (s *service) Run(ctx context.Context, svc *server.Service) error {
 	t := &styx.Server{
-		Addr: fmt.Sprintf("%s:%s", s.listen, s.port),
+		Addr: fmt.Sprintf("%s:%s", s.addr, s.port),
 	}
 
 	//if s.factotum {
@@ -37,9 +40,11 @@ func (s *service) Run(ctx context.Context, r *files.Files) error {
 	}
 
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
-		c := s.client.Client(0)
+		c := svc.Client.Client(0)
+		c.SetBuffer(svc.Buffer)
+
 		for sess.Next() {
-			handleReq(c, r, sess.Request(), s.listen)
+			handleReq(c, svc.Files, sess.Request(), s.listen)
 		}
 	})
 
@@ -56,4 +61,3 @@ func (s *service) Run(ctx context.Context, r *files.Files) error {
 
 	return nil
 }
-
