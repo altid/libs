@@ -26,7 +26,7 @@ func NewFiles(dir string, cmd chan *command.Command, tabs *tabs.Manager) *Files 
 
 	run["/"] = routes.NewDir()
 	run["/ctl"] = routes.NewCtl(cmd)
-	run["/error"] = routes.NewError()
+	run["/errors"] = routes.NewError()
 	run["/input"] = routes.NewInput()
 	run["/tabs"] = routes.NewTabs(tabs)
 	run["default"] = routes.NewNormal()
