@@ -22,8 +22,8 @@ func (s *Service) listenCommands(fp io.WriteCloser) {
 		case command.CloseCmd:
 			closeCmd(s, cmd, fp)
 		case command.ReloadCmd, command.RestartCmd:
-			// TODO (halfwit): We want to recreate everything but save our client connections
-			// possibly we'll be loading more services, etc
+		// TODO (halfwit): We want to recreate everything but save our client connections
+		// possibly we'll be loading more services, etc
 		case command.QuitCmd:
 			cmd.WriteOut(fp)
 		}
