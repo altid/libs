@@ -9,7 +9,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/altid/server/internal/command"
+	"github.com/altid/server/command"
 	"github.com/altid/server/internal/message"
 )
 
