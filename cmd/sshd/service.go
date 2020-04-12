@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/altid/libs/markup"
 	"github.com/altid/server"
 	"github.com/altid/server/client"
 	"github.com/altid/server/command"
@@ -136,7 +137,7 @@ func (s *service) Run(ctx context.Context, svc *server.Service) error {
 		if err != nil {
 			log.Fatal("failed to handshake: ", err)
 		}
-		
+
 		s.logger("logged in with key %s", conn.Permissions.Extensions["pubkey-fp"])
 		c := svc.Client.Client(0)
 		c.SetBuffer(svc.Default())
@@ -193,9 +194,8 @@ func (s *service) handleChannel(newChannel ssh.NewChannel, c *client.Client) {
 
 	for {
 		line, err := term.ReadLine()
-		if err != nil {
-			// For now
-			log.Fatal(err)
+		if err != nil || len(line) < 1 {
+			continue
 		}
 
 		tokens := strings.Fields(line)
@@ -222,8 +222,40 @@ func (s *service) handleChannel(newChannel ssh.NewChannel, c *client.Client) {
 			time.AfterFunc(time.Millisecond*50, func() {
 				readFeed(target, c.UUID, term, s.svc.Files)
 			})
+		case "/open":
+			target := strings.Join(tokens[1:], " ")
+			s.svc.Commands <- &command.Command{
+				UUID:    c.UUID,
+				CmdType: command.OpenCmd,
+				Args:    []string{target},
+				From:    c.Current(),
+			}
 
+			term.SetPrompt(fmt.Sprintf("%s > ", target))
+			time.AfterFunc(time.Millisecond*50, func() {
+				readFeed(target, c.UUID, term, s.svc.Files)
+			})
+		case "/close": // Case closed!
+			s.svc.Commands <- &command.Command{
+				UUID:    c.UUID,
+				CmdType: command.CloseCmd,
+				From:    c.Current(),
+			}
+
+			time.AfterFunc(time.Millisecond*50, func() {
+				term.SetPrompt(fmt.Sprintf("%s > ", c.Current()))
+				readFeed(c.Current(), c.UUID, term, s.svc.Files)
+			})
 		default:
+			if tokens[0][0] == '/' {
+				s.svc.Commands <- &command.Command{
+					UUID:    c.UUID,
+					CmdType: command.OtherCmd,
+					Args:    tokens,
+					From:    c.Current(),
+				}
+				continue
+			}
 			input(c.Current(), line, c.UUID, s.svc.Files)
 		}
 	}
@@ -253,7 +285,9 @@ func readFeed(buffer string, uuid uint32, term *terminal.Terminal, files *files.
 				return
 			}
 
-			term.Write(b[:n])
+			l := markup.NewLexer(b[:n])
+
+			term.Write(l.Bytes())
 		}
 	}
 }
@@ -301,7 +335,6 @@ func readFile(buffer string, name string, uuid uint32, files *files.Files) []byt
 
 		switch err {
 		case io.EOF:
-			bits.Write(b)
 			return bits.Bytes()
 		case nil:
 			bits.Write(b)
