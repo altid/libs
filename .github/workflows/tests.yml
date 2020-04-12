@@ -55,7 +55,7 @@ jobs:
       
     - name: commands test
       run: go test -v .
-      working-directory: internal/command
+      working-directory: command
 
 # Windows builds currently seem broken for go
 #  windows:
@@ -140,4 +140,4 @@ jobs:
       
     - name: commands test
       run: go test -v .
-      working-directory: internal/command
+      working-directory: command

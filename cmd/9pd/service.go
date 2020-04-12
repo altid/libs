@@ -40,6 +40,7 @@ func (s *service) Run(ctx context.Context, svc *server.Service) error {
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
 		c := svc.Client.Client(0)
 		c.SetBuffer(svc.Default())
+		defer svc.Client.Remove(c.UUID)
 
 		for sess.Next() {
 			handleReq(c, svc.Files, sess.Request(), s.listen)

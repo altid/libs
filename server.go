@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/altid/server/client"
+	"github.com/altid/server/command"
 	"github.com/altid/server/files"
 	"github.com/altid/server/internal/services"
 )
@@ -40,9 +41,10 @@ type Service struct {
 	// Of io.Writer, io.Reader, io.ReaderAt, io.WriterAt, io.Seeker, and any combination therein
 	// Additionally, if the file requested is a directory, a []*os.FileInfo will be returned instead
 	// Stat will return an *os.FileInfo for a given file
-	Files  *files.Files
-	name   string
-	buffer string
+	Files    *files.Files
+	Commands chan *command.Command
+	name     string
+	buffer   string
 }
 
 // NewServer returns a server which watches the event files at `dir`
@@ -83,10 +85,11 @@ func (s *Server) Listen() error {
 			//}
 
 			service := &Service{
-				Client: svc.Client,
-				Files:  svc.Files,
-				name:   svc.Name,
-				buffer: svc.Tabs.Default(),
+				Commands: svc.Command,
+				Client:   svc.Client,
+				Files:    svc.Files,
+				name:     svc.Name,
+				buffer:   svc.Tabs.Default(),
 			}
 
 			err := s.run.Run(s.ctx, service)
@@ -108,7 +111,7 @@ func (s *Server) Listen() error {
 	}
 }
 
-// Default returns a known-good buffer name that can be used to set 
+// Default returns a known-good buffer name that can be used to set
 // a starting buffer for a given client
 //
 // c := client.Client(0)

@@ -3,7 +3,7 @@ package files
 import (
 	"os"
 
-	"github.com/altid/server/internal/command"
+	"github.com/altid/server/command"
 	"github.com/altid/server/internal/message"
 	"github.com/altid/server/internal/routes"
 	"github.com/altid/server/internal/tabs"

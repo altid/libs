@@ -27,6 +27,10 @@ func NewFeed() *FeedHandler {
 
 // Send an event to the feed file specified by the uuid, if one exists
 func (fh *FeedHandler) Send(uuid uint32) {
+	if fh == nil {
+		return
+	}
+
 	fh.Lock()
 	defer fh.Unlock()
 
@@ -37,11 +41,14 @@ func (fh *FeedHandler) Send(uuid uint32) {
 
 // Done sends EOF for any blocking reads to a client on a `feed`
 func (fh *FeedHandler) Done(uuid uint32) {
+	if fh == nil {
+		return
+	}
+
+	fh.Lock()
+	defer fh.Unlock()
 	if _, ok := fh.feeds[uuid]; ok {
 		close(fh.feeds[uuid])
-
-		fh.Lock()
-		defer fh.Unlock()
 		delete(fh.feeds, uuid)
 	}
 }

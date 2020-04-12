@@ -2,12 +2,13 @@ package services
 
 import (
 	"context"
+	"os"
 	"path"
 
 	"github.com/altid/libs/config"
 	"github.com/altid/server/client"
 	"github.com/altid/server/files"
-	"github.com/altid/server/internal/command"
+	"github.com/altid/server/command"
 	"github.com/altid/server/internal/routes"
 	"github.com/altid/server/internal/tabs"
 	"github.com/altid/server/internal/tail"
@@ -56,10 +57,20 @@ func FindServices(ctx context.Context, dir string) (map[string]*Service, error) 
 			Events:  events,
 			Basedir: dir,
 			ctx:     ctx,
+			Debug:   func(string, ...interface{}) {},
 		}
 
 		srv.Files = files.NewFiles(sdir, srv.Command, srv.Tabs)
 		services[entry] = srv
+
+		ctlpath := path.Join(srv.Basedir, srv.Name, "ctl")
+		ctl, err := os.OpenFile(ctlpath, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, err
+		}
+
+		go srv.listenCommands(ctl)
+		go srv.listenEvents()
 	}
 
 	return services, nil
