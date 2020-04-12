@@ -3,7 +3,7 @@ package routes
 import (
 	"testing"
 
-	"github.com/altid/server/internal/command"
+	"github.com/altid/server/command"
 )
 
 // Read and write to ctl
