@@ -1,4 +1,4 @@
-project_name: 9pd
+project_name: server
 before:
   hooks:
     - go mod download
@@ -11,6 +11,15 @@ builds:
   - darwin
   - freebsd
   goarch: 
+  - amd64
+- binary: sshd
+  dir: ./cmd/sshd
+  goos:
+  - linux
+  - windows
+  - darwin
+  -freebsd
+  goarch:
   - amd64
 signs:
   - artifacts: all
