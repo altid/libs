@@ -3,7 +3,9 @@ before:
   hooks:
     - go mod download
 builds:
-- binary: 9pd
+- 
+  id: "9pd"
+  binary: 9pd
   dir: ./cmd/9pd
   goos:
   - linux
@@ -12,8 +14,17 @@ builds:
   - freebsd
   goarch: 
   - amd64
-- binary: sshd
+-
+  id: "sshd"
+  binary: sshd
   dir: ./cmd/sshd
+  goos:
+  - linux
+  - windows
+  - darwin
+  - freebsd
+  goarch:
+  - amd64
 signs:
   - artifacts: all
 archives:
