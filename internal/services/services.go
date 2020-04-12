@@ -7,8 +7,8 @@ import (
 
 	"github.com/altid/libs/config"
 	"github.com/altid/server/client"
-	"github.com/altid/server/files"
 	"github.com/altid/server/command"
+	"github.com/altid/server/files"
 	"github.com/altid/server/internal/routes"
 	"github.com/altid/server/internal/tabs"
 	"github.com/altid/server/internal/tail"
@@ -52,6 +52,7 @@ func FindServices(ctx context.Context, dir string) (map[string]*Service, error) 
 		srv := &Service{
 			Command: make(chan *command.Command),
 			Client:  &client.Manager{},
+			Feed:    routes.NewFeed(),
 			Name:    entry,
 			Tabs:    tabs,
 			Events:  events,
@@ -60,7 +61,7 @@ func FindServices(ctx context.Context, dir string) (map[string]*Service, error) 
 			Debug:   func(string, ...interface{}) {},
 		}
 
-		srv.Files = files.NewFiles(sdir, srv.Command, srv.Tabs)
+		srv.Files = files.NewFiles(sdir, srv.Command, srv.Tabs, srv.Feed)
 		services[entry] = srv
 
 		ctlpath := path.Join(srv.Basedir, srv.Name, "ctl")

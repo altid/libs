@@ -21,7 +21,7 @@ type Files struct {
 	service string
 }
 
-func NewFiles(dir string, cmd chan *command.Command, tabs *tabs.Manager) *Files {
+func NewFiles(dir string, cmd chan *command.Command, tabs *tabs.Manager, feed *routes.FeedHandler) *Files {
 	run := make(map[string]Handler)
 
 	run["/"] = routes.NewDir()
@@ -30,11 +30,11 @@ func NewFiles(dir string, cmd chan *command.Command, tabs *tabs.Manager) *Files 
 	run["/input"] = routes.NewInput()
 	run["/tabs"] = routes.NewTabs(tabs)
 	run["default"] = routes.NewNormal()
-	run["/feed"] = routes.NewFeed()
+	run["/feed"] = feed
 
 	return &Files{
 		service: dir,
-		run: run,
+		run:     run,
 	}
 }
 

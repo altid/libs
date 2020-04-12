@@ -33,6 +33,10 @@ func (s *Service) listenCommands(fp io.WriteCloser) {
 // We need to send feed commands at very least
 func (s *Service) listenEvents() {
 	for e := range s.Events {
+		if e.Name == "." {
+			continue
+		}
+
 		t := s.Tabs.Tab(e.Name)
 		s.Debug("event name=\"%s\" service=\"%s\"", e.Name, e.Service)
 

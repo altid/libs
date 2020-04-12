@@ -136,6 +136,7 @@ func (s *service) Run(ctx context.Context, svc *server.Service) error {
 		if err != nil {
 			log.Fatal("failed to handshake: ", err)
 		}
+		
 		s.logger("logged in with key %s", conn.Permissions.Extensions["pubkey-fp"])
 		c := svc.Client.Client(0)
 		c.SetBuffer(svc.Default())
@@ -233,7 +234,6 @@ func (s *service) Address() (string, string) {
 }
 
 func readFeed(buffer string, uuid uint32, term *terminal.Terminal, files *files.Files) {
-	// ReaderAt
 	var offset int64
 
 	fp, err := files.Normal(buffer, "/feed", uuid)
@@ -255,8 +255,6 @@ func readFeed(buffer string, uuid uint32, term *terminal.Terminal, files *files.
 
 			term.Write(b[:n])
 		}
-
-		time.Sleep(time.Millisecond * 100)
 	}
 }
 

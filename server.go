@@ -71,6 +71,8 @@ func (s *Server) Listen() error {
 	errs := make(chan error)
 
 	for _, svc := range s.services {
+		svc.Debug = s.Logger
+		
 		go func(svc *services.Service) {
 			//addr, port := s.run.Address()
 			//s.Logger("using port %d", port)
