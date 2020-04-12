@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/altid/libs/markup"
 	"github.com/altid/server"
 	"github.com/altid/server/client"
 	"github.com/altid/server/command"
@@ -285,11 +284,7 @@ func readFeed(buffer string, uuid uint32, term *terminal.Terminal, files *files.
 				return
 			}
 
-			l, err := markup.NewLexer(b[:n]).Bytes()
-			if err != nil {
-				return
-			}
-			term.Write(l)
+			term.Write(b[:n])
 		}
 	}
 }
