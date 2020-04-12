@@ -285,9 +285,11 @@ func readFeed(buffer string, uuid uint32, term *terminal.Terminal, files *files.
 				return
 			}
 
-			l := markup.NewLexer(b[:n])
-
-			term.Write(l.Bytes())
+			l, err := markup.NewLexer(b[:n]).Bytes()
+			if err != nil {
+				return
+			}
+			term.Write(l)
 		}
 	}
 }
