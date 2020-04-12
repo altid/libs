@@ -14,13 +14,6 @@ builds:
   - amd64
 - binary: sshd
   dir: ./cmd/sshd
-  goos:
-  - linux
-  - windows
-  - darwin
-  - freebsd
-  goarch:
-  - amd64
 signs:
   - artifacts: all
 archives:
