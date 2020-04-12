@@ -73,7 +73,11 @@ func (t *tail) readlines() ([]*Event, error) {
 		}
 
 		if err == io.EOF {
-			return events, nil
+			if len(line) > 0 {
+				return events, nil
+			}
+
+			return nil, err
 		}
 	}
 }

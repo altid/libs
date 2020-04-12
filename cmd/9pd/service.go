@@ -12,9 +12,7 @@ import (
 )
 
 type service struct {
-	addr   string
 	listen string
-	port   string
 	chatty bool
 	tls    bool
 	log    bool
@@ -23,12 +21,12 @@ type service struct {
 }
 
 func (s *service) Address() (string, string) {
-	return s.addr, s.port
+	return *addr, *port
 }
 
 func (s *service) Run(ctx context.Context, svc *server.Service) error {
 	t := &styx.Server{
-		Addr: fmt.Sprintf("%s:%s", s.addr, s.port),
+		Addr: fmt.Sprintf("%s:%s", *addr, *port),
 	}
 
 	//if s.factotum {
@@ -41,7 +39,8 @@ func (s *service) Run(ctx context.Context, svc *server.Service) error {
 
 	t.Handler = styx.HandlerFunc(func(sess *styx.Session) {
 		c := svc.Client.Client(0)
-		c.SetBuffer(svc.Buffer)
+		c.SetBuffer(svc.Default())
+		defer svc.Client.Remove(c.UUID)
 
 		for sess.Next() {
 			handleReq(c, svc.Files, sess.Request(), s.listen)

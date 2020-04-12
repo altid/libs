@@ -3,7 +3,7 @@ package services
 import (
 	"io"
 
-	"github.com/altid/server/internal/command"
+	"github.com/altid/server/command"
 	"github.com/altid/server/internal/tail"
 )
 
@@ -22,8 +22,8 @@ func (s *Service) listenCommands(fp io.WriteCloser) {
 		case command.CloseCmd:
 			closeCmd(s, cmd, fp)
 		case command.ReloadCmd, command.RestartCmd:
-			// TODO (halfwit): We want to recreate everything but save our client connections
-			// possibly we'll be loading more services, etc
+		// TODO (halfwit): We want to recreate everything but save our client connections
+		// possibly we'll be loading more services, etc
 		case command.QuitCmd:
 			cmd.WriteOut(fp)
 		}
@@ -33,6 +33,10 @@ func (s *Service) listenCommands(fp io.WriteCloser) {
 // We need to send feed commands at very least
 func (s *Service) listenEvents() {
 	for e := range s.Events {
+		if e.Name == "." {
+			continue
+		}
+
 		t := s.Tabs.Tab(e.Name)
 		s.Debug("event name=\"%s\" service=\"%s\"", e.Name, e.Service)
 
