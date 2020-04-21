@@ -60,6 +60,7 @@ func NewServer(ctx context.Context, runner Runner, dir string) (*Server, error) 
 		ctx:      context.Background(),
 		run:      runner,
 		services: services,
+		Logger:   func(string, ...interface{}) {},
 	}
 
 	return s, nil
@@ -72,7 +73,7 @@ func (s *Server) Listen() error {
 
 	for _, svc := range s.services {
 		svc.Debug = s.Logger
-		
+
 		go func(svc *services.Service) {
 			//addr, port := s.run.Address()
 			//s.Logger("using port %d", port)
@@ -93,7 +94,6 @@ func (s *Server) Listen() error {
 				name:     svc.Name,
 				buffer:   svc.Tabs.Default(),
 			}
-
 			err := s.run.Run(s.ctx, service)
 			// TODO: switch on recoverable errors
 			// as we build out the library
