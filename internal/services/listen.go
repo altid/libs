@@ -49,7 +49,6 @@ func (s *Service) listenEvents() {
 		}
 
 		t.Activity()
-
 		go s.sendFeeds(e)
 	}
 }
@@ -75,6 +74,7 @@ func openCmd(s *Service, cmd *command.Command, fp io.Writer) {
 	go cmd.WriteOut(fp)
 
 	c := s.Client.Client(cmd.UUID)
+	s.Debug("open: %s, %s", c.Current(), cmd.Args[0])
 	s.Tabs.Done(c.Current())
 
 	c.SetBuffer(cmd.Args[0])
@@ -98,6 +98,7 @@ func closeCmd(s *Service, cmd *command.Command, fp io.Writer) {
 	go cmd.WriteOut(fp)
 
 	c := s.Client.Client(cmd.UUID)
+	s.Debug("close: %s, %s", c.Current(), cmd.Args[0])
 	s.Tabs.Remove(c.Current())
 
 	c.Previous()
