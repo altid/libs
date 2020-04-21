@@ -104,6 +104,9 @@ func (m *Manager) Done(name string) {
 		tab.refs = 0
 		tab.active = false
 	}
+
+	// When we're done with a tab, we can also zero it
+	tab.unread = 0
 }
 
 // Active incements the count on a named tab
