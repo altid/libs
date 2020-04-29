@@ -148,13 +148,13 @@ func (s *service) Run(ctx context.Context, svc *server.Service) error {
 
 func (s *service) handleChannels(chans <-chan ssh.NewChannel, c *client.Client) {
 	// Service the incoming Channel channel in go routine
+	defer s.svc.Client.Remove(c.UUID)
 	for newChannel := range chans {
 		go s.handleChannel(newChannel, c)
 	}
 }
 
 func (s *service) handleChannel(newChannel ssh.NewChannel, c *client.Client) {
-	defer s.svc.Client.Remove(c.UUID)
 
 	// We don't support the tcp-ip/forwarded or x11
 	if t := newChannel.ChannelType(); t != "session" {
