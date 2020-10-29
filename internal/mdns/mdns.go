@@ -14,6 +14,7 @@ import (
 type Entry struct {
 	Addr    string
 	Name    string
+	Txt     []string
 	Port    int
 	service *zeroconf.Server
 }
@@ -27,6 +28,7 @@ func Register(srv *Entry) error {
 		return err
 	}
 
+	entry.SetText(srv.Txt)
 	srv.service = entry
 	return nil
 }
