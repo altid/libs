@@ -3,11 +3,14 @@ package server
 import (
 	"context"
 	"log"
+	"fmt"
+	"strconv"
 
 	"github.com/altid/server/client"
 	"github.com/altid/server/command"
 	"github.com/altid/server/files"
 	"github.com/altid/server/internal/services"
+	"github.com/altid/server/internal/mdns"
 )
 
 type Runner interface {
@@ -75,17 +78,18 @@ func (s *Server) Listen() error {
 		svc.Debug = s.Logger
 
 		go func(svc *services.Service) {
-			//addr, port := s.run.Address()
-			//s.Logger("using port %d", port)
-			//m := &mdns.Entry{
-			//	Addr: addr,
-			//	Name: svc.name,
-			//	Port: port,
-			//}
+			addr, port := s.run.Address()
+			s.Logger("using port %d", port)
+			pint, _ := strconv.Atoi(port)
+			m := &mdns.Entry{
+				Addr: addr,
+				Name: svc.Name,
+				Port: pint,
+			}
 
-			//if e := mdns.Register(m); e != nil {
-			//	s.Logger("%v", e)
-			//}
+			if e := mdns.Register(m); e != nil {
+				s.Logger("%v", e)
+			}
 
 			service := &Service{
 				Commands: svc.Command,
