@@ -21,14 +21,13 @@ type Entry struct {
 
 // Register adds the service listing to the intranet registry
 func Register(srv *Entry) error {
-	sname := fmt.Sprintf("_%s._tcp", srv.Name)
+	sname := fmt.Sprintf("_%s._altid", srv.Name)
 
-	entry, err := zeroconf.Register("altid", sname, srv.Addr, srv.Port, nil, nil)
+	entry, err := zeroconf.Register("altid", sname, "local.", srv.Port, []string(srv.Txt), nil)
 	if err != nil {
 		return err
 	}
 
-	entry.SetText(srv.Txt)
 	srv.service = entry
 	return nil
 }
