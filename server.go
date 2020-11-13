@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"log"
-	"fmt"
 	"strconv"
 
 	"github.com/altid/server/client"
