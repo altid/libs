@@ -294,7 +294,7 @@ func writetabs(c *Control) error {
 	return c.tabs.Truncate(int64(sb.Len()))
 }
 
-func (c *Control) Errorwriter() (*writer.WriteCloser, error) {
+func (c *Control) ErrorWriter() (*writer.WriteCloser, error) {
 	ep := path.Join(c.rundir, "errors")
 
 	fp, err := os.OpenFile(ep, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)

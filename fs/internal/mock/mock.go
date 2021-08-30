@@ -191,7 +191,7 @@ func (c *Control) pushTab(tabname, doctype string) error {
 	return nil
 }
 
-func (c *Control) Errorwriter() (*writer.WriteCloser, error) {
+func (c *Control) ErrorWriter() (*writer.WriteCloser, error) {
 	w := writer.New(c.Event, os.Stdout, "errors")
 
 	return w, nil

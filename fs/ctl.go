@@ -43,9 +43,15 @@ type runner interface {
 }
 
 type writercloser interface {
-	Errorwriter() (*writer.WriteCloser, error)
+	ErrorWriter() (*writer.WriteCloser, error)
 	FileWriter(string, string) (*writer.WriteCloser, error)
 	ImageWriter(string, string) (*writer.WriteCloser, error)
+}
+
+type readercloser interface {
+	ErrorReader() (*reader.ReadCloser, error)
+	FileReader(string, string) (*reader.ReadCloser, error)
+	ImageReader(string, string) (*reader.ReadCloser, error)
 }
 
 // Control type can be used to manage a running ctl file session
@@ -58,6 +64,7 @@ type Control struct {
 	done   chan struct{}
 	run    runner
 	write  writercloser
+	read   readercloser
 	debug  func(ctlMsg, ...interface{})
 	sync.Mutex
 }
@@ -194,6 +201,11 @@ func (c *Control) Input(buffer string) error {
 	return c.run.Input(c.input, buffer)
 }
 
+// History returns the input history in the named buffer
+func (c *Control) History(buffer string) string {
+	return c.read.FileReader(buffer, "input")
+}
+
 // Event appends the given string to the events file of Control's working directory.
 // Strings cannot contain newlines, tabs, spaces, or control characters.
 // Returns "$service: invalid event $eventmsg" or nil.
@@ -291,7 +303,12 @@ func (c *Control) Notification(buff, from, msg string) error {
 
 // ErrorWriter returns a WriteCloser attached to a services' errors file
 func (c *Control) ErrorWriter() (*writer.WriteCloser, error) {
-	return c.write.Errorwriter()
+	return c.write.ErrorWriter()
+}
+
+// ErrorReader returns a ReadCloser attached to a services' errors output
+func (c *Control) ErrorReader() (*reader.ReadCloser, error) {
+	return c.read.ErrorReader()
 }
 
 // StatusWriter returns a WriteCloser attached to a buffers status file, which will as well send the correct event to the events file
