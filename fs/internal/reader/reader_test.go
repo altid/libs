@@ -20,7 +20,7 @@ func sendData(f *os.File) {
 	f.Close()
 }
 
-func TestReader(t *testing.T) {
+func TestPoller(t *testing.T) {
 	// Make a ctl file
 	// Read from it
 	// Send in goroutine
@@ -29,7 +29,7 @@ func TestReader(t *testing.T) {
 		t.Error(err)
 	}
 
-	rd, err := New(file.Name())
+	rd, err := Poll(file.Name())
 	if err != nil {
 		t.Error(err)
 	}
