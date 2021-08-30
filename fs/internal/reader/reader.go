@@ -7,26 +7,53 @@ import (
 	"time"
 )
 
-// Reader is a simple implementation of tail -f
+type ReadCloser struct {
+	closeFn func(string) error
+	fp	io.ReadCloser
+	buffer	string
+}
+
+func New(closeFn func(string) error, fp io.ReadCloser, buffer string) *ReadCloser {
+	return &ReadCloser{
+		closeFn: closeFn,
+		fp:	 fp,
+		buffer:  buffer,
+	}
+}
+
+func (r *ReadCloser) Read(p []byte) (n int, err error) {
+	return r.fp.Read(b)
+}
+
+func (r *ReadCloser) Close() error {
+	defer r.fp.Close()
+	if e := r.closeFn(r.buffer); e != nil {
+		return e
+	}
+
+	return nil
+}
+
+// Poller is a simple implementation of tail -f
 // It has a relatively slow read cycle of 500ms
-type Reader struct {
+type Poller struct {
 	io.ReadCloser
 }
 
 // New returns a new reader, ready to read from
-func New(name string) (*Reader, error) {
+func Poll(name string) (*Poller, error) {
 	os.MkdirAll(path.Dir(name), 0755)
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
-		return &Reader{}, err
+		return &Poller{}, err
 	}
 	if _, err := f.Seek(0, os.SEEK_END); err != nil {
-		return &Reader{f}, err
+		return &Poller{f}, err
 	}
-	return &Reader{f}, err
+	return &Poller{f}, err
 }
 
-func (r *Reader) Read(p []byte) (n int, err error) {
+func (r *Poller) Read(p []byte) (n int, err error) {
 	for {
 		n, err := r.ReadCloser.Read(p)
 		if n > 0 {
