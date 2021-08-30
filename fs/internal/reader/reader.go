@@ -22,7 +22,7 @@ func New(closeFn func(string) error, fp io.ReadCloser, buffer string) *ReadClose
 }
 
 func (r *ReadCloser) Read(p []byte) (n int, err error) {
-	return r.fp.Read(b)
+	return r.fp.Read(p)
 }
 
 func (r *ReadCloser) Close() error {
