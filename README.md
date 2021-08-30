@@ -1,6 +1,6 @@
 ## Libs
 
-This is a collection of libraries used to create Altid services, servers, and clients,
+This is a collection of libraries used to create Altid services and clients
 in a canonical way.
 
 ### Overview
