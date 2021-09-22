@@ -1,10 +1,10 @@
-package fs
+package service 
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/altid/libs/fs/internal/command"
+	"github.com/altid/libs/service/internal/command"
 )
 
 // ComGroup is a logical grouping of commands
@@ -41,6 +41,9 @@ func FindCommands(b []byte) ([]*Command, error) {
 	}
 
 	for _, cmd := range cl {
+                if cmd.Heading < 0 {
+			return nil, fmt.Errorf("Unable to find a heading for %s", cmd.Name)
+		}
 		c := &Command{
 			Name:        cmd.Name,
 			Description: cmd.Description,
