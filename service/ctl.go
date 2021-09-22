@@ -9,11 +9,10 @@ import (
 	"path"
 	"sync"
 
-	"github.com/altid/libs/fs/input"
-	"github.com/altid/libs/fs/internal/command"
-	"github.com/altid/libs/fs/internal/defaults"
-	"github.com/altid/libs/fs/internal/mock"
-	"github.com/altid/libs/fs/internal/writer"
+	"github.com/altid/libs/service/input"
+	"github.com/altid/libs/service/internal/command"
+	"github.com/altid/libs/service/internal/defaults"
+	"github.com/altid/libs/service/internal/writer"
 )
 
 // Controller is our main type for controlling a session
@@ -75,57 +74,6 @@ const (
 	ctlNotify
 	ctlDefault
 )
-
-// Mock returns a type that can be used for testing services
-// it will track in-memory and behave like a file-backed control
-// It will wait for messages on reqs which act as ctl messages
-// A special message of `input <from> <msg>` will be be sent as input
-// By default it writes to Stdout + Stderr with each WriteCloser
-// If debug is true, all logs will be written to stdout
-func Mock(ctl interface{}, reqs chan string, service string, debug bool) (*Control, error) {
-	manager, ok := ctl.(Manager)
-	if !ok {
-		return nil, errors.New("missing Run/Quit methods on ctl")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-
-	done := make(chan struct{})
-	cmds := make(chan string)
-	errs := make(chan error)
-	t := mock.NewControl(ctx, errs, reqs, cmds, done)
-
-	c := &Control{
-		ctx:    ctx,
-		cancel: cancel,
-		ctl:    manager,
-		done:   make(chan struct{}),
-		req:    cmds,
-		run:    t,
-		write:  t,
-		debug:  func(ctlMsg, ...interface{}) {},
-	}
-
-	input, ok := ctl.(input.Handler)
-	if ok {
-		c.input = input
-	}
-
-	if debug {
-		c.debug = ctlLogger
-	}
-
-	cmdlist := command.DefaultCommands
-	cmdlist = append(cmdlist, &command.Command{
-		Name:        service,
-		Args:        []string{"<quit|restart|reload>"},
-		Heading:     command.ServiceGroup,
-		Description: "Control the lifecycle of a service",
-	})
-
-	t.SetCommands(cmdlist...)
-
-	return c, nil
-}
 
 // New sets up a ready-to-listen ctl file
 // logdir is the directory to store copies of the contents of files created; specifically doctype. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
