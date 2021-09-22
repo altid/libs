@@ -11,14 +11,21 @@ import (
 
 	"github.com/altid/libs/service/input"
 	"github.com/altid/libs/service/internal/command"
-	"github.com/altid/libs/service/internal/defaults"
-	"github.com/altid/libs/service/internal/writer"
+	"github.com/altid/libs/service/internal/control"
+	"github.com/altid/libs/service/internal/store"
 )
 
 // Controller is our main type for controlling a session
 type Controller interface {
 	Manager
 	input.Handler
+}
+
+// Listener instantiates a network server, listening for incoming clients
+type Listener interface {
+	Start() error
+	// This almost certainly will change
+	Quit()
 }
 
 // Manager wraps all interactions with the `ctl` file
@@ -36,15 +43,14 @@ type runner interface {
 	CreateBuffer(string, string) error
 	DeleteBuffer(string, string) error
 	HasBuffer(string, string) bool
-	Listen() error
 	Remove(string, string) error
 	Notification(string, string, string) error
 }
 
 type writercloser interface {
-	Errorwriter() (*writer.WriteCloser, error)
-	FileWriter(string, string) (*writer.WriteCloser, error)
-	ImageWriter(string, string) (*writer.WriteCloser, error)
+	Errorwriter() (*store.WriteCloser, error)
+	FileWriter(string, string) (*store.WriteCloser, error)
+	ImageWriter(string, string) (*store.WriteCloser, error)
 }
 
 // Control type can be used to manage a running ctl file session
@@ -56,6 +62,7 @@ type Control struct {
 	input  input.Handler
 	done   chan struct{}
 	run    runner
+	host   Listener	
 	write  writercloser
 	debug  func(ctlMsg, ...interface{})
 	sync.Mutex
@@ -80,7 +87,7 @@ const (
 // mtpt is the directory to create the file system in
 // service is the subdirectory inside mtpt for the runtime fs
 // This will return an error if a ctl file exists at the given directory, or if doctype is invalid.
-func New(ctl interface{}, logdir, mtpt, service, doctype string, debug bool) (*Control, error) {
+func New(ctl interface{}, listener Listeneer, logdir, mtpt, service, doctype string, debug bool) (*Control, error) {
 	if doctype != "document" && doctype != "feed" {
 		return nil, fmt.Errorf("unknown doctype: %s", doctype)
 	}
@@ -90,49 +97,44 @@ func New(ctl interface{}, logdir, mtpt, service, doctype string, debug bool) (*C
 		return nil, errors.New("ctl missing Run/Quit method(s)")
 	}
 
-	rundir := path.Join(mtpt, service)
+	var tab []string
 
-	if _, e := os.Stat(path.Join(rundir, "ctl")); os.IsNotExist(e) {
-		var tab []string
+	req := make(chan string)
+	ctx, cancel := context.WithCancel(context.Background())
+	rtc := control.New(ctx, rundir, logdir, doctype, tab, req)
 
-		req := make(chan string)
-		ctx, cancel := context.WithCancel(context.Background())
-		rtc := defaults.NewControl(ctx, rundir, logdir, doctype, tab, req)
-
-		c := &Control{
-			ctx:    ctx,
-			cancel: cancel,
-			req:    req,
-			done:   make(chan struct{}),
-			run:    rtc,
-			ctl:    manager,
-			write:  rtc,
-			debug:  func(ctlMsg, ...interface{}) {},
-		}
-
-		if debug {
-			c.debug = ctlLogger
-		}
-
-		// Some services don't use input
-		input, ok := ctl.(input.Handler)
-		if ok {
-			c.input = input
-		}
-
-		cmdlist := command.DefaultCommands
-		cmdlist = append(cmdlist, &command.Command{
-			Name:        service,
-			Args:        []string{"<quit|restart|reload>"},
-			Heading:     command.ServiceGroup,
-			Description: "Control the lifecycle of a service",
-		})
-
-		rtc.SetCommands(cmdlist...)
-		return c, nil
+	c := &Control{
+		ctx:    ctx,
+		cancel: cancel,
+		req:    req,
+		done:   make(chan struct{}),
+		run:    rtc,
+		host:	listener,
+		ctl:    manager,
+		write:  rtc,
+		debug:  func(ctlMsg, ...interface{}) {},
 	}
 
-	return nil, fmt.Errorf("Control file already exist at %s", rundir)
+	if debug {
+		c.debug = ctlLogger
+	}
+
+	// Some services don't use input
+	input, ok := ctl.(input.Handler)
+	if ok {
+		c.input = input
+	}
+
+	cmdlist := command.DefaultCommands
+	cmdlist = append(cmdlist, &command.Command{
+		Name:        service,
+		Args:        []string{"<quit|restart|reload>"},
+		Heading:     command.ServiceGroup,
+		Description: "Control the lifecycle of a service",
+	})
+
+	rtc.SetCommands(cmdlist...)
+	return c, nil
 }
 
 // Input starts an input file in the named buffer
@@ -185,10 +187,8 @@ func (c *Control) Remove(buffer, filename string) error {
 	return c.run.Remove(buffer, filename)
 }
 
-// Listen creates a file named "ctl" inside RunDirectory, after making sure the directory exists
-// Any text written to the ctl file will be parsed, line by line.
-// Messages handled internally are as follows: open (or join), close (or part), and quit, which causes Listen() to return.
-// This will return an error if we're unable to create the ctlfile itself, and will log any error relating to control messages.
+// Listen starts a network listener for incoming clients
+// It istantiates a 9p fileserver 
 func (c *Control) Listen() error {
 	go dispatch(c)
 
@@ -238,38 +238,38 @@ func (c *Control) Notification(buff, from, msg string) error {
 }
 
 // ErrorWriter returns a WriteCloser attached to a services' errors file
-func (c *Control) ErrorWriter() (*writer.WriteCloser, error) {
+func (c *Control) ErrorWriter() (*store.WriteCloser, error) {
 	return c.write.Errorwriter()
 }
 
 // StatusWriter returns a WriteCloser attached to a buffers status file, which will as well send the correct event to the events file
-func (c *Control) StatusWriter(buffer string) (*writer.WriteCloser, error) {
+func (c *Control) StatusWriter(buffer string) (*store.WriteCloser, error) {
 	return c.write.FileWriter(buffer, "status")
 }
 
 // SideWriter returns a WriteCloser attached to a buffers `aside` file, which will as well send the correct event to the events file
-func (c *Control) SideWriter(buffer string) (*writer.WriteCloser, error) {
+func (c *Control) SideWriter(buffer string) (*store.WriteCloser, error) {
 	return c.write.FileWriter(buffer, "aside")
 }
 
 // NavWriter returns a WriteCloser attached to a buffers nav file, which will as well send the correct event to the events file
-func (c *Control) NavWriter(buffer string) (*writer.WriteCloser, error) {
+func (c *Control) NavWriter(buffer string) (*store.WriteCloser, error) {
 	return c.write.FileWriter(buffer, "navi")
 }
 
 // TitleWriter returns a WriteCloser attached to a buffers title file, which will as well send the correct event to the events file
-func (c *Control) TitleWriter(buffer string) (*writer.WriteCloser, error) {
+func (c *Control) TitleWriter(buffer string) (*store.WriteCloser, error) {
 	return c.write.FileWriter(buffer, "title")
 }
 
 // ImageWriter returns a WriteCloser attached to a named file in the buffers' image directory
-func (c *Control) ImageWriter(buffer, resource string) (*writer.WriteCloser, error) {
+func (c *Control) ImageWriter(buffer, resource string) (*store.WriteCloser, error) {
 	return c.write.ImageWriter(buffer, resource)
 
 }
 
 // MainWriter returns a WriteCloser attached to a buffers feed/document function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file
-func (c *Control) MainWriter(buffer, doctype string) (*writer.WriteCloser, error) {
+func (c *Control) MainWriter(buffer, doctype string) (*store.WriteCloser, error) {
 	return c.write.FileWriter(buffer, doctype)
 }
 
@@ -280,7 +280,6 @@ func (c *Control) Context() context.Context {
 }
 
 func dispatch(c *Control) {
-	// TODO: wrap with waitgroups
 	// If close is requested on a file which is currently being opened, cancel open request
 	// If open is requested on file which already exists, no-op
 	ew, err := c.write.Errorwriter()
@@ -315,7 +314,7 @@ func dispatch(c *Control) {
 	}
 }
 
-func serviceCommand(c *Control, cmd *Command, ew *writer.WriteCloser) {
+func serviceCommand(c *Control, cmd *Command, ew *store.WriteCloser) {
 	switch cmd.Args[0] {
 	case "quit":
 		defer c.cancel()

@@ -8,3 +8,7 @@ Create an input per client connect
  - Instead of having an input on the service like we have, attach it to the buffer and pass the handler over to it
  - This obviates the range and fuckiness around that
 
+input per client means that it's attached to a given buffer
+instead of attempting to write inputs and only target the given one 
+much cleaner.
+ctl file per client too

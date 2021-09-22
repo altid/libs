@@ -1,4 +1,4 @@
-package defaults
+package control 
 
 import (
 	"bufio"
@@ -16,11 +16,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/altid/libs/fs/input"
-	"github.com/altid/libs/fs/internal/command"
-	"github.com/altid/libs/fs/internal/reader"
-	"github.com/altid/libs/fs/internal/util"
-	"github.com/altid/libs/fs/internal/writer"
+	"github.com/altid/libs/service/input"
+	"github.com/altid/libs/service/internal/command"
+	"github.com/altid/libs/service/internal/reader"
+	"github.com/altid/libs/service/internal/util"
+	"github.com/altid/libs/service/internal/writer"
 )
 
 type Control struct {
@@ -45,7 +45,7 @@ type tab struct {
 	input  io.ReadCloser
 }
 
-func NewControl(ctx context.Context, r, l, d string, t []string, req chan string) *Control {
+func New(ctx context.Context, r, l, d string, t []string, req chan string) *Control {
 	var tablist []*tab
 
 	if _, err := os.Stat(r); os.IsNotExist(err) {
@@ -79,6 +79,7 @@ func NewControl(ctx context.Context, r, l, d string, t []string, req chan string
 	}
 }
 
+// TODO: This should background RunInput 
 func (c *Control) Input(handler input.Handler, buffer string) error {
 	for _, t := range c.tablist {
 		if t.name == buffer {
