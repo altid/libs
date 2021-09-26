@@ -188,7 +188,6 @@ func (c *Control) Remove(buffer, filename string) error {
 }
 
 // Listen starts a network listener for incoming clients
-// It istantiates a 9p fileserver 
 func (c *Control) Listen() error {
 	go dispatch(c)
 
@@ -265,7 +264,6 @@ func (c *Control) TitleWriter(buffer string) (*store.WriteCloser, error) {
 // ImageWriter returns a WriteCloser attached to a named file in the buffers' image directory
 func (c *Control) ImageWriter(buffer, resource string) (*store.WriteCloser, error) {
 	return c.write.ImageWriter(buffer, resource)
-
 }
 
 // MainWriter returns a WriteCloser attached to a buffers feed/document function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file

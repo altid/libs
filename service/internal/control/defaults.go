@@ -20,7 +20,7 @@ import (
 	"github.com/altid/libs/service/internal/command"
 	"github.com/altid/libs/service/internal/reader"
 	"github.com/altid/libs/service/internal/util"
-	"github.com/altid/libs/service/internal/writer"
+	"github.com/altid/libs/service/internal/store"
 )
 
 type Control struct {
@@ -48,6 +48,7 @@ type tab struct {
 func New(ctx context.Context, r, l, d string, t []string, req chan string) *Control {
 	var tablist []*tab
 
+	// TODO: Just use the store instead of this
 	if _, err := os.Stat(r); os.IsNotExist(err) {
 		os.MkdirAll(r, 0755)
 	}
@@ -141,6 +142,7 @@ func (c *Control) Cleanup() {
 	os.RemoveAll(c.rundir)
 }
 
+// TODO: This becomes a store operation alone
 func (c *Control) CreateBuffer(name, doctype string) error {
 	if name == "" {
 		return fmt.Errorf("no buffer name given")
@@ -295,46 +297,19 @@ func writetabs(c *Control) error {
 	return c.tabs.Truncate(int64(sb.Len()))
 }
 
-func (c *Control) Errorwriter() (*writer.WriteCloser, error) {
+func (c *Control) Errorwriter() (*store.WriteCloser, error) {
 	ep := path.Join(c.rundir, "errors")
-
-	fp, err := os.OpenFile(ep, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-
-		return nil, err
-	}
-
-	w := writer.New(c.Event, fp, "errors")
+	w := store.New(c.Event, ep, "errors")
 
 	return w, nil
 }
 
-func (c *Control) FileWriter(buffer, doctype string) (*writer.WriteCloser, error) {
-	doc := path.Join(c.rundir, buffer, doctype)
-	if doctype == "feed" {
-		fp, err := os.OpenFile(doc, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-
-			return nil, err
-		}
-
-		w := writer.New(c.Event, fp, doc)
-
-		return w, nil
-	}
-
-	// Abuse truncation semantics of Create so we clear any old data
-	fp, err := os.Create(doc)
-	if err != nil {
-		return nil, err
-	}
-
-	w := writer.New(c.Event, fp, doc)
-
+func (c *Control) FileWriter(buffer, doctype string) (*store.WriteCloser, error) {
+	w := store.New(c.Event, buffer, doc)
 	return w, nil
 }
 
-func (c *Control) ImageWriter(buffer, resource string) (*writer.WriteCloser, error) {
+func (c *Control) ImageWriter(buffer, resource string) (*store.WriteCloser, error) {
 	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
 	return c.FileWriter(buffer, path.Join("images", resource))
 }

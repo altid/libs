@@ -1,0 +1,26 @@
+[1]:
+Rework input handling
+[ ] Remove need for input:foo:message disambiguation
+[ ] Create an input per client connect
+
+[2]:
+Remove file-based checks
+[ ] Create a method to create buffers
+[ ] Create method on our cache for buffers existing
+
+[3]: requires [2]
+Use in-memory file storage intsead of on-disk interface
+[x] Remove Mock/Default
+[ ] Encrypt cache, etc?
+[ ] Cleanup just cleans up our cache if we have to use it 
+
+[4]: requires [1] [2] [5]
+Export listeners over 9p instead of on-disk
+[ ] Create a ctl per client connect 
+[ ] Pass a tabs handler on client connect 
+[ ] Listen or Start to run all the commands
+
+[5]: requires [1] [2] [3] [4]
+Each service listens on the network 
+[ ] Add 9p listening logic
+
