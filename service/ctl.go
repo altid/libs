@@ -40,9 +40,9 @@ type runner interface {
 	BuildCommand(string) (*command.Command, error)
 	Event(string) error
 	Input(input.Handler, string) error
-	CreateBuffer(string, string) error
-	DeleteBuffer(string, string) error
-	HasBuffer(string, string) bool
+	CreateBuffer(string) error
+	DeleteBuffer(string) error
+	HasBuffer(string) bool
 	Remove(string, string) error
 	Notification(string, string, string) error
 }
@@ -83,14 +83,9 @@ const (
 )
 
 // New sets up a ready-to-listen ctl file
-// logdir is the directory to store copies of the contents of files created; specifically doctype. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
-// mtpt is the directory to create the file system in
-// service is the subdirectory inside mtpt for the runtime fs
-// This will return an error if a ctl file exists at the given directory, or if doctype is invalid.
-func New(ctl interface{}, listener Listeneer, logdir, mtpt, service, doctype string, debug bool) (*Control, error) {
-	if doctype != "document" && doctype != "feed" {
-		return nil, fmt.Errorf("unknown doctype: %s", doctype)
-	}
+// logdir is the directory to store the contents written to the main element of a buffer. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
+// This will return an error if a ctl file exists at the given directory
+func New(ctl interface{}, listener Listener, logdir string, debug bool) (*Control, error) {
 
 	manager, ok := ctl.(Manager)
 	if !ok {
@@ -101,7 +96,7 @@ func New(ctl interface{}, listener Listeneer, logdir, mtpt, service, doctype str
 
 	req := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
-	rtc := control.New(ctx, rundir, logdir, doctype, tab, req)
+	rtc := control.New(ctx, rundir, logdir, tab, req)
 
 	c := &Control{
 		ctx:    ctx,
@@ -152,8 +147,7 @@ func (c *Control) Event(eventmsg string) error {
 	return c.run.Event(eventmsg)
 }
 
-// Cleanup removes created symlinks and removes the main dir
-// On plan9, it unbinds any file named 	"document" or "feed", prior to removing the directory itself.
+// Cleanup flushes anything pending to logs, and disconnects any remaining clients
 func (c *Control) Cleanup() {
 	c.debug(ctlCleanup)
 	c.run.Cleanup()
@@ -161,24 +155,24 @@ func (c *Control) Cleanup() {
 }
 
 // CreateBuffer creates a buffer of given name, as well as symlinking your file as follows:
-// `os.Symlink(path.Join(logdir, name), path.Join(rundir, name, doctype))`
+// `os.Symlink(path.Join(logdir, name), path.Join(rundir, name))`
 // This logged file will persist across reboots
 // Calling CreateBuffer on a directory that already exists will return nil
-func (c *Control) CreateBuffer(name, doctype string) error {
-	c.debug(ctlCreate, name, doctype)
-	return c.run.CreateBuffer(name, doctype)
+func (c *Control) CreateBuffer(name string) error {
+	c.debug(ctlCreate, name)
+	return c.run.CreateBuffer(name)
 }
 
 // DeleteBuffer unlinks a document/buffer, and cleanly removes the directory
 // Will return an error if it's unable to unlink on plan9, or if the remove fails.
-func (c *Control) DeleteBuffer(name, doctype string) error {
+func (c *Control) DeleteBuffer(namestring) error {
 	c.debug(ctlDelete, name)
-	return c.run.DeleteBuffer(name, doctype)
+	return c.run.DeleteBuffer(name)
 }
 
 // HasBuffer returns whether or not a buffer is present in the current control session
-func (c *Control) HasBuffer(name, doctype string) bool {
-	return c.run.HasBuffer(name, doctype)
+func (c *Control) HasBuffer(name string) bool {
+	return c.run.HasBuffer(name) 
 }
 
 // Remove removes a buffer from the runtime dir. If the buffer doesn't exist, this is a no-op
@@ -266,9 +260,9 @@ func (c *Control) ImageWriter(buffer, resource string) (*store.WriteCloser, erro
 	return c.write.ImageWriter(buffer, resource)
 }
 
-// MainWriter returns a WriteCloser attached to a buffers feed/document function to set the contents of a given buffers' document or feed file, which will as well send the correct event to the events file
-func (c *Control) MainWriter(buffer, doctype string) (*store.WriteCloser, error) {
-	return c.write.FileWriter(buffer, doctype)
+// MainWriter returns a WriteCloser attached to a buffer's main output
+func (c *Control) MainWriter(buffer) (*store.WriteCloser, error) {
+	return c.write.FileWriter(buffer)
 }
 
 // Context returns the underlying context of the service
@@ -349,10 +343,7 @@ func ctlLogger(msg ctlMsg, args ...interface{}) {
 	case ctlCleanup:
 		l.Println("cleanup: ending")
 	case ctlCreate:
-		l.Printf("create: buffer=\"%s\" doctype=%s\n", args[0], args[1])
-	case ctlDelete:
-		l.Printf("delete: buffer=\"%s\"\n", args[0])
-	case ctlRemove:
+		l.Printf("create: buffer=\"%s\" args[0])
 		l.Printf("remove: buffer=\"%s\", filename=\"%s\"\n", args[0], args[1])
 	case ctlStart:
 		l.Printf("%s: starting\n", args[0])
