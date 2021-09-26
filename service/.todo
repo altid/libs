@@ -24,3 +24,8 @@ Export listeners over 9p instead of on-disk
 Each service listens on the network 
 [ ] Add 9p listening logic
 
+[6]:
+Change to use main buffer instead of feed/document
+[ ] Rename usage across libs/
+[ ] Rename usage across clients
+
