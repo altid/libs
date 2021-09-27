@@ -11,7 +11,7 @@ import (
 	"github.com/altid/libs/config/internal/entry"
 	"github.com/altid/libs/config/internal/request"
 	"github.com/altid/libs/config/internal/util"
-	"github.com/altid/libs/fs"
+	"github.com/altid/libs/service"
 	"github.com/mischief/ndb"
 )
 
@@ -92,7 +92,7 @@ func Create(requests interface{}, service, configFile string, debug bool) error 
 	case err == nil:
 		debugLog("fixing config file")
 	case os.IsNotExist(err):
-		dir, err := fs.UserConfDir()
+		dir, err := service.UserConfDir()
 		if err != nil {
 			return err
 		}
