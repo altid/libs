@@ -2,17 +2,18 @@
 Rework input handling
 [ ] Remove need for input:foo:message disambiguation
 [ ] Create an input per client connect
+[ ] If clients attempt to write when no input handler is present, return error message
 
-[2]:
+[2]: requires [6]
 Remove file-based checks
-[ ] Create a method to create buffers
-[ ] Create method on our cache for buffers existing
+[x] Create a method to create buffers
+[x] Create method on our cache for buffers existing
 
 [3]: requires [2]
-Use in-memory file storage intsead of on-disk interface
+Use in-memory file storage instead of on-disk interface
 [x] Remove Mock/Default
 [ ] Encrypt cache, etc?
-[ ] Cleanup just cleans up our cache if we have to use it 
+[ ] Cleanup just cleans up our cache if we have to use it, and disconnects any pending clients 
 
 [4]: requires [1] [2] [5]
 Export listeners over 9p instead of on-disk
@@ -26,6 +27,8 @@ Each service listens on the network
 
 [6]:
 Change to use main buffer instead of feed/document
-[ ] Rename usage across libs/
-[ ] Rename usage across clients
+[x] Rename usage across libs/
 
+[7]:
+Remove events file!
+[ ] No longer update data on events file

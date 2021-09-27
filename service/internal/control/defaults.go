@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -16,26 +15,35 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/altid/libs/markdown"
 	"github.com/altid/libs/service/input"
 	"github.com/altid/libs/service/internal/command"
-	"github.com/altid/libs/service/internal/reader"
-	"github.com/altid/libs/service/internal/util"
-	"github.com/altid/libs/service/internal/store"
 )
 
 type Control struct {
-	event   *os.File
-	tabs    *os.File
-	errors  *os.File
+	tabs    *memfs.File
+	errors  *memfs.File
 	cmdlist []*command.Command
-	scanner *bufio.Scanner
 	done    chan struct{}
 	rundir  string
 	logdir  string
-	doctype string
+	store	*memfs.FS
 	tablist []*tab
-	req     chan string
 	ctx     context.Context
+}
+
+type WriteCloser struct {
+	store *memfs.FS
+	file *memfs.FS
+	path string
+}
+
+func (w *WriteCloser) Write(b []byte) (int, error) {
+	return len(b), w.store.Write(path, b)
+}
+
+func (w *WriteCloser) Close() error {
+	return nil
 }
 
 type tab struct {
@@ -45,17 +53,22 @@ type tab struct {
 	input  io.ReadCloser
 }
 
-func New(ctx context.Context, r, l, d string, t []string, req chan string) *Control {
+func New(ctx context.Context, r, l, d string, t []string) *Control {
 	var tablist []*tab
 
-	// TODO: Just use the store instead of this
-	if _, err := os.Stat(r); os.IsNotExist(err) {
-		os.MkdirAll(r, 0755)
+	data := memfs.New()
+
+	// We have to write data to our files before start
+	if e := data.WriteFile("/errors", []byte(""), 0755); e != nil {
+		log.Fatal(e)
 	}
 
-	ef, _ := os.OpenFile(path.Join(r, "event"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	tf, _ := os.OpenFile(path.Join(r, "tabs"), os.O_CREATE|os.O_WRONLY, 0644)
-	ew, _ := os.OpenFile(path.Join(r, "errors"), os.O_CREATE|os.O_WRONLY, 0644)
+	if e := data.WriteFile("/tabs", []byte(""), 0755); e != nil {
+		log.Fatal(e)
+	}
+
+	tf, _ := data.Open("tabs")
+	ew, _ := data.Open("errors")
 
 	for _, name := range t {
 		tctx, cancel := context.WithCancel(ctx)
@@ -70,41 +83,17 @@ func New(ctx context.Context, r, l, d string, t []string, req chan string) *Cont
 		ctx:     ctx,
 		done:    make(chan struct{}),
 		rundir:  r,
-		event:   ef,
 		errors:  ew,
 		logdir:  l,
-		doctype: d,
 		tabs:    tf,
+		store:   data,
 		tablist: tablist,
-		req:     req,
 	}
 }
 
-// TODO: This should background RunInput 
-func (c *Control) Input(handler input.Handler, buffer string) error {
-	for _, t := range c.tablist {
-		if t.name == buffer {
-			if t.input != nil {
-				return errors.New("input already started")
-			}
-
-			fp := path.Join(c.rundir, buffer, "input")
-			rd, err := reader.New(fp)
-			if err != nil {
-				return err
-			}
-
-			t.input = rd
-			return util.RunInput(t.ctx, buffer, handler, rd, c.errors)
-		}
-	}
-
-	return errors.New("Input called on buffer before creation")
-}
-
-func (c *Control) Event(eventmsg string) error {
-	_, err := c.event.WriteString(eventmsg + "\n")
-	return err
+func (c *Control) Input(handler input.Handler, buffer string, payload byte[]) error {
+	l := markup.Lexer(payload)
+	return handler.Handle(c, l)
 }
 
 func (c *Control) SetCommands(cmd ...*command.Command) error {
@@ -123,7 +112,7 @@ func (c *Control) BuildCommand(cmd string) (*command.Command, error) {
 
 func (c *Control) Cleanup() {
 	if runtime.GOOS == "plan9" {
-		glob := path.Join(c.rundir, "*", c.doctype)
+		glob := path.Join(c.rundir, "*")
 
 		files, err := filepath.Glob(glob)
 		if err != nil {
@@ -137,91 +126,28 @@ func (c *Control) Cleanup() {
 	}
 
 	c.tabs.Close()
-	c.event.Close()
 	c.errors.Close()
 	os.RemoveAll(c.rundir)
 }
 
-// TODO: This becomes a store operation alone
-func (c *Control) CreateBuffer(name, doctype string) error {
-	if name == "" {
-		return fmt.Errorf("no buffer name given")
-	}
-
-	fp := path.Join(c.rundir, name)
-	d := path.Join(fp, doctype)
-
-	if _, e := os.Stat(fp); e != nil && !os.IsNotExist(e) {
-		return e
-	}
-
-	if e := os.MkdirAll(fp, 0755); e != nil {
-		return e
-	}
-
-	if e := ioutil.WriteFile(d, []byte("Welcome!\n"), 0644); e != nil {
-		return e
-	}
-
-	if e := c.pushTab(name); e != nil {
-		return e
-	}
-
-	// If there is no log, we're done otherwise create symlink
-	if c.logdir == "none" {
-		return nil
-	}
-
-	logfile := path.Join(c.logdir, name)
-
-	return util.Symlink(logfile, d)
+func (c *Control) CreateBuffer(name string) error {
+	c.pushTab(name)
+	return c.store.MkdirAll(name,  0777)
+}
+ 
+// TODO: Remove from store
+func (c *Control) DeleteBuffer(name string) error {
+	c.popTab(name)
+	c.store.Remove(name)
 }
 
-func (c *Control) DeleteBuffer(name, doctype string) error {
-	if c.logdir != "none" {
-		d := path.Join(c.rundir, name, doctype)
-		if e := util.Unlink(d); e != nil {
-			return e
-		}
-	}
-
-	defer os.RemoveAll(path.Join(c.rundir, name))
-
-	return c.popTab(name)
-}
-
-func (c *Control) HasBuffer(name, doctype string) bool {
-	d := path.Join(c.rundir, name, doctype)
-
-	if _, e := os.Stat(d); os.IsNotExist(e) {
-		return false
-	}
-
-	return true
-}
-
-func (c *Control) Listen() error {
-	if e := c.setup(); e != nil {
-		return e
-	}
-
-	c.Event(path.Join(c.rundir, "ctl"))
-	if e := c.listen(); e != nil {
-		return e
-	}
-
-	return nil
+func (c *Control) HasBuffer(name string) bool {
+	return c.store.HasBuffer(name)
 }
 
 func (c *Control) Remove(buffer, filename string) error {
 	doc := path.Join(c.rundir, buffer, filename)
-	// Don't try to delete that which isn't there
-	if _, e := os.Stat(doc); os.IsNotExist(e) {
-		return nil
-	}
-
-	c.Event(doc)
-	return os.Remove(doc)
+	return c.store.Remove(doc)
 }
 
 func (c *Control) Notification(buff, from, msg string) error {
@@ -237,7 +163,6 @@ func (c *Control) Notification(buff, from, msg string) error {
 
 	defer f.Close()
 
-	c.Event(nfile)
 	fmt.Fprintf(f, "%s\n%s\n", from, msg)
 
 	return nil
@@ -290,72 +215,22 @@ func writetabs(c *Control) error {
 		return e
 	}
 
-	if e := c.Event(path.Join(c.rundir, "tabs")); e != nil {
-		return e
-	}
-
 	return c.tabs.Truncate(int64(sb.Len()))
 }
 
-func (c *Control) Errorwriter() (*store.WriteCloser, error) {
+func (c *Control) Errorwriter() (*WriteCloser, error) {
 	ep := path.Join(c.rundir, "errors")
-	w := store.New(c.Event, ep, "errors")
+	w := c.store.New(c.Event, ep, "errors")
 
 	return w, nil
 }
 
-func (c *Control) FileWriter(buffer, doctype string) (*store.WriteCloser, error) {
-	w := store.New(c.Event, buffer, doc)
+func (c *Control) FileWriter(buffer(*WriteCloser, error) {
+	w := c.store.New(c.Event, buffer)
 	return w, nil
 }
 
-func (c *Control) ImageWriter(buffer, resource string) (*store.WriteCloser, error) {
+func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
 	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
 	return c.FileWriter(buffer, path.Join("images", resource))
-}
-
-func (c *Control) setup() error {
-	if e := os.MkdirAll(c.rundir, 0755); e != nil {
-		return e
-	}
-
-	cfile := path.Join(c.rundir, "ctl")
-	c.Event(cfile)
-
-	ctl, err := os.Create(cfile)
-	if err != nil {
-		return err
-	}
-
-	if e := command.PrintCtlFile(c.cmdlist, ctl); e != nil {
-		return e
-	}
-
-	ctl.Close()
-
-	r, err := reader.Cmd(c.rundir)
-	if err != nil {
-		return err
-	}
-
-	c.scanner = bufio.NewScanner(r)
-
-	return nil
-}
-
-func (c *Control) listen() error {
-	defer close(c.req)
-
-	for c.scanner.Scan() {
-		select {
-		case <-c.ctx.Done():
-			return nil
-		case <-c.done:
-			return nil
-		default:
-			c.req <- c.scanner.Text()
-		}
-	}
-
-	return nil
 }
