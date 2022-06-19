@@ -8,8 +8,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/altid/libs/listener"
 	"github.com/altid/libs/service/input"
-        "github.com/altid/libs/service/internal/listener"
 	"github.com/altid/libs/service/internal/command"
 	"github.com/altid/libs/service/internal/control"
 )
@@ -27,8 +27,8 @@ type Control struct {
 	ctl    Manager
 	input  input.Handler
 	done   chan struct{}
-	run    *control.Control 
-	host   *listener.Listener	
+	run    *control.Control
+	listener   *listener.Listener
 	store  *control.Store
 	debug  func(ctlMsg, ...interface{})
 }
@@ -49,7 +49,7 @@ const (
 // New sets up a ready-to-listen ctl file
 // logdir is the directory to store the contents written to the main element of a buffer. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
 // This will return an error if a ctl file exists at the given directory
-func New(ctl interface{}, logdir string, debug bool) (*Control, error) {
+func New(ctl interface{}, listener *Listener, logdir string, debug bool) (*Control, error) {
 
 	manager, ok := ctl.(Manager)
 	if !ok {
@@ -61,19 +61,15 @@ func New(ctl interface{}, logdir string, debug bool) (*Control, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	rtc := control.New(ctx, logdir, req)
 
-	host := &listen.Listener{
-
-	}
-
 	c := &Control{
 		ctx:    ctx,
 		cancel: cancel,
 		req:    req,
 		done:   make(chan struct{}),
 		run:    rtc,
-		host:	listener,
+		listener:	listener,
 		ctl:    manager,
-		store:  rtc.Store(), 
+		store:  rtc.Store(),
 		debug:  func(ctlMsg, ...interface{}) {},
 	}
 
