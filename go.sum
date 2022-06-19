@@ -1,11 +1,19 @@
 9fans.net/go v0.0.2 h1:RYM6lWITV8oADrwLfdzxmt8ucfW6UtP9v1jg4qAbqts=
 9fans.net/go v0.0.2/go.mod h1:lfPdxjq9v8pVQXUMBCx5EO5oLXWQFlKRQgs1kEkjoIM=
+aqwari.net/retry v0.0.0-20180428204214-1281ce5d8df0 h1:BeD6U5TNwhMWxeydyi5xqpaNZx1MWl5QTcW4w7Mxf+Y=
+aqwari.net/retry v0.0.0-20180428204214-1281ce5d8df0/go.mod h1:XSNyyoM+OSg3vRmROPrS1lEpV7q/I9J1HAKMMxdUkU4=
 github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEet03Pg2g16Swow4=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
+github.com/google/go-cmp v0.5.4 h1:L8R9j+yAqZuZjsqh/z+F1NCffTKKLShY6zXTItVIZ8M=
+github.com/google/go-cmp v0.5.4/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/gofuzz v1.1.0 h1:Hsa8mG0dQ46ij8Sl2AYJDUv1oA9/d6Vk+3LG99Oe02g=
 github.com/google/gofuzz v1.1.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/grandcat/zeroconf v1.0.0 h1:uHhahLBKqwWBV6WZUDAT71044vwOTL+McW0mBJvo6kE=
 github.com/grandcat/zeroconf v1.0.0/go.mod h1:lTKmG1zh86XyCoUeIHSA4FJMBwCJiQmGfcP2PdzytEs=
+github.com/halfwit/memfs v0.0.0-20211009205739-ddde462d8152 h1:cjd5xCnU4UDdEc9G32cTF11pev/L5qyqj/5HwOJIeFw=
+github.com/halfwit/memfs v0.0.0-20211009205739-ddde462d8152/go.mod h1:2SNfxn6D6h1xez7NJWTIKx9IljfhWu2Cs0jZRbhqbCM=
+github.com/halfwit/styx v0.1.0 h1:+hNpUERygzI42A7V7R0ashxYLLjThw71U/vCzj6M63Q=
+github.com/halfwit/styx v0.1.0/go.mod h1:Q3EQoZvqJqfEdhC76pznoPj4yDkwRUpR0Xildwhb60A=
 github.com/miekg/dns v1.1.27 h1:aEH/kqUzUxGJ/UHcEKdJY+ugH6WEzsEBBSPa8zuy1aM=
 github.com/miekg/dns v1.1.27/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/mischief/ndb v0.0.0-20131219140803-a27299009a40 h1:ip5r+E7C1yo2glg9M2mzsI498AxAGXgIX9hfBbeVjJQ=
@@ -31,3 +39,4 @@ golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/tools v0.0.0-20191216052735-49a3e744a425/go.mod h1:TB2adYChydJhpapKDTa4BR/hXlZSLoq2Wpct/0txZ28=
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
+golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=

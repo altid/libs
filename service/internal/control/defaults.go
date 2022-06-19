@@ -1,9 +1,7 @@
 package control 
 
 import (
-	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,9 +13,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/altid/libs/markdown"
+	"github.com/altid/libs/markup"
 	"github.com/altid/libs/service/input"
 	"github.com/altid/libs/service/internal/command"
+	"github.com/halfwit/memfs"
 )
 
 type Control struct {
@@ -39,7 +38,7 @@ type WriteCloser struct {
 }
 
 func (w *WriteCloser) Write(b []byte) (int, error) {
-	return len(b), w.store.Write(path, b)
+	return len(b), w.store.Write(w.path, b)
 }
 
 func (w *WriteCloser) Close() error {
@@ -91,8 +90,8 @@ func New(ctx context.Context, r, l, d string, t []string) *Control {
 	}
 }
 
-func (c *Control) Input(handler input.Handler, buffer string, payload byte[]) error {
-	l := markup.Lexer(payload)
+func (c *Control) Input(handler input.Handler, buffer string, payload []byte) error {
+	l := markup.NewLexer(payload)
 	return handler.Handle(c, l)
 }
 
@@ -225,12 +224,12 @@ func (c *Control) Errorwriter() (*WriteCloser, error) {
 	return w, nil
 }
 
-func (c *Control) FileWriter(buffer(*WriteCloser, error) {
+func (c *Control) FileWriter(buffer string) (*WriteCloser, error) {
 	w := c.store.New(c.Event, buffer)
 	return w, nil
 }
 
 func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
 	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
-	return c.FileWriter(buffer, path.Join("images", resource))
+	return c.FileWriter(buffer)
 }
