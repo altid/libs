@@ -50,7 +50,7 @@ func TestWriters(t *testing.T) {
 		}
 
 		mw.Write([]byte("test"))
-		mw.Write([]byte("input:foo:There is no spood"))
+		mw.Write([]byte("input:foo:There is no spoon"))
 		mw.Close()
 		reqs <- "test quit"
 	}()
