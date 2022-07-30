@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
 
-	"github.com/altid/libs/listener"
 	"github.com/altid/libs/service/input"
+	"github.com/altid/libs/service/listener"
 	"github.com/altid/libs/service/internal/command"
 	"github.com/altid/libs/service/internal/control"
 )
@@ -28,8 +27,7 @@ type Control struct {
 	input  input.Handler
 	done   chan struct{}
 	run    *control.Control
-	listener   *listener.Listener
-	store  *control.Store
+	listener listener.Listener
 	debug  func(ctlMsg, ...interface{})
 }
 
@@ -49,7 +47,7 @@ const (
 // New sets up a ready-to-listen ctl file
 // logdir is the directory to store the contents written to the main element of a buffer. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
 // This will return an error if a ctl file exists at the given directory
-func New(ctl interface{}, listener *Listener, logdir string, debug bool) (*Control, error) {
+func New(ctl interface{}, listener listener.Listener, logdir string, debug bool) (*Control, error) {
 
 	manager, ok := ctl.(Manager)
 	if !ok {
@@ -59,18 +57,17 @@ func New(ctl interface{}, listener *Listener, logdir string, debug bool) (*Contr
 
 	req := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
-	rtc := control.New(ctx, logdir, req)
+	rtc := control.New(ctx, logdir, "", "", nil)
 
 	c := &Control{
-		ctx:    ctx,
-		cancel: cancel,
-		req:    req,
-		done:   make(chan struct{}),
-		run:    rtc,
+		ctx:        ctx,
+		cancel:     cancel,
+		req:        req,
+		done:       make(chan struct{}),
+		run:        rtc,
 		listener:	listener,
-		ctl:    manager,
-		store:  rtc.Store(),
-		debug:  func(ctlMsg, ...interface{}) {},
+		ctl:        manager,
+		debug:      func(ctlMsg, ...interface{}) {},
 	}
 
 	if debug {
@@ -85,7 +82,7 @@ func New(ctl interface{}, listener *Listener, logdir string, debug bool) (*Contr
 
 	cmdlist := command.DefaultCommands
 	cmdlist = append(cmdlist, &command.Command{
-		Name:        service,
+		Name:        "test", //service,
 		Args:        []string{"<quit|restart|reload>"},
 		Heading:     command.ServiceGroup,
 		Description: "Control the lifecycle of a service",
@@ -113,7 +110,7 @@ func (c *Control) CreateBuffer(name string) error {
 
 // DeleteBuffer unlinks a document/buffer, and cleanly removes the directory
 // Will return an error if it's unable to unlink on plan9, or if the remove fails.
-func (c *Control) DeleteBuffer(namestring) error {
+func (c *Control) DeleteBuffer(name string) error {
 	c.debug(ctlDelete, name)
 	return c.run.DeleteBuffer(name)
 }
@@ -131,7 +128,7 @@ func (c *Control) Remove(buffer, filename string) error {
 
 // Listen starts a network listener for incoming clients
 func (c *Control) Listen() error {
-	go dispatch(c)
+//	go dispatch(c)
 
 	c.debug(ctlStart, "listen")
 	return c.listener.Listen()
@@ -155,11 +152,11 @@ func (c *Control) SetCommands(cmd ...*Command) error {
 			return errors.New("Unsupported or nil Heading set")
 		}
 	}
-
+/*
 	if e := setCommands(c.run, cmd...); e != nil {
 		return e
 	}
-
+*/
 	return nil
 }
 
@@ -177,40 +174,40 @@ func (c *Control) Notification(buff, from, msg string) error {
 	c.debug(ctlNotify, buff, from, msg)
 	return c.run.Notification(buff, from, msg)
 }
-
+/*
 // ErrorWriter returns a WriteCloser attached to a services' errors file
 func (c *Control) ErrorWriter() (*control.WriteCloser, error) {
-	return c.store.Errorwriter()
+	return c.run.Errorwriter()
 }
 
 // StatusWriter returns a WriteCloser attached to a buffers status file
 func (c *Control) StatusWriter(buffer string) (*control.WriteCloser, error) {
-	return c.store.FileWriter(buffer, "status")
+	return c.run.FileWriter(buffer, "status")
 }
 
 // SideWriter returns a WriteCloser attached to a buffers `aside` file
 func (c *Control) SideWriter(buffer string) (*control.WriteCloser, error) {
-	return c.store.FileWriter(buffer, "aside")
+	return c.run.FileWriter(buffer, "aside")
 }
 
 // NavWriter returns a WriteCloser attached to a buffers nav file
 func (c *Control) NavWriter(buffer string) (*control.WriteCloser, error) {
-	return c.store.FileWriter(buffer, "navi")
+	return c.run.FileWriter(buffer, "navi")
 }
 
 // TitleWriter returns a WriteCloser attached to a buffers title file
 func (c *Control) TitleWriter(buffer string) (*control.WriteCloser, error) {
-	return c.store.FileWriter(buffer, "title")
+	return c.run.FileWriter(buffer, "title")
 }
 
 // ImageWriter returns a WriteCloser attached to a named file in the buffers' image directory
 func (c *Control) ImageWriter(buffer, resource string) (*control.WriteCloser, error) {
-	return c.store.ImageWriter(buffer, resource)
+	return c.run.ImageWriter(buffer, resource)
 }
 
 // MainWriter returns a WriteCloser attached to a buffer's main output
-func (c *Control) MainWriter(buffer) (*control.WriteCloser, error) {
-	return c.store.FileWriter(buffer)
+func (c *Control) MainWriter(buffer string) (*control.WriteCloser, error) {
+	return c.run.FileWriter(buffer, "main")
 }
 
 // Context returns the underlying context of the service
@@ -222,7 +219,7 @@ func (c *Control) Context() context.Context {
 func dispatch(c *Control) {
 	// If close is requested on a file which is currently being opened, cancel open request
 	// If open is requested on file which already exists, no-op
-	ew, err := c.store.Errorwriter()
+	ew, err := c.run.Errorwriter()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -253,7 +250,7 @@ func dispatch(c *Control) {
 		}
 	}
 }
-
+*/
 func serviceCommand(c *Control, cmd *Command, ew *control.WriteCloser) {
 	switch cmd.Args[0] {
 	case "quit":
@@ -289,7 +286,7 @@ func ctlLogger(msg ctlMsg, args ...interface{}) {
 	case ctlCleanup:
 		l.Println("cleanup: ending")
 	case ctlCreate:
-		l.Printf("create: buffer=\"%s\" args[0])
+		l.Printf("create: buffer=\"%s\"", args[0])
 		l.Printf("remove: buffer=\"%s\", filename=\"%s\"\n", args[0], args[1])
 	case ctlStart:
 		l.Printf("%s: starting\n", args[0])

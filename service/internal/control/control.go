@@ -1,9 +1,12 @@
-package control 
+package control
 
 import (
+	//"bytes"
 	"context"
+	//"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -11,7 +14,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strings"
 
 	"github.com/altid/libs/markup"
 	"github.com/altid/libs/service/input"
@@ -37,11 +39,11 @@ type WriteCloser struct {
 	path string
 }
 
-func (w *WriteCloser) Write(b []byte) (int, error) {
-	return len(b), w.store.Write(w.path, b)
+func (w WriteCloser) Write(b []byte) (int, error) {
+	return len(b), w.store.WriteFile(w.path, b, fs.ModeAppend)
 }
 
-func (w *WriteCloser) Close() error {
+func (w WriteCloser) Close() error {
 	return nil
 }
 
@@ -78,13 +80,23 @@ func New(ctx context.Context, r, l, d string, t []string) *Control {
 		})
 	}
 
+	err, ok := ew.(*memfs.File)
+	if !ok {
+		log.Fatal("Could not create ErrorWriter")
+	}
+
+	tabs, ok := tf.(*memfs.File)
+	if !ok {
+		log.Fatal("Could not create TabWriter")
+	}
+
 	return &Control{
 		ctx:     ctx,
 		done:    make(chan struct{}),
 		rundir:  r,
-		errors:  ew,
+		errors:  err,
 		logdir:  l,
-		tabs:    tf,
+		tabs:    tabs,
 		store:   data,
 		tablist: tablist,
 	}
@@ -92,7 +104,7 @@ func New(ctx context.Context, r, l, d string, t []string) *Control {
 
 func (c *Control) Input(handler input.Handler, buffer string, payload []byte) error {
 	l := markup.NewLexer(payload)
-	return handler.Handle(c, l)
+	return handler.Handle(c.rundir, l)
 }
 
 func (c *Control) SetCommands(cmd ...*command.Command) error {
@@ -130,18 +142,19 @@ func (c *Control) Cleanup() {
 }
 
 func (c *Control) CreateBuffer(name string) error {
-	c.pushTab(name)
+	//c.pushTab(name)
 	return c.store.MkdirAll(name,  0777)
 }
  
 // TODO: Remove from store
 func (c *Control) DeleteBuffer(name string) error {
-	c.popTab(name)
-	c.store.Remove(name)
+	//c.popTab(name)
+	return c.store.Remove(name)
 }
 
 func (c *Control) HasBuffer(name string) bool {
-	return c.store.HasBuffer(name)
+	//return c.ctx.HasBuffer(name)
+	return false
 }
 
 func (c *Control) Remove(buffer, filename string) error {
@@ -166,7 +179,7 @@ func (c *Control) Notification(buff, from, msg string) error {
 
 	return nil
 }
-
+/*
 func (c *Control) popTab(tabname string) error {
 	for n := range c.tablist {
 		if c.tablist[n].name == tabname {
@@ -200,7 +213,7 @@ func (c *Control) pushTab(tabname string) error {
 }
 
 func writetabs(c *Control) error {
-	var sb strings.Builder
+	var sb bytes.Buffer
 
 	for _, tab := range c.tablist {
 		sb.WriteString(tab.name + "\n")
@@ -210,7 +223,7 @@ func writetabs(c *Control) error {
 		return e
 	}
 
-	if _, e := c.tabs.WriteString(sb.String()); e != nil {
+	if _, e := c.tabs.Write(sb.Bytes()); e != nil {
 		return e
 	}
 
@@ -224,12 +237,21 @@ func (c *Control) Errorwriter() (*WriteCloser, error) {
 	return w, nil
 }
 
-func (c *Control) FileWriter(buffer string) (*WriteCloser, error) {
-	w := c.store.New(c.Event, buffer)
-	return w, nil
+func (c *Control) FileWriter(buffer, target string) (*WriteCloser, error) {
+	w, err := c.store.Open(buffer)
+	if err != nil {
+		return nil, err
+	}
+	wc, ok := w.(WriteCloser)
+	if ! ok {
+		return nil, errors.New("Unable to open file")
+	}
+
+	return &wc, nil
 }
 
 func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
 	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
-	return c.FileWriter(buffer)
+	return c.FileWriter(buffer, resource)
 }
+*/

@@ -96,7 +96,7 @@ func (c *Command) Bytes() []byte {
 }
 
 // Conversion functions for our internal command type
-func setCommands(r runner, cmds ...*Command) error {
+func setCommands(cmds ...*Command) error {
 	// Parse into command structure and set
 	var cmdlist []*command.Command
 
@@ -112,6 +112,6 @@ func setCommands(r runner, cmds ...*Command) error {
 
 		cmdlist = append(cmdlist, c)
 	}
-
-	return r.SetCommands(cmdlist...)
+	return nil
+	//return cmd.SetCommands(cmdlist...)
 }
