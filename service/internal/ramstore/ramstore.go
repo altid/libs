@@ -124,7 +124,15 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	return f.offset, nil
 }
 
+func (f *File) InUse() bool {
+	return len(f.streams) > 0 || !f.closed
+}
+
 func (f *File) Close() error {
+	if len(f.streams) > 0 {
+		return fmt.Errorf("Attempted to close a file with active streams")
+	}
+
 	f.closed = true
 	return nil
 }
