@@ -124,6 +124,17 @@ func TestStream(t *testing.T) {
 	}
 
 NEXT:
+	d, err := f.Stream()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if e := f.Close(); e == nil {
+		t.Error("Able to close with active streams")
+	}
+	
+	d.Close();
+
 	if e := f.Close(); e != nil {
 		t.Error(e)
 	}

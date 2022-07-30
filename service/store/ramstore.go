@@ -20,7 +20,7 @@ func NewRamStorage() *RamStore {
 func (rm *RamStore) List() ([]string) {
 	var list []string
 	for _, file := range rm.files {
-		list = append(list, file.path)
+		list = append(list, file.Path())
 	}
 
 	return list
@@ -43,12 +43,8 @@ func (rm *RamStore) Delete(path string) error {
 		return fmt.Errorf("No file exists at path %s", path)
 	}
 
-	if !f.closed {
-		return fmt.Errorf("Attempting to delete an open file")
-	}
-
-	if len(f.streams) > 0 {
-		return fmt.Errorf("Attempting to delete a file with active streams")
+	if f.InUse() {
+		return fmt.Errorf("Attempting to delete an active file")
 	}
 
 	delete(rm.files, path)

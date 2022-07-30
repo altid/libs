@@ -44,4 +44,6 @@ type File interface {
 	Stream() (io.ReadCloser, error)
 	// Path returns the internal pathname of the File
 	Path() string
+	// InUse returns whether the file is open and/or has active streams
+	InUse() bool
 }
