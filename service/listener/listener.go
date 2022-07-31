@@ -18,8 +18,3 @@ type Listener interface {
 	// Register accepts a Storage, and associates a datatset with the Listener session
 	Register(store.Filer) error
 }
-
-// TODO: This moves out into a more appropriate "Store" item.
-
-
-
