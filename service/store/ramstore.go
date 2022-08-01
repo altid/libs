@@ -6,7 +6,7 @@ import (
 	"github.com/altid/libs/service/internal/ramstore"
 )
 
-// RamStor is a type that implements Filer as an in-memory data store
+// RamStore is a type that implements Filer as an in-memory data store
 type RamStore struct {
 	files map[string]*ramstore.File
 }

@@ -1,6 +1,9 @@
 package store
 
-import "io"
+import (
+	"io"
+	"io/fs"
+)
 
 // Lister returns an array of paths available on the storage
 // These can be accessed with an Open command, given the same path
@@ -42,6 +45,8 @@ type File interface {
 	// Each call to stream will get a copy of what has been written to the file
 	// All further reads will block until there is new data, or Close() is called
 	Stream() (io.ReadCloser, error)
-	// Path returns the internal pathname of the File
+	// Name returns the internal pathname of the File
 	Path() string
+	// Stat returns a FileInfo for the File, useful with some listener implementations
+	Stat() (fs.FileInfo, error)
 }

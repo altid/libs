@@ -3,6 +3,9 @@ package ramstore
 import (
 	"fmt"
 	"io"
+	"io/fs"
+	"os"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -41,6 +44,7 @@ type File struct {
 	offset	int64
 	closed  bool
 	streams map[string]*Stream
+	modTime time.Time
 }
 
 func Open(path string) *File {
@@ -62,6 +66,7 @@ func (f *File) Read(b []byte) (n int, err error) {
 		return 0, fmt.Errorf("Attempted to read on closed file")
 	}
 
+	f.modTime = time.Now()
 	n = copy(b, f.data)
 
 	f.offset += int64(n)
@@ -95,6 +100,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 	f.data = append(f.data, p...)
 	n = len(p)
 	f.offset += int64(n)
+	f.modTime = time.Now()
 
 	return n, nil
 }
@@ -165,4 +171,46 @@ func (f *File) Stream() (io.ReadCloser, error) {
 
 func (f *File) Path() string {
 	return f.path
+}
+
+func (f *File) Stat() (fs.FileInfo, error) {
+	if f.closed {
+		return nil, fmt.Errorf("Attempted stat on closed file")
+	}
+
+	fi := FileInfo{
+		file: f,
+		sys: nil,
+	}
+
+	return fi, nil
+}
+
+type FileInfo struct {
+	file *File
+	sys  interface{}
+}
+
+func (fi FileInfo) Name() string {
+	return fi.file.path
+}
+
+func (fi FileInfo) Size() int64 {
+	return int64(len(fi.file.data))
+}
+
+func (fi FileInfo) IsDir() bool {
+	return false
+}
+
+func (fi FileInfo) ModTime() time.Time {
+	return fi.file.modTime
+}
+
+func (fi FileInfo) Mode() os.FileMode {
+	return os.ModeAppend
+}
+
+func (fi FileInfo) Sys() interface{} {
+	return fi.sys
 }
