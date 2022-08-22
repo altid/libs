@@ -58,11 +58,11 @@ func New(ctx context.Context, r, l, d string, t []string) *Control {
 	data := memfs.New()
 
 	// We have to write data to our files before start
-	if e := data.WriteFile("/errors", []byte(""), 0755); e != nil {
+	if e := data.WriteFile("errors", []byte(""), 0755); e != nil {
 		log.Fatal(e)
 	}
 
-	if e := data.WriteFile("/tabs", []byte(""), 0755); e != nil {
+	if e := data.WriteFile("tabs", []byte(""), 0755); e != nil {
 		log.Fatal(e)
 	}
 
@@ -106,10 +106,7 @@ func (c *Control) Input(handler input.Handler, buffer string, payload []byte) er
 }
 
 func (c *Control) SetCommands(cmd ...*command.Command) error {
-	for _, comm := range cmd {
-		c.cmdlist = append(c.cmdlist, comm)
-	}
-
+	c.cmdlist = append(c.cmdlist, cmd...)
 	sort.Sort(command.CmdList(c.cmdlist))
 
 	return nil
@@ -243,7 +240,7 @@ func (c *Control) FileWriter(buffer, target string) (*WriteCloser, error) {
 	
 		return wc, nil
 	}
-	return nil, errors.New("Filesystem provided does not implement Writecloser on Files")
+	return nil, errors.New("filesystem provided does not implement Writecloser on Files")
 }
 
 func (c *Control) Errorwriter() (*WriteCloser, error) {
@@ -260,7 +257,7 @@ func (c *Control) Errorwriter() (*WriteCloser, error) {
 		return wc, nil
 	}
 
-	return nil, errors.New("Filesystem provided does not implement WriteCloser on Files")
+	return nil, errors.New("filesystem provided does not implement WriteCloser on Files")
 }
 
 func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {

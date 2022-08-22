@@ -5,11 +5,17 @@ import (
 	"testing"
 
 	"github.com/altid/libs/service/listener"
+	"github.com/altid/libs/store"
 )
 
 func TestCommands(t *testing.T) {
 	ctl := &testctrl{}
-	l := listener.Listen9p{}
+	l, err := listener.NewListen9p("127.0.0.1", "", "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	l.Register(store.NewRamStore(), nil)
 	p, _ := os.MkdirTemp("", "")
 
 	c, err := New(ctl, l, p, false)

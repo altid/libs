@@ -81,7 +81,7 @@ func New(ctl interface{}, listener listener.Listener, logdir string, debug bool)
 
 	cmdlist := command.DefaultCommands
 	cmdlist = append(cmdlist, &command.Command{
-		Name:        "test", //service,
+		Name:        "main",
 		Args:        []string{"<quit|restart|reload>"},
 		Heading:     command.ServiceGroup,
 		Description: "Control the lifecycle of a service",
@@ -127,6 +127,10 @@ func (c *Control) Remove(buffer, filename string) error {
 
 // Listen starts a network listener for incoming clients
 func (c *Control) Listen() error {
+	if c.listener == nil {
+		return errors.New("no listener registered for service controller")
+	}
+
 	go dispatch(c)
 
 	c.debug(ctlStart, "listen")
@@ -223,7 +227,7 @@ func dispatch(c *Control) {
 		log.Fatal(err)
 	}
 
-	//defer ew.Close()
+	defer ew.Close()
 
 	for {
 		select {
@@ -235,7 +239,6 @@ func dispatch(c *Control) {
 			}
 
 			real := translate(cmd)
-
 			if real.Heading == ServiceGroup {
 				serviceCommand(c, real, ew)
 				continue
@@ -286,6 +289,7 @@ func ctlLogger(msg ctlMsg, args ...interface{}) {
 		l.Println("cleanup: ending")
 	case ctlCreate:
 		l.Printf("create: buffer=\"%s\"", args[0])
+	case ctlRemove:
 		l.Printf("remove: buffer=\"%s\", filename=\"%s\"\n", args[0], args[1])
 	case ctlStart:
 		l.Printf("%s: starting\n", args[0])
