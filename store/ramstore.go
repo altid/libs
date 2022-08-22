@@ -40,11 +40,11 @@ func (rs *RamStore) Open(path string) (File, error) {
 func (rs *RamStore) Delete(path string) error {
 	f, ok := rs.files[path]
 	if !ok {
-		return fmt.Errorf("No file exists at path %s", path)
+		return fmt.Errorf("no file exists at path %s", path)
 	}
 
 	if f.InUse() {
-		return fmt.Errorf("Attempting to delete an active file")
+		return fmt.Errorf("attempting to delete an active file")
 	}
 
 	delete(rs.files, path)

@@ -41,6 +41,7 @@ func (ls *LogStore) List() ([]string) {
 func (ls *LogStore) Open(name string) (File, error) {
 	// Check if our path ends with "/main"
 	if path.Base(name) == "main" {
+		os.MkdirAll(path.Join(ls.base, path.Dir(name)), 0777)
 		return logstore.Open(path.Join(ls.base, name))
 	}
 
@@ -57,7 +58,7 @@ func (ls *LogStore) Delete(name string) error {
 	if path.Base(name) == "main" {
 		f, ok := ls.mains[name]
 		if !ok {
-			return fmt.Errorf("No file exists at path %s", name)
+			return fmt.Errorf("no file exists at path %s", name)
 		}
 
 		os.Remove(f.Name())
@@ -67,11 +68,11 @@ func (ls *LogStore) Delete(name string) error {
 
 	f, ok := ls.files[name]
 	if !ok {
-		return fmt.Errorf("No file exists at path %s", name)
+		return fmt.Errorf("to file exists at path %s", name)
 	}
 	
 	if f.InUse() {
-		return fmt.Errorf("Attempting to delete an active file")
+		return fmt.Errorf("attempting to delete an active file")
 	}
 	
 	delete(ls.files, name)

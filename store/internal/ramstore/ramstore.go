@@ -63,7 +63,7 @@ func (f *File) Read(b []byte) (n int, err error) {
 	}
 
 	if f.closed {
-		return 0, fmt.Errorf("Attempted to read on closed file")
+		return 0, fmt.Errorf("attempted to read on closed file")
 	}
 
 	f.modTime = time.Now()
@@ -79,7 +79,7 @@ func (f *File) Read(b []byte) (n int, err error) {
 
 func (f *File) Write(p []byte) (n int, err error) {
 	if f.closed {
-		return 0, fmt.Errorf("Attemted to write on a closed file")
+		return 0, fmt.Errorf("attemted to write on a closed file")
 	}
 
 	// Write to all the open Streams
@@ -107,7 +107,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if f.closed {
-		return 0, fmt.Errorf("Attempted to seek on a closed file")
+		return 0, fmt.Errorf("attempted to seek on a closed file")
 	}
 
 	switch whence {
@@ -120,11 +120,11 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	if f.offset < 0 {
-		return 0, fmt.Errorf("Attempted to seek before start of file")
+		return 0, fmt.Errorf("attempted to seek before start of file")
 	}
 
 	if f.offset > int64(len(f.data)) {
-		return 0, fmt.Errorf("Attempted to seek past end of file")
+		return 0, fmt.Errorf("attempted to seek past end of file")
 	}
 
 	return f.offset, nil
@@ -136,7 +136,7 @@ func (f *File) InUse() bool {
 
 func (f *File) Close() error {
 	if len(f.streams) > 0 {
-		return fmt.Errorf("Attempted to close a file with active streams")
+		return fmt.Errorf("attempted to close a file with active streams")
 	}
 
 	f.closed = true
@@ -175,7 +175,7 @@ func (f *File) Name() string {
 
 func (f *File) Stat() (fs.FileInfo, error) {
 	if f.closed {
-		return nil, fmt.Errorf("Attempted stat on closed file")
+		return nil, fmt.Errorf("attempted stat on closed file")
 	}
 
 	fi := FileInfo{
