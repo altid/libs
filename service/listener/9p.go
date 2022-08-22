@@ -3,6 +3,7 @@ package listener
 // Export our public interface
 
 import (
+	"log"
 	"github.com/altid/libs/auth"
 	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/internal/listen9p"
@@ -14,29 +15,30 @@ type Listen9p struct {
 	session *listen9p.Session
 }
 
-func NewListen9p(addr string) *Listen9p {
+func NewListen9p(addr string) Listen9p {
 	session, err := listen9p.NewSession(addr)
+	// TODO: Move these errors out
 	if err != nil {
-		return nil
+		log.Fatal(err)
 	}
 
-	return &Listen9p{
+	return Listen9p{
 		session: session,
 	}
 }
 
-func (np *Listen9p) Auth(ap *auth.Protocol) error {
+func (np Listen9p) Auth(ap *auth.Protocol) error {
 	return np.session.Auth(ap)
 }
 
-func (np *Listen9p) Address() string {
+func (np Listen9p) Address() string {
 	return np.session.Address()
 }
 
-func (np *Listen9p) Listen() error {
+func (np Listen9p) Listen() error {
 	return np.session.Listen()
 }
 
-func (np *Listen9p) Register(filer store.Filer, cbs callback.Callback) error {
+func (np Listen9p) Register(filer store.Filer, cbs callback.Callback) error {
 	return np.session.Register(filer, cbs) 
 }

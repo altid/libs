@@ -5,7 +5,7 @@ import (
 	"github.com/altid/libs/service/listener"
 )
 
-func ExampleService() {
+func ExampleNew() {
 	l := listener.Listen9p{}
 	s := &service.Command{}
 	service.New(s, l, "", false)

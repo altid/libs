@@ -32,6 +32,7 @@ type Filer interface {
 }
 
 // File is an interface which represents data for a single file
+// This is extended over the typical io/fs File, with a Write method
 type File interface {
 	// Read reads up to len(b) bytes from the File and stores them in b. It returns the number of bytes read and any error encountered. At end of file, Read returns 0, io.EOF.
 	Read(b []byte) (n int, err error)
@@ -41,12 +42,12 @@ type File interface {
 	Seek(offset int64, whence int) (int64, error)
 	// Close closes the File, rendering it unusable for I/O. On files that support SetDeadline, any pending I/O operations will be canceled and return immediately with an ErrClosed error. Close will return an error if it has already been called.
 	Close() error
+	// Name returns the internal pathname of the File
+	Name() string
+	// Stat returns a FileInfo for the File, useful with some listener implementations
+	Stat() (fs.FileInfo, error)
 	// Stream ReadCloser that can be used to read bytes in a continuous manner
 	// Each call to stream will get a copy of what has been written to the file
 	// All further reads will block until there is new data, or Close() is called
 	Stream() (io.ReadCloser, error)
-	// Name returns the internal pathname of the File
-	Path() string
-	// Stat returns a FileInfo for the File, useful with some listener implementations
-	Stat() (fs.FileInfo, error)
 }
