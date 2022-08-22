@@ -54,7 +54,6 @@ func New(ctl interface{}, listener listener.Listener, logdir string, debug bool)
 		return nil, errors.New("ctl missing Run/Quit method(s)")
 	}
 
-
 	req := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
 	rtc := control.New(ctx, logdir, "", "", nil)
@@ -128,7 +127,7 @@ func (c *Control) Remove(buffer, filename string) error {
 
 // Listen starts a network listener for incoming clients
 func (c *Control) Listen() error {
-//	go dispatch(c)
+	go dispatch(c)
 
 	c.debug(ctlStart, "listen")
 	return c.listener.Listen()
@@ -149,7 +148,7 @@ func (c *Control) SetCommands(cmd ...*Command) error {
 		case DefaultGroup, MediaGroup, ActionGroup:
 			continue
 		default:
-			return errors.New("Unsupported or nil Heading set")
+			return errors.New("unsupported or nil Heading set")
 		}
 	}
 
@@ -219,10 +218,10 @@ func (c *Control) Context() context.Context {
 func dispatch(c *Control) {
 	// If close is requested on a file which is currently being opened, cancel open request
 	// If open is requested on file which already exists, no-op
-	//ew, err := c.run.Errorwriter()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	ew, err := c.run.Errorwriter()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	//defer ew.Close()
 
@@ -231,14 +230,14 @@ func dispatch(c *Control) {
 		case line := <-c.req:
 			cmd, err := c.run.BuildCommand(line)
 			if err != nil {
-				//fmt.Fprintf(ew, "%v\n", err)
+				fmt.Fprintf(ew, "%v\n", err)
 				continue
 			}
 
 			real := translate(cmd)
 
 			if real.Heading == ServiceGroup {
-				//serviceCommand(c, real, ew)
+				serviceCommand(c, real, ew)
 				continue
 			}
 

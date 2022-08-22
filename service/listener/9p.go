@@ -7,7 +7,7 @@ import (
 	"github.com/altid/libs/auth"
 	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/internal/listen9p"
-	"github.com/altid/libs/service/store"
+	"github.com/altid/libs/store"
 )
 
 // Listen9p implements a listener using the 9p protocol

@@ -43,7 +43,7 @@ func FindCommands(b []byte) ([]*Command, error) {
 
 	for _, cmd := range cl {
                 if cmd.Heading < 0 {
-			return nil, fmt.Errorf("Unable to find a heading for %s", cmd.Name)
+			return nil, fmt.Errorf("unable to find a heading for %s", cmd.Name)
 		}
 		c := &Command{
 			Name:        cmd.Name,

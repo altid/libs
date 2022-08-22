@@ -15,6 +15,7 @@ type Session struct {
 	hasController	bool
 	hasConnecter    bool
 	address			string
+	// We can't assume we have them all
 	list			store.Lister
 	open			store.Opener
 	delete          store.Deleter
@@ -52,32 +53,25 @@ func (s *Session) Listen() error {
 }
 
 func (s *Session) Register(filer store.Filer, cbs callback.Callback) error {
-	// Verify that we have both functions
 	if list, ok := filer.(store.Lister); ok {
 		s.list = list
 	}
 
-	open, ok := filer.(store.Opener) 
-	if !ok {
-		return errors.New("Filer does not implement Open")
+	open, ok := filer.(store.Opener)
+	if ! ok {
+		return errors.New("store does not implement required 'Open'")
 	}
-
 	s.open = open
 
-	delete, ok := filer.(store.Deleter)
-	if ! ok {
-		return errors.New("Filer does not implement Delete")
+	if delete, ok := filer.(store.Deleter); ok {
+		s.delete = delete
 	}
 
-	s.delete = delete
-
-	_, ok = cbs.(callback.Controller)
-	if !ok {
+	if _, ok := cbs.(callback.Controller); ! ok {
 		s.hasController = false
 	}
 
-	_, ok = cbs.(callback.Connecter)
-	if !ok {
+	if _, ok := cbs.(callback.Connecter); !ok {
 		s.hasConnecter = false
 	}
 
@@ -94,16 +88,23 @@ func (s *Session) Serve9P(x *styx.Session) {
 		s.callbacks.Connect(client)
 	}
 
+	files := make(map[string]store.File)
+
 	for x.Next() {
 		req := x.Request()
-		f, err := s.open.Open(req.Path())
+		f, ok := files[req.Path()]
+		if ! ok {
+			f, _ := s.open.Open(req.Path())
+			files[req.Path()] = f
+		}
+
 		switch t := req.(type) {
 		case styx.Twalk:
 			t.Rwalk(f.Stat())
 		case styx.Tstat:
 			t.Rstat(f.Stat())
 		case styx.Topen:
-			t.Ropen(f, err)
+			t.Ropen(f, nil)
 // TODO: Handle stream/main, etc
 //			switch t.Path() {
 //			case "/":
@@ -127,11 +128,17 @@ func (s *Session) Serve9P(x *styx.Session) {
 		case styx.Tremove:
 			switch t.Path() {
 			case "/notification", "/notify":
+				delete(files, f.Name())
 				t.Rremove(s.delete.Delete(req.Path()))
 			default:
 				t.Rerror("%s", "permission denied")
 			}
 		}
+	}
+
+	// Clean up any open files we have
+	for _, f := range files {
+		f.Close()
 	}
 }
 

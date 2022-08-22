@@ -39,11 +39,11 @@ func TestStore(t *testing.T) {
 	}
 
 	if string(b) != "Test data" {
-		t.Errorf("Expected Test Data, found %s", string(b))
+		t.Errorf("expected Test Data, found %s", string(b))
 	}
 
 	if _, e := f.Write([]byte(" more data")); e == nil {
-		t.Error(fmt.Errorf("Should not write on a closed file"))
+		t.Error(fmt.Errorf("should not write on a closed file"))
 	}
 
 	f2 := File{
@@ -72,7 +72,7 @@ func TestStore(t *testing.T) {
 	}
 
 	if string(b2) != "Some data and some more data" {
-		t.Errorf("Expected 'Some data and some more data', found '%s'", string(b2))
+		t.Errorf("expected 'Some data and some more data', found '%s'", string(b2))
 	}
 
 	if e := f2.Close(); e != nil {
@@ -115,7 +115,7 @@ func TestStream(t *testing.T) {
 		case io.EOF:
 			goto NEXT
 		case nil:
-			t.Logf("Streaming data: Received '%s'", b)
+			t.Logf("streaming data: Received '%s'", b)
 			result = append(result, b...)
 			continue
 		default:
@@ -130,7 +130,7 @@ NEXT:
 	}
 
 	if e := f.Close(); e == nil {
-		t.Error("Able to close with active streams")
+		t.Error("able to close with active streams")
 	}
 	
 	d.Close();
@@ -140,6 +140,6 @@ NEXT:
 	}
 
 	if bytes.Equal(result, []byte("Some data 2nd chunk 3rd chunk")) {
-		t.Errorf("Expected 'Some data 2nd chunk 3rd chunk', found '%s'", result)
+		t.Errorf("expected 'Some data 2nd chunk 3rd chunk', found '%s'", result)
 	}
 }

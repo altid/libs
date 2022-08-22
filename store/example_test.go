@@ -3,7 +3,6 @@ package store_test
 import (
 	"log"
 	"os"
-	"path"
 
 	"github.com/altid/libs/store"
 )
@@ -20,16 +19,16 @@ func ExampleNewRamStore() {
 }
 
 func ExampleNewLogStore() {
-	tmp, err := os.MkdirTemp("", "")
+	tmp, err := os.MkdirTemp("", "altid")
 	if err != nil {
 		log.Fatal(err)
 	}
 	rs := store.NewLogStore(tmp)
 	f, err := rs.Open("test/main")
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer f.Close()
 
 	f.Write([]byte("Some data"))
-	if _, err := os.ReadFile(path.Join(tmp, "test/main")); err != nil {
-		log.Fatal("Error in reading datas")
-	}
 }
