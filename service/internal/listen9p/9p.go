@@ -14,18 +14,23 @@ type Session struct {
 	callbacks		callback.Callback
 	hasController	bool
 	hasConnecter    bool
+	key				string
+	cert 			string
 	address			string
-	// We can't assume we have them all
 	list			store.Lister
 	open			store.Opener
 	delete          store.Deleter
 }
 
-func NewSession(address string) (*Session, error) {
-	return &Session{
+func NewSession(address string, key, cert string) (*Session, error) {
+	s := &Session{
 		address: address,
 		styx: &styx.Session{},
-	}, nil
+		key: key,
+		cert: cert,
+	}
+
+	return s, nil
 }
 
 // Proxy the auth over the raw connection
@@ -37,19 +42,12 @@ func (s *Session) Address() string {
 	return s.address
 }
 
-// Callback when a client connects
-func (s *Session) Connect(Username string) error {
-	return nil
-}
-
-// Callback when a control is issued by clients
-func (s *Session) Control() error {
-	return nil
-}
-
 // Listen on configured network for clients
 func (s *Session) Listen() error {
-	return nil
+	if s.key != "" && s.cert != "" {
+		return styx.ListenAndServeTLS(s.address, s.key, s.cert, s)
+	}
+	return styx.ListenAndServe(s.address, s)
 }
 
 func (s *Session) Register(filer store.Filer, cbs callback.Callback) error {

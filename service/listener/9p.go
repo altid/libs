@@ -3,7 +3,6 @@ package listener
 // Export our public interface
 
 import (
-	"log"
 	"github.com/altid/libs/auth"
 	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/internal/listen9p"
@@ -15,16 +14,15 @@ type Listen9p struct {
 	session *listen9p.Session
 }
 
-func NewListen9p(addr string) Listen9p {
-	session, err := listen9p.NewSession(addr)
-	// TODO: Move these errors out
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return Listen9p{
+// NewListen9p returns a new listener
+// If a key and cert are provided, the listener will use TLS
+func NewListen9p(addr string, key, cert string) (Listen9p, error) {
+	session, err := listen9p.NewSession(addr, key, cert)
+	l := Listen9p{
 		session: session,
 	}
+
+	return l, err
 }
 
 func (np Listen9p) Auth(ap *auth.Protocol) error {

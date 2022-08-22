@@ -1,9 +1,11 @@
-package service 
+package service
 
 import (
+	"os"
 	"testing"
 
 	"github.com/altid/libs/service/listener"
+	"github.com/altid/libs/store"
 )
 
 type testctrl struct {
@@ -28,8 +30,15 @@ func (c *testctrl) Quit() {}
 func TestWriters(t *testing.T) {
 	ctl := &testctrl{}
 
-	l := listener.Listen9p{}
-	c, err := New(ctl, l, "test", true)
+	l, err := listener.NewListen9p("127.0.0.1", "", "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	l.Register(store.NewRamStore(), nil)
+
+	td, _ := os.MkdirTemp("", "")
+	c, err := New(ctl, l, td, true)
 	if err != nil {
 		t.Error(err)
 	}
