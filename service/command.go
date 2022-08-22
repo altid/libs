@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/altid/libs/service/internal/command"
+	"github.com/altid/libs/service/internal/control"
 )
 
 // ComGroup is a logical grouping of commands
@@ -96,7 +97,7 @@ func (c *Command) Bytes() []byte {
 }
 
 // Conversion functions for our internal command type
-func setCommands(cmds ...*Command) error {
+func setCommands(ctrl *control.Control, cmds ...*Command) error {
 	// Parse into command structure and set
 	var cmdlist []*command.Command
 
@@ -112,6 +113,6 @@ func setCommands(cmds ...*Command) error {
 
 		cmdlist = append(cmdlist, c)
 	}
-	return nil
-	//return cmd.SetCommands(cmdlist...)
+
+	return ctrl.SetCommands(cmdlist...)
 }

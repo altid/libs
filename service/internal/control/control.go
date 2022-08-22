@@ -1,12 +1,11 @@
 package control
 
 import (
-	//"bytes"
+	"bytes"
 	"context"
-	//"errors"
+	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -34,13 +33,12 @@ type Control struct {
 }
 
 type WriteCloser struct {
-	store *memfs.FS
-	file *memfs.FS
+	store *memfs.File
 	path string
 }
 
 func (w WriteCloser) Write(b []byte) (int, error) {
-	return len(b), w.store.WriteFile(w.path, b, fs.ModeAppend)
+	return w.store.Write(b)
 }
 
 func (w WriteCloser) Close() error {
@@ -179,7 +177,7 @@ func (c *Control) Notification(buff, from, msg string) error {
 
 	return nil
 }
-/*
+
 func (c *Control) popTab(tabname string) error {
 	for n := range c.tablist {
 		if c.tablist[n].name == tabname {
@@ -227,31 +225,46 @@ func writetabs(c *Control) error {
 		return e
 	}
 
-	return c.tabs.Truncate(int64(sb.Len()))
-}
-
-func (c *Control) Errorwriter() (*WriteCloser, error) {
-	ep := path.Join(c.rundir, "errors")
-	w := c.store.New(c.Event, ep, "errors")
-
-	return w, nil
+	return nil
+	//return c.tabs.Truncate(int64(sb.Len()))
 }
 
 func (c *Control) FileWriter(buffer, target string) (*WriteCloser, error) {
-	w, err := c.store.Open(buffer)
+	ep := path.Join(buffer, target)
+	mf, err := c.store.Open(ep)
 	if err != nil {
 		return nil, err
 	}
-	wc, ok := w.(WriteCloser)
-	if ! ok {
-		return nil, errors.New("Unable to open file")
+	if rt, ok := mf.(*memfs.File); ok {
+		wc := &WriteCloser{
+			store: rt,
+			path: ep,
+		}
+	
+		return wc, nil
+	}
+	return nil, errors.New("Filesystem provided does not implement Writecloser on Files")
+}
+
+func (c *Control) Errorwriter() (*WriteCloser, error) {
+	store, err := c.store.Open("errors")
+	if err != nil {
+		return nil, err
 	}
 
-	return &wc, nil
+	if rt, ok := store.(*memfs.File); ok {
+		wc := &WriteCloser{
+			store: rt,
+			path: "errors",
+		}
+		return wc, nil
+	}
+
+	return nil, errors.New("Filesystem provided does not implement WriteCloser on Files")
 }
 
 func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
-	os.MkdirAll(path.Dir(path.Join(c.rundir, buffer, "images", resource)), 0755)
-	return c.FileWriter(buffer, resource)
+	ep := path.Join(buffer, "images")
+	return c.FileWriter(ep, resource)
 }
-*/
+

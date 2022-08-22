@@ -169,7 +169,7 @@ func (f *File) Stream() (io.ReadCloser, error) {
 	return s, nil
 }
 
-func (f *File) Path() string {
+func (f *File) Name() string {
 	return f.path
 }
 

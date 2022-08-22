@@ -152,11 +152,11 @@ func (c *Control) SetCommands(cmd ...*Command) error {
 			return errors.New("Unsupported or nil Heading set")
 		}
 	}
-/*
+
 	if e := setCommands(c.run, cmd...); e != nil {
 		return e
 	}
-*/
+
 	return nil
 }
 
@@ -174,7 +174,7 @@ func (c *Control) Notification(buff, from, msg string) error {
 	c.debug(ctlNotify, buff, from, msg)
 	return c.run.Notification(buff, from, msg)
 }
-/*
+
 // ErrorWriter returns a WriteCloser attached to a services' errors file
 func (c *Control) ErrorWriter() (*control.WriteCloser, error) {
 	return c.run.Errorwriter()
@@ -219,26 +219,26 @@ func (c *Control) Context() context.Context {
 func dispatch(c *Control) {
 	// If close is requested on a file which is currently being opened, cancel open request
 	// If open is requested on file which already exists, no-op
-	ew, err := c.run.Errorwriter()
-	if err != nil {
-		log.Fatal(err)
-	}
+	//ew, err := c.run.Errorwriter()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
-	defer ew.Close()
+	//defer ew.Close()
 
 	for {
 		select {
 		case line := <-c.req:
 			cmd, err := c.run.BuildCommand(line)
 			if err != nil {
-				fmt.Fprintf(ew, "%v\n", err)
+				//fmt.Fprintf(ew, "%v\n", err)
 				continue
 			}
 
 			real := translate(cmd)
 
 			if real.Heading == ServiceGroup {
-				serviceCommand(c, real, ew)
+				//serviceCommand(c, real, ew)
 				continue
 			}
 
@@ -250,7 +250,7 @@ func dispatch(c *Control) {
 		}
 	}
 }
-*/
+
 func serviceCommand(c *Control, cmd *Command, ew *control.WriteCloser) {
 	switch cmd.Args[0] {
 	case "quit":

@@ -5,7 +5,7 @@ import (
 
 	"github.com/altid/libs/auth"
 	"github.com/altid/libs/service/callback"
-	"github.com/altid/libs/service/store"
+	"github.com/altid/libs/store"
 	"github.com/halfwit/styx"
 )
 
@@ -104,6 +104,7 @@ func (s *Session) Serve9P(x *styx.Session) {
 			t.Rstat(f.Stat())
 		case styx.Topen:
 			t.Ropen(f, err)
+// TODO: Handle stream/main, etc
 //			switch t.Path() {
 //			case "/":
 //				t.Ropen(f, err)
