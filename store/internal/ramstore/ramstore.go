@@ -143,6 +143,19 @@ func (f *File) Close() error {
 	return nil
 }
 
+func (f *File) Truncate(cap int64) error {
+	if cap > int64(len(f.data)) {
+		return fmt.Errorf("truncation beyond size of file")
+	}
+
+	if cap < 0 {
+		return fmt.Errorf("truncation to less than 0 invalid")
+	}
+
+	f.data = f.data[:cap]
+	return nil
+}
+
 func (f *File) Stream() (io.ReadCloser, error) {
 	uuid := uuid.New()
 	s := &Stream{

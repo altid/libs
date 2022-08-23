@@ -92,3 +92,4 @@ func (f *File) Seek(offset int64, whence int) (int64, error) { return f.f.Seek(o
 func (f *File) Close() error { return f.f.Close() }
 func (f *File) Name() string { return f.f.Name() }
 func (f *File) Stat() (fs.FileInfo, error) { return f.f.Stat() }
+func (f *File) Truncate(cap int64) error { return f.f.Truncate(cap) }
