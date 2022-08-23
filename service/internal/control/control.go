@@ -48,13 +48,12 @@ type tab struct {
 	// input  io.ReadCloser
 }
 
-func New(ctx context.Context, r, l, d string, t []string) *Control {
+func New(ctx context.Context, store store.Filer, r, l, d string, t []string) *Control {
 	var tablist []*tab
 
-	data := store.NewRamStore()
 
-	tf, _ := data.Open("tabs")
-	ew, _ := data.Open("errors")
+	tf, _ := store.Open("tabs")
+	ew, _ := store.Open("errors")
 
 	for _, name := range t {
 		tctx, cancel := context.WithCancel(ctx)
@@ -73,7 +72,7 @@ func New(ctx context.Context, r, l, d string, t []string) *Control {
 		errors:  ew,
 		logdir:  l,
 		tabs:    tf,
-		store:   data,
+		store:   store,
 		tablist: tablist,
 	}
 }
@@ -123,7 +122,6 @@ func (c *Control) Remove(buffer, filename string) error {
 	return c.store.Delete(doc)
 }
 
-// TODO: Use STORE for this
 func (c *Control) Notification(buff, from, msg string) error {
 	nfile := path.Join(c.rundir, buff, "notification")
 	f, err := c.store.Open(nfile)
@@ -189,7 +187,7 @@ func writetabs(c *Control) error {
 
 func (c *Control) FileWriter(buffer, target string) (*WriteCloser, error) {
 	ep := path.Join(buffer, target)
-	mf, err := c.store.Open(buffer)
+	mf, err := c.store.Open(ep)
 	if err != nil {
 		return nil, err
 	}

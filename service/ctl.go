@@ -11,6 +11,7 @@ import (
 	"github.com/altid/libs/service/listener"
 	"github.com/altid/libs/service/internal/command"
 	"github.com/altid/libs/service/internal/control"
+	"github.com/altid/libs/store"
 )
 
 type Manager interface {
@@ -47,7 +48,7 @@ const (
 // New sets up a ready-to-listen ctl file
 // logdir is the directory to store the contents written to the main element of a buffer. Logging any other type of data is left to implementation details, but is considered poor form for Altid's design.
 // This will return an error if a ctl file exists at the given directory
-func New(ctl interface{}, listener listener.Listener, logdir string, debug bool) (*Control, error) {
+func New(ctl interface{}, store store.Filer, listener listener.Listener, logdir string, debug bool) (*Control, error) {
 
 	manager, ok := ctl.(Manager)
 	if !ok {
@@ -56,7 +57,7 @@ func New(ctl interface{}, listener listener.Listener, logdir string, debug bool)
 
 	req := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
-	rtc := control.New(ctx, logdir, "", "", nil)
+	rtc := control.New(ctx, store, logdir, "", "", nil)
 
 	c := &Control{
 		ctx:        ctx,

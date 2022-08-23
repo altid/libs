@@ -12,20 +12,22 @@ type RamStore struct {
 }
 
 func NewRamStore() *RamStore {
+	files := make(map[string]*ramstore.File)
 	return &RamStore{
-		files: make(map[string]*ramstore.File),
+		files: files,
 	}
 }
 
 func (rs *RamStore) List() ([]string) {
 	var list []string
-	for _, file := range rs.files {
-		list = append(list, file.Name())
+	for name := range rs.files {
+		list = append(list, name)
 	}
 
 	return list
 }
 
+// This is all broked.
 func (rs *RamStore) Open(path string) (File, error) {
 	f, ok := rs.files[path]
 	if !ok || f == nil {

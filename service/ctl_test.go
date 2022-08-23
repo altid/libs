@@ -1,6 +1,7 @@
 package service
 
 import (
+	"io/ioutil"
 	"testing"
 
 	"github.com/altid/libs/service/listener"
@@ -26,6 +27,7 @@ func (c *testctrl) Run(ctrl *Control, cmd *Command) error {
 
 func (c *testctrl) Quit() {}
 
+// Assure that our writers work with the store as expected
 func TestWriters(t *testing.T) {
 	ctl := &testctrl{}
 
@@ -34,9 +36,10 @@ func TestWriters(t *testing.T) {
 		t.Error(err)
 	}
 
-	l.Register(store.NewRamStore(), nil)
+	s := store.NewRamStore()
+	l.Register(s, nil)
 
-	c, err := New(ctl, l, "", true)
+	c, err := New(ctl, s, l, "", false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -52,15 +55,43 @@ func TestWriters(t *testing.T) {
 		t.Error(err)
 	}
 
-	if _, e := mw.Write([]byte("test/status")); e != nil {
+	if _, e := mw.Write([]byte("test/status\n")); e != nil {
 		t.Error(e)
 	}
 	if _, e := mw.Write([]byte("There is no spoon")); e != nil {
 		t.Error(e)
 	}
-	
-	if e := mw.Close(); e != nil {
+
+	tw, err := c.TitleWriter("test")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, e := tw.Write([]byte("chicken")); e != nil {
 		t.Error(e)
 	}
 
+	li := s.List()
+	t.Logf("%s\n", li)
+	if len(li) != 4 {
+		t.Errorf("Expected 4 files, found %d\n", len(li))
+	}
+
+	f, err := s.Open("test")
+	if err != nil {
+		t.Error(err)
+	}
+
+	f.Write([]byte(" nuggets"))
+
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Error(err)
+	}
+
+
+	t.Logf("Result: %s\n", b)
+	if e := mw.Close(); e != nil {
+		t.Error(e)
+	}
 }

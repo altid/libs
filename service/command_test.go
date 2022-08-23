@@ -15,10 +15,11 @@ func TestCommands(t *testing.T) {
 		t.Error(err)
 	}
 
-	l.Register(store.NewRamStore(), nil)
+	s := store.NewRamStore()
+	l.Register(s, nil)
 	p, _ := os.MkdirTemp("", "")
 
-	c, err := New(ctl, l, p, false)
+	c, err := New(ctl, s, l, p, false)
 	if err != nil {
 		t.Error("failed to create Control", err)
 	}
