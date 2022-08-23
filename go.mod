@@ -6,7 +6,6 @@ require (
 	9fans.net/go v0.0.4
 	github.com/google/gofuzz v1.2.0
 	github.com/grandcat/zeroconf v1.0.0
-	github.com/halfwit/memfs v0.0.0-20211009205739-ddde462d8152
 	github.com/halfwit/styx v0.1.0
 	github.com/mischief/ndb v0.0.0-20131219140803-a27299009a40
 	golang.org/x/net v0.0.0-20220622184535-263ec571b305

@@ -1,39 +1,35 @@
 package control
 
+// We really gotta kill off all of the file-specific stuff before we do anything else
+
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"log"
-	"os"
-	"os/exec"
 	"path"
-	"path/filepath"
-	"runtime"
 	"sort"
 
 	"github.com/altid/libs/markup"
 	"github.com/altid/libs/service/input"
 	"github.com/altid/libs/service/internal/command"
-	"github.com/halfwit/memfs"
+	"github.com/altid/libs/store"
 )
 
 type Control struct {
-	tabs    *memfs.File
-	errors  *memfs.File
+	tabs    store.File
+	errors  store.File
 	cmdlist []*command.Command
 	done    chan struct{}
 	rundir  string
 	logdir  string
-	store	*memfs.FS
+	store	store.Filer
 	tablist []*tab
 	ctx     context.Context
 }
 
 type WriteCloser struct {
-	store *memfs.File
+	store store.File
 	path string
 }
 
@@ -49,22 +45,13 @@ type tab struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	name   string
-	input  io.ReadCloser
+	// input  io.ReadCloser
 }
 
 func New(ctx context.Context, r, l, d string, t []string) *Control {
 	var tablist []*tab
 
-	data := memfs.New()
-
-	// We have to write data to our files before start
-	if e := data.WriteFile("errors", []byte(""), 0755); e != nil {
-		log.Fatal(e)
-	}
-
-	if e := data.WriteFile("tabs", []byte(""), 0755); e != nil {
-		log.Fatal(e)
-	}
+	data := store.NewRamStore()
 
 	tf, _ := data.Open("tabs")
 	ew, _ := data.Open("errors")
@@ -78,23 +65,14 @@ func New(ctx context.Context, r, l, d string, t []string) *Control {
 		})
 	}
 
-	err, ok := ew.(*memfs.File)
-	if !ok {
-		log.Fatal("Could not create ErrorWriter")
-	}
-
-	tabs, ok := tf.(*memfs.File)
-	if !ok {
-		log.Fatal("Could not create TabWriter")
-	}
 
 	return &Control{
 		ctx:     ctx,
 		done:    make(chan struct{}),
 		rundir:  r,
-		errors:  err,
+		errors:  ew,
 		logdir:  l,
-		tabs:    tabs,
+		tabs:    tf,
 		store:   data,
 		tablist: tablist,
 	}
@@ -117,59 +95,43 @@ func (c *Control) BuildCommand(cmd string) (*command.Command, error) {
 }
 
 func (c *Control) Cleanup() {
-	if runtime.GOOS == "plan9" {
-		glob := path.Join(c.rundir, "*")
-
-		files, err := filepath.Glob(glob)
-		if err != nil {
-			log.Print(err)
-		}
-
-		for _, f := range files {
-			command := exec.Command("/bin/unmount", f)
-			log.Print(command.Run())
-		}
-	}
-
 	c.tabs.Close()
 	c.errors.Close()
-	os.RemoveAll(c.rundir)
 }
 
+// These next two functions may end up needing more
+// in the store side of things, but for now we just do the more simple thing
 func (c *Control) CreateBuffer(name string) error {
-	//c.pushTab(name)
-	return c.store.MkdirAll(name,  0777)
+	return c.pushTab(name)
 }
  
-// TODO: Remove from store
 func (c *Control) DeleteBuffer(name string) error {
-	//c.popTab(name)
-	return c.store.Remove(name)
+	return c.popTab(name)
 }
 
 func (c *Control) HasBuffer(name string) bool {
-	//return c.ctx.HasBuffer(name)
+	for _, item := range c.tablist {
+		if item.name == name {
+			return true
+		}
+	}
 	return false
 }
 
 func (c *Control) Remove(buffer, filename string) error {
 	doc := path.Join(c.rundir, buffer, filename)
-	return c.store.Remove(doc)
+	return c.store.Delete(doc)
 }
 
+// TODO: Use STORE for this
 func (c *Control) Notification(buff, from, msg string) error {
 	nfile := path.Join(c.rundir, buff, "notification")
-	if _, e := os.Stat(path.Dir(nfile)); os.IsNotExist(e) {
-		os.MkdirAll(path.Dir(nfile), 0755)
-	}
-
-	f, err := os.OpenFile(nfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := c.store.Open(nfile)
 	if err != nil {
 		return err
 	}
 
 	defer f.Close()
-
 	fmt.Fprintf(f, "%s\n%s\n", from, msg)
 
 	return nil
@@ -222,42 +184,36 @@ func writetabs(c *Control) error {
 		return e
 	}
 
-	return nil
-	//return c.tabs.Truncate(int64(sb.Len()))
+	return c.tabs.Truncate(int64(sb.Len()))
 }
 
 func (c *Control) FileWriter(buffer, target string) (*WriteCloser, error) {
 	ep := path.Join(buffer, target)
-	mf, err := c.store.Open(ep)
+	mf, err := c.store.Open(buffer)
 	if err != nil {
 		return nil, err
 	}
-	if rt, ok := mf.(*memfs.File); ok {
-		wc := &WriteCloser{
-			store: rt,
-			path: ep,
-		}
-	
-		return wc, nil
+
+	wc := &WriteCloser{
+		store: mf,
+		path: ep,
 	}
-	return nil, errors.New("filesystem provided does not implement Writecloser on Files")
+	
+	return wc, nil
 }
 
 func (c *Control) Errorwriter() (*WriteCloser, error) {
-	store, err := c.store.Open("errors")
+	ew, err := c.store.Open("errors")
 	if err != nil {
 		return nil, err
 	}
 
-	if rt, ok := store.(*memfs.File); ok {
-		wc := &WriteCloser{
-			store: rt,
-			path: "errors",
-		}
-		return wc, nil
+	wc := &WriteCloser{
+		store: ew,
+		path: "errors",
 	}
 
-	return nil, errors.New("filesystem provided does not implement WriteCloser on Files")
+	return wc, nil
 }
 
 func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
