@@ -1,7 +1,6 @@
 package service
 
 import (
-	"os"
 	"testing"
 
 	"github.com/altid/libs/service/listener"
@@ -30,35 +29,38 @@ func (c *testctrl) Quit() {}
 func TestWriters(t *testing.T) {
 	ctl := &testctrl{}
 
-	l, err := listener.NewListen9p("127.0.0.1", "", "")
+	l, err := listener.NewListen9p("127.0.0.1:12345", "", "")
 	if err != nil {
 		t.Error(err)
 	}
 
 	l.Register(store.NewRamStore(), nil)
 
-	td, _ := os.MkdirTemp("", "")
-	c, err := New(ctl, l, td, true)
+	c, err := New(ctl, l, "", true)
 	if err != nil {
 		t.Error(err)
 	}
 
 	defer c.Cleanup()
 
-	go func() {
-		c.CreateBuffer("foo")
-
-		mw, err := c.MainWriter("foo")
-		if err != nil {
-			t.Error(err)
-		}
-
-		mw.Write([]byte("test"))
-		mw.Write([]byte("input:foo:There is no spoon"))
-		mw.Close()
-	}()
-
-	if e := c.Listen(); e != nil {
+	if e := c.CreateBuffer("test"); e != nil {
 		t.Error(e)
 	}
+
+	mw, err := c.MainWriter("test")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, e := mw.Write([]byte("test/status")); e != nil {
+		t.Error(e)
+	}
+	if _, e := mw.Write([]byte("There is no spoon")); e != nil {
+		t.Error(e)
+	}
+	
+	if e := mw.Close(); e != nil {
+		t.Error(e)
+	}
+
 }
