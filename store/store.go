@@ -50,4 +50,6 @@ type File interface {
 	// Each call to stream will get a copy of what has been written to the file
 	// All further reads will block until there is new data, or Close() is called
 	Stream() (io.ReadCloser, error)
+	// Truncate limits the size of the file to the given int64 value
+	Truncate(int64) error
 }
