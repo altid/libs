@@ -28,16 +28,17 @@ func ExampleControl_Listen() {
 		log.Fatal(err)
 	}
 
+	s := store.NewRamStore()
 	manage := Manager{}
 
-	ctl, err := service.New(manage, listen, "", false)
+	ctl, err := service.New(manage, s, listen, "", false)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Before we can call ctl.Listen, we need to register a store for our listener
 	// Not doing this will return an error
-	if e := listen.Register(store.NewRamStore(), nil); e != nil {
+	if e := listen.Register(s, nil); e != nil {
 		log.Fatal(e)
 	}
 
