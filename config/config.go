@@ -11,7 +11,7 @@ import (
 	"github.com/altid/libs/config/internal/entry"
 	"github.com/altid/libs/config/internal/request"
 	"github.com/altid/libs/config/internal/util"
-	"github.com/altid/libs/fs"
+	"github.com/altid/libs/service"
 	"github.com/mischief/ndb"
 )
 
@@ -76,7 +76,7 @@ func Marshal(requests interface{}, service string, configFile string, debug bool
 // for the value on the command line, optionally with a whitelisted array of selections to pick from
 // Selection of an item not on a whitelist will return an error after 3 attempts
 // The `pick` option to a types.Auth will be ignored, and will always be one of `password|factotum|none`
-func Create(requests interface{}, service, configFile string, debug bool) error {
+func Create(requests interface{}, svc, configFile string, debug bool) error {
 	debugLog := func(string, ...interface{}) {}
 	if debug {
 		debugLog = func(format string, v ...interface{}) {
@@ -85,20 +85,20 @@ func Create(requests interface{}, service, configFile string, debug bool) error 
 		}
 	}
 
-	have, err := entry.FromConfig(debugLog, service, configFile)
+	have, err := entry.FromConfig(debugLog, svc, configFile)
 
 	// Make sure we correct any errors we encounter
 	switch {
 	case err == nil:
 		debugLog("fixing config file")
 	case os.IsNotExist(err):
-		dir, err := fs.UserConfDir()
+		dir, err := service.UserConfDir()
 		if err != nil {
 			return err
 		}
 
 		os.MkdirAll(path.Join(dir, "altid"), 0755)
-		os.Create(util.GetConf(service))
+		os.Create(util.GetConf(svc))
 		debugLog("creating config file")
 
 	// If we have multiple entries, something has indeed gone wrong
@@ -111,13 +111,13 @@ func Create(requests interface{}, service, configFile string, debug bool) error 
 		debugLog("creating entry")
 	}
 
-	conf.FixAuth(have, service, configFile)
+	conf.FixAuth(have, svc, configFile)
 	want, err := request.Build(requests)
 	if err != nil {
 		return err
 	}
 
-	c, err := conf.Create(debugLog, service, have, want, configFile)
+	c, err := conf.Create(debugLog, svc, have, want, configFile)
 	if err != nil {
 		return err
 	}

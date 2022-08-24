@@ -51,5 +51,5 @@ Many of the things mentioned above would not be simple with a different model fo
 
 All of these tradeoffs are less than ideal, but in practice the lossy nature allows me to read a document on my phone, walk over to my computer, and continue reading instantly; the same for any Altid service. Defining a state, \(not as a relationship with a client\), as a standalone entity for sessions is what many services on the web are accomplishing, but the bar to entry to provide such a thing is high, expensive, and resource\-intensive.
 
-If you wish to discuss this, or anything else, feel free to join us at \#altid on Freenode. I’m always happy to hear opinions, suggestions, and feedback\!
+If you wish to discuss this, or anything else, feel free to join us at \#altid on Libera.chat. I’m always happy to hear opinions, suggestions, and feedback\!
 
