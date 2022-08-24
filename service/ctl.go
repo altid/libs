@@ -21,14 +21,14 @@ type Manager interface {
 
 // Control type can be used to manage a running ctl file session
 type Control struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	req    chan string
-	ctl    Manager
-	input  input.Handler
-	done   chan struct{}
-	run    *control.Control
-	listener listener.Listener
+	ctx			context.Context
+	cancel		context.CancelFunc
+	ctl			Manager
+	input		input.Handler
+	listener	listener.Listener
+	run			*control.Control
+	done		chan struct{}
+	req			chan string
 	debug  func(ctlMsg, ...interface{})
 }
 

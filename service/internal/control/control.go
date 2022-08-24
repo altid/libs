@@ -1,7 +1,5 @@
 package control
 
-// We really gotta kill off all of the file-specific stuff before we do anything else
-
 import (
 	"bytes"
 	"context"
@@ -17,15 +15,15 @@ import (
 )
 
 type Control struct {
+	ctx     context.Context
+	store	store.Filer
 	tabs    store.File
 	errors  store.File
 	cmdlist []*command.Command
+	tablist []*tab
 	done    chan struct{}
 	rundir  string
 	logdir  string
-	store	store.Filer
-	tablist []*tab
-	ctx     context.Context
 }
 
 type WriteCloser struct {
@@ -45,7 +43,6 @@ type tab struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	name   string
-	// input  io.ReadCloser
 }
 
 func New(ctx context.Context, store store.Filer, r, l, d string, t []string) *Control {
@@ -78,8 +75,10 @@ func New(ctx context.Context, store store.Filer, r, l, d string, t []string) *Co
 }
 
 func (c *Control) Input(handler input.Handler, buffer string, payload []byte) error {
+	ep := path.Join(c.rundir, buffer)
 	l := markup.NewLexer(payload)
-	return handler.Handle(c.rundir, l)
+
+	return handler.Handle(ep, l)
 }
 
 func (c *Control) SetCommands(cmd ...*command.Command) error {
