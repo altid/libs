@@ -23,5 +23,6 @@ go get -u github.com/altid/libs
  - ![Fs passing badge](https://github.com/altid/libs/workflows/fs/badge.svg)
  - ![Markup passing badge](https://github.com/altid/libs/workflows/markup/badge.svg)
  - ![Html passing badge](https://github.com/altid/libs/workflows/html/badge.svg)
- - ![Server passing badge](https://github.com/libs/workflows/server/badge.svg)
+ - ![Service passing badge](https://github.com/libs/workflows/service/badge.svg)
+ - ![Store passing badge](https://github.com/libs/workflows/store/badge.svg)
  - ![Config passing badge](https://github.com/altid/libs/workflows/config/badge.svg)
