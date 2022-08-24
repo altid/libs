@@ -1,8 +1,8 @@
-name: auth
+name: service
 on:
   push:
-    paths:
-      - 'auth/**'
+    paths: 
+      - 'service/**'
 jobs:
 
   build:
@@ -26,12 +26,12 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
-      working-directory: auth
+      working-directory: markup
 
     - name: Build
       run: go build -v .
-      working-directory: auth
+      working-directory: markup
 
     - name: Tests
       run: go test -v .
-      working-directory: auth
+      working-directory: markup
