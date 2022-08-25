@@ -48,9 +48,8 @@ type tab struct {
 func New(ctx context.Context, store store.Filer, r, l, d string, t []string) *Control {
 	var tablist []*tab
 
-
-	tf, _ := store.Open("tabs")
-	ew, _ := store.Open("errors")
+	tf, _ := store.Open("/tabs")
+	ew, _ := store.Open("/errors")
 
 	for _, name := range t {
 		tctx, cancel := context.WithCancel(ctx)
@@ -65,7 +64,6 @@ func New(ctx context.Context, store store.Filer, r, l, d string, t []string) *Co
 	return &Control{
 		ctx:     ctx,
 		done:    make(chan struct{}),
-		rundir:  r,
 		errors:  ew,
 		logdir:  l,
 		tabs:    tf,
@@ -75,7 +73,7 @@ func New(ctx context.Context, store store.Filer, r, l, d string, t []string) *Co
 }
 
 func (c *Control) Input(handler input.Handler, buffer string, payload []byte) error {
-	ep := path.Join(c.rundir, buffer)
+	ep := path.Join("/", c.rundir, buffer)
 	l := markup.NewLexer(payload)
 
 	return handler.Handle(ep, l)
@@ -117,12 +115,12 @@ func (c *Control) HasBuffer(name string) bool {
 }
 
 func (c *Control) Remove(buffer, filename string) error {
-	doc := path.Join(c.rundir, buffer, filename)
+	doc := path.Join("/", buffer, filename)
 	return c.store.Delete(doc)
 }
 
 func (c *Control) Notification(buff, from, msg string) error {
-	nfile := path.Join(c.rundir, buff, "notification")
+	nfile := path.Join("/", buff, "notification")
 	f, err := c.store.Open(nfile)
 	if err != nil {
 		return err
@@ -185,7 +183,7 @@ func writetabs(c *Control) error {
 }
 
 func (c *Control) FileWriter(buffer, target string) (*WriteCloser, error) {
-	ep := path.Join(buffer, target)
+	ep := path.Join("/", buffer, target)
 	mf, err := c.store.Open(ep)
 	if err != nil {
 		return nil, err
@@ -200,21 +198,21 @@ func (c *Control) FileWriter(buffer, target string) (*WriteCloser, error) {
 }
 
 func (c *Control) Errorwriter() (*WriteCloser, error) {
-	ew, err := c.store.Open("errors")
+	ew, err := c.store.Open("/errors")
 	if err != nil {
 		return nil, err
 	}
 
 	wc := &WriteCloser{
 		store: ew,
-		path: "errors",
+		path: "/errors",
 	}
 
 	return wc, nil
 }
 
 func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
-	ep := path.Join(buffer, "images")
+	ep := path.Join("/", buffer, "images")
 	return c.FileWriter(ep, resource)
 }
 
