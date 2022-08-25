@@ -2,19 +2,50 @@ package ramstore
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"testing"
 	"time"
 )
 
-func TestStore(t *testing.T) {
+func TestDir(t *testing.T) {
+	d := NewRoot()
+
+	f, err := d.Open("/chocolate")
+	if err != nil {
+		t.Error(err)
+	}
+
+	f.Write([]byte("Rain"))
+	f.Close()
+
+	f, err = d.Open("/chocolate")
+	if err != nil {
+		t.Error(err)
+	}
+
+	f.Close()
+
+	f, err = d.Open("/chocolate/rain")
+	if err != nil {
+		t.Error(err)
+	}
+	f.Write([]byte("Chocolate Rain"))
+	f.Close()
+
+	f, err = d.Open("/chocolate/sprinkles")
+	if err != nil {
+		t.Error(err)
+	}
+
+	f.Close()
+}
+
+func TestFile(t *testing.T) {
 
 	f := File{
 		path: "test",
 		data: []byte(""),
 		offset: 0,
-		closed: false,
 		streams: make(map[string]*Stream),
 	}
 
@@ -42,15 +73,10 @@ func TestStore(t *testing.T) {
 		t.Errorf("expected Test Data, found %s", string(b))
 	}
 
-	if _, e := f.Write([]byte(" more data")); e == nil {
-		t.Error(fmt.Errorf("should not write on a closed file"))
-	}
-
 	f2 := File{
 		path: "test",
 		data: []byte(""),
 		offset: 0,
-		closed: false,
 		streams: make(map[string]*Stream),
 	}
 
@@ -85,7 +111,6 @@ func TestStream(t *testing.T) {
 		path: "test",
 		data: []byte(""),
 		offset: 0,
-		closed: false,
 		streams: make(map[string]*Stream),
 	}
 

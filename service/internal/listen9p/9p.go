@@ -94,14 +94,17 @@ func (s *Session) Serve9P(x *styx.Session) {
 	files := make(map[string]store.File)
 
 	for x.Next() {
+		var err error
 		req := x.Request()
 		f, ok := files[req.Path()]
-		if ! ok {
-			f, err := s.open.Open(req.Path())
+		if !ok {
+			f, err = s.open.Open(req.Path())
+			defer f.Close()
 			if err != nil {
 				// If we're breaking on Open, we need to fail here
 				log.Fatal(err)
 			}
+
 			files[req.Path()] = f
 		}
 
@@ -141,11 +144,6 @@ func (s *Session) Serve9P(x *styx.Session) {
 				t.Rerror("%s", "permission denied")
 			}
 		}
-	}
-
-	// Clean up any open files we have
-	for _, f := range files {
-		f.Close()
 	}
 }
 
