@@ -2,6 +2,7 @@ package listen9p
 
 import (
 	"errors"
+	"log"
 
 	"github.com/altid/libs/auth"
 	"github.com/altid/libs/service/callback"
@@ -44,10 +45,14 @@ func (s *Session) Address() string {
 
 // Listen on configured network for clients
 func (s *Session) Listen() error {
-	if s.key != "" && s.cert != "" {
-		return styx.ListenAndServeTLS(s.address, s.key, s.cert, s)
+	if s.key == "none" || s.key == "" {
+		if s.cert == "none" || s.cert == "" {
+			return styx.ListenAndServe(s.address, s)
+		}
 	}
-	return styx.ListenAndServe(s.address, s)
+
+	return styx.ListenAndServeTLS(s.address, s.key, s.cert, s)
+
 }
 
 func (s *Session) Register(filer store.Filer, cbs callback.Callback) error {
@@ -92,7 +97,11 @@ func (s *Session) Serve9P(x *styx.Session) {
 		req := x.Request()
 		f, ok := files[req.Path()]
 		if ! ok {
-			f, _ := s.open.Open(req.Path())
+			f, err := s.open.Open(req.Path())
+			if err != nil {
+				// If we're breaking on Open, we need to fail here
+				log.Fatal(err)
+			}
 			files[req.Path()] = f
 		}
 
