@@ -9,7 +9,6 @@ import (
 	"github.com/altid/libs/store/internal/ramstore"
 )
 
-// TODO: This changes to Dirs and walks and opens and such for ramstore!
 // We need to include streamer on this
 type LogStore struct {
 	base  string
@@ -36,6 +35,9 @@ func (ls *LogStore) List() ([]string) {
 	return list
 }
 
+func (ls *LogStore) Root(name string) (File, error) {
+	return ls.root.Root(name)
+}
 
 func (ls *LogStore) Open(name string) (File, error) {
 	// Check if our path ends with "/main"
