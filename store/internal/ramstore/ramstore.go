@@ -42,6 +42,23 @@ func (d *Dir) List() []string {
 	return list
 }
 
+func (d *Dir) Root(buffer string) (*File, error) {
+	var err error
+	f := &File {
+		path: "/",
+		data: []byte(""),
+		offset: 0,
+		isdir: true,
+		closed: false,
+		modTime: time.Now(),
+		readdir: make(chan fs.FileInfo, 10),
+		done:   make(chan struct{}),
+	}
+
+	go listRoot(d, f, buffer)
+	return f, err
+}
+
 // Open works by either returning a file/directory, or recursing if we are still rooted in a path
 func (d *Dir) Open(name string) (*File, error) {
 	paths := strings.Split(name, string(os.PathSeparator))
@@ -355,6 +372,44 @@ func (f *File) Readdir(n int) ([]fs.FileInfo, error) {
 
 	return fi, err
 
+}
+
+func listRoot(d *Dir, root *File, buffer string) {
+	var list []fs.FileInfo
+	for _, file := range d.files {
+		fi := &FileInfo{
+			len: int64(len(file.data)),
+			name: file.path,
+			modtime: file.modTime,
+		}
+
+		list = append(list, fi)
+	}
+
+	// Then go into the buffer dir
+	if dir, ok := d.dirs[buffer]; ok {
+		for _, file := range dir.files {
+			fi := &FileInfo{
+				len: int64(len(file.data)),
+				name: path.Join("/", path.Base(file.path)),
+				modtime: file.modTime,
+			}
+
+			list = append(list, fi)
+		}
+	}
+
+	go func([]os.FileInfo, *File) {
+		for _, d := range list {
+			select {
+			case root.readdir <- d:
+			case <-root.done:
+				goto FINISH
+			}
+		}
+FINISH:
+		close(root.readdir)
+	}(list, root)
 }
 
 func listDir(d *Dir, f *File) {

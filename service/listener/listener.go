@@ -6,6 +6,7 @@ import (
 	"github.com/altid/libs/service/callback"
 )
 
+// Listener provides a type which can handle incoming client connections
 type Listener interface {
 	// Auth proxies the auth protocol for authentication
 	Auth(*auth.Protocol) error

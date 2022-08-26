@@ -1,10 +1,8 @@
 package control
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"path"
 	"sort"
 
@@ -95,8 +93,6 @@ func (c *Control) Cleanup() {
 	c.errors.Close()
 }
 
-// These next two functions may end up needing more
-// in the store side of things, but for now we just do the more simple thing
 func (c *Control) CreateBuffer(name string) error {
 	return c.pushTab(name)
 }
@@ -165,21 +161,13 @@ func (c *Control) pushTab(tabname string) error {
 }
 
 func writetabs(c *Control) error {
-	var sb bytes.Buffer
-
+	var size int
 	for _, tab := range c.tablist {
-		sb.WriteString(tab.name + "\n")
+		n, _ := fmt.Fprintf(c.tabs, "%s\n", tab.name)
+		size += n
 	}
 
-	if _, e := c.tabs.Seek(0, io.SeekStart); e != nil {
-		return e
-	}
-
-	if _, e := c.tabs.Write(sb.Bytes()); e != nil {
-		return e
-	}
-
-	return c.tabs.Truncate(int64(sb.Len()))
+	return c.tabs.Truncate(int64(size))
 }
 
 func (c *Control) FileWriter(buffer, target string) (*WriteCloser, error) {

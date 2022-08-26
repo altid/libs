@@ -19,6 +19,10 @@ func (rs *RamStore) List() ([]string) {
 	return rs.root.List()
 }
 
+func (rs *RamStore) Root(name string) (File, error) {
+	return rs.root.Root(name)
+}
+
 func (rs *RamStore) Open(name string) (File, error) {
 	return rs.root.Open(name)
 }

@@ -2,7 +2,7 @@ package listen9p
 
 import (
 	"errors"
-	"log"
+	"path"
 
 	"github.com/altid/libs/auth"
 	"github.com/altid/libs/service/callback"
@@ -81,8 +81,33 @@ func (s *Session) Register(filer store.Filer, cbs callback.Callback) error {
 	return nil
 }
 
+// Build the files from the store, do not produce as-is since they'll be broken
+func getFile(s *Session, current, in string) (store.File, error) {
+	switch(in) {
+	case "/":
+		// Returns our base dir with our current buffer keyed
+		return s.open.Root(current)
+	case "/errors":
+		return s.open.Open("/errors")
+	case "/tabs":
+		return nil, nil
+		// do a tabs thing
+	case "/ctrl":
+		return nil, nil
+		// do a special ctrl thing
+	case "/input":
+		return nil, nil
+		// do a special input thing
+	default:
+		fp := path.Join(current, in)
+		return s.open.Open(fp)
+	}
+}
+
 // Technically internal, this is used by Styx
 func (s *Session) Serve9P(x *styx.Session) {
+	var current string
+
 	// Callback on client connection
 	if s.hasConnecter {
 		client := &callback.Client{ 
@@ -92,20 +117,13 @@ func (s *Session) Serve9P(x *styx.Session) {
 	}
 
 	files := make(map[string]store.File)
+	current = "server"
 
 	for x.Next() {
-		var err error
 		req := x.Request()
-		f, ok := files[req.Path()]
-		if !ok {
-			f, err = s.open.Open(req.Path())
-			defer f.Close()
-			if err != nil {
-				// If we're breaking on Open, we need to fail here
-				log.Fatal(err)
-			}
-
-			files[req.Path()] = f
+		f, err := getFile(s, current, req.Path())
+		if err != nil {
+			req.Rerror("%s", err)
 		}
 
 		switch t := req.(type) {
@@ -115,21 +133,6 @@ func (s *Session) Serve9P(x *styx.Session) {
 			t.Rstat(f.Stat())
 		case styx.Topen:
 			t.Ropen(f, nil)
-// TODO: Handle stream/main, etc
-//			switch t.Path() {
-//			case "/":
-//				t.Ropen(f, err)
-//			case "/event":
-//				t.Ropen(mkevent(s.User, client))
-//			case "/ctrl":
-//				t.Ropen(mkctl(fp, s.User, client))
-//			case "/tabs":
-//				t.Ropen(mktabs(fp, s.User, client))
-//			case "/input":
-//				t.Ropen(os.OpenFile(fp, os.O_RDWR, 0755))
-//			default:
-//				t.Ropen(f, err)
-//			}
 		case styx.Tutimes:
 			t.Rutimes(nil)
 		case styx.Ttruncate:
