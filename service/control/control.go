@@ -27,15 +27,15 @@ type Sender interface {
 
 // Control type can be used to manage a running ctl file session
 type Control struct {
-	ctx			context.Context
-	cancel		context.CancelFunc
-	ctl			Manager
-	input		input.Handler
-	listener	listener.Listener
-	run			*ctrl.Control
-	done		chan struct{}
-	req			chan string
-	debug  func(ctlMsg, ...interface{})
+	ctx      context.Context
+	cancel   context.CancelFunc
+	ctl      Manager
+	input    input.Handler
+	listener listener.Listener
+	run      *ctrl.Control
+	done     chan struct{}
+	req      chan string
+	debug    func(ctlMsg, ...interface{})
 }
 
 type ctlMsg int
@@ -66,14 +66,14 @@ func New(ctl interface{}, store store.Filer, listener listener.Listener, logdir 
 	rtc := ctrl.New(ctx, store, logdir, "", "", nil)
 
 	c := &Control{
-		ctx:        ctx,
-		cancel:     cancel,
-		req:        req,
-		done:       make(chan struct{}),
-		run:        rtc,
-		listener:	listener,
-		ctl:        manager,
-		debug:      func(ctlMsg, ...interface{}) {},
+		ctx:      ctx,
+		cancel:   cancel,
+		req:      req,
+		done:     make(chan struct{}),
+		run:      rtc,
+		listener: listener,
+		ctl:      manager,
+		debug:    func(ctlMsg, ...interface{}) {},
 	}
 
 	if debug {
@@ -123,7 +123,7 @@ func (c *Control) DeleteBuffer(name string) error {
 
 // HasBuffer returns whether or not a buffer is present in the current control session
 func (c *Control) HasBuffer(name string) bool {
-	return c.run.HasBuffer(name) 
+	return c.run.HasBuffer(name)
 }
 
 // Remove removes a buffer from the runtime dir. If the buffer doesn't exist, this is a no-op
@@ -133,12 +133,12 @@ func (c *Control) Remove(buffer, filename string) error {
 }
 
 func (c *Control) SendCommand(input string) error {
-	cmd, err := c.run.BuildCommand(input)
+	comm, err := c.run.BuildCommand(input)
 	if err != nil {
 		return err
 	}
 
-	real := translate(cmd)
+	real := translate(comm)
 	if real.Heading == command.ServiceGroup {
 		return serviceCommand(c, real)
 	}

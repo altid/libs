@@ -15,7 +15,7 @@ import (
 
 type Control struct {
 	ctx     context.Context
-	store	store.Filer
+	store   store.Filer
 	tabs    store.File
 	errors  store.File
 	cmdlist []*cmd.Command
@@ -27,7 +27,7 @@ type Control struct {
 
 type WriteCloser struct {
 	store store.File
-	path string
+	path  string
 }
 
 func (w WriteCloser) Write(b []byte) (int, error) {
@@ -59,7 +59,6 @@ func New(ctx context.Context, store store.Filer, r, l, d string, t []string) *Co
 		})
 	}
 
-
 	return &Control{
 		ctx:     ctx,
 		done:    make(chan struct{}),
@@ -85,8 +84,8 @@ func (c *Control) SetCommands(cmd ...*cmd.Command) error {
 	return nil
 }
 
-func (c *Control) BuildCommand(cmd string) (*command.Command, error) {
-	return command.ParseCmd(cmd, c.cmdlist)
+func (c *Control) BuildCommand(comm string) (*command.Command, error) {
+	return command.ParseCmd(comm, c.cmdlist)
 }
 
 func (c *Control) Cleanup() {
@@ -97,7 +96,7 @@ func (c *Control) Cleanup() {
 func (c *Control) CreateBuffer(name string) error {
 	return c.pushTab(name)
 }
- 
+
 func (c *Control) DeleteBuffer(name string) error {
 	return c.popTab(name)
 }
@@ -180,9 +179,9 @@ func (c *Control) FileWriter(buffer, target string) (*WriteCloser, error) {
 
 	wc := &WriteCloser{
 		store: mf,
-		path: ep,
+		path:  ep,
 	}
-	
+
 	return wc, nil
 }
 
@@ -194,7 +193,7 @@ func (c *Control) Errorwriter() (*WriteCloser, error) {
 
 	wc := &WriteCloser{
 		store: ew,
-		path: "/errors",
+		path:  "/errors",
 	}
 
 	return wc, nil

@@ -32,13 +32,13 @@ func (c *testctrl) Quit() {}
 func TestWriters(t *testing.T) {
 	ctl := &testctrl{}
 
-	l, err := listener.NewListen9p("127.0.0.1:12345", "", "")
+	l, err := listener.NewListen9p("127.0.0.1:12345", "", "", true)
 	if err != nil {
 		t.Error(err)
 	}
 
 	s := store.NewRamStore()
-	l.Register(s, nil)
+	l.Register(s, nil, nil)
 
 	c, err := New(ctl, s, l, "", false)
 	if err != nil {
@@ -89,7 +89,6 @@ func TestWriters(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
 
 	t.Logf("Result: %s\n", b)
 	if e := mw.Close(); e != nil {

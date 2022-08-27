@@ -12,26 +12,26 @@ import (
 )
 
 type Session struct {
-	styx			*styx.Session
-	hasController	bool
-	hasConnecter    bool
-	key				string
-	cert 			string
-	address			string
-	current         string
-	command         callback.Sender
-	callbacks		callback.Callback
-	list			store.Lister
-	open			store.Opener
-	delete          store.Deleter
+	styx          *styx.Session
+	hasController bool
+	hasConnecter  bool
+	key           string
+	cert          string
+	address       string
+	current       string
+	command       callback.Sender
+	callbacks     callback.Callback
+	list          store.Lister
+	open          store.Opener
+	delete        store.Deleter
 }
 
 func NewSession(address string, key, cert string) (*Session, error) {
 	s := &Session{
 		address: address,
-		styx: &styx.Session{},
-		key: key,
-		cert: cert,
+		styx:    &styx.Session{},
+		key:     key,
+		cert:    cert,
 	}
 
 	return s, nil
@@ -66,7 +66,7 @@ func (s *Session) Register(filer store.Filer, cbs callback.Callback, cmd callbac
 	}
 	s.command = cmd
 	open, ok := filer.(store.Opener)
-	if ! ok {
+	if !ok {
 		return errors.New("store does not implement required 'Open'")
 	}
 	s.open = open
@@ -75,7 +75,7 @@ func (s *Session) Register(filer store.Filer, cbs callback.Callback, cmd callbac
 		s.delete = delete
 	}
 
-	if _, ok := cbs.(callback.Controller); ! ok {
+	if _, ok := cbs.(callback.Controller); !ok {
 		s.hasController = false
 	}
 
@@ -88,7 +88,7 @@ func (s *Session) Register(filer store.Filer, cbs callback.Callback, cmd callbac
 
 // Build the files from the store, do not produce as-is since they'll be broken
 func getFile(s *Session, current, in string) (store.File, error) {
-	switch(in) {
+	switch in {
 	case "/":
 		// Returns our base dir with our current buffer keyed
 		return s.open.Root(current)
@@ -103,8 +103,8 @@ func getFile(s *Session, current, in string) (store.File, error) {
 		if err != nil {
 			return nil, err
 		}
-		go func(s *Session, ctrl *files.CtrlFile){
-			if current, ok := <- ctrl.Current; ok {
+		go func(s *Session, ctrl *files.CtrlFile) {
+			if current, ok := <-ctrl.Current; ok {
 				s.current = current
 			}
 		}(s, d)
@@ -114,7 +114,7 @@ func getFile(s *Session, current, in string) (store.File, error) {
 		// do a special input thing
 	default:
 		fp := path.Join(current, in)
-		for _, item := range s.list.List(){
+		for _, item := range s.list.List() {
 			// Only open items we have buffers open with
 			if path.Clean(item) == current {
 				return s.open.Open(fp)
@@ -130,7 +130,7 @@ func (s *Session) Serve9P(x *styx.Session) {
 
 	// Callback on client connection
 	if s.hasConnecter {
-		client := &callback.Client{ 
+		client := &callback.Client{
 			Username: x.User,
 		}
 		s.callbacks.Connect(client)
@@ -144,7 +144,7 @@ func (s *Session) Serve9P(x *styx.Session) {
 		f, err := getFile(s, current, req.Path())
 		if err != nil {
 			req.Rerror("%s", err)
-			continue;
+			continue
 		}
 
 		switch t := req.(type) {
@@ -170,4 +170,3 @@ func (s *Session) Serve9P(x *styx.Session) {
 		}
 	}
 }
-
