@@ -47,6 +47,7 @@ func New(name string, address string, debug bool) *Service {
 	s := &Service{
 		name:    name,
 		address: address,
+		debug:   func(serviceMsg, ...interface{}) {},
 	}
 
 	if debug {
@@ -61,12 +62,12 @@ func (s *Service) WithContext(ctx context.Context) {
 }
 
 func (s *Service) WithStore(st store.Filer) {
-	s.debug(serviceStore, st.Type())
+	s.debug(serviceStore, st)
 	s.store = st
 }
 
 func (s *Service) WithListener(l listener.Listener) {
-	s.debug(serviceListener, l.Type())
+	s.debug(serviceListener, l)
 	s.listener = l
 }
 
@@ -124,7 +125,9 @@ func serviceLogger(msg serviceMsg, args ...interface{}) {
 			}
 		}
 	case serviceListener:
-		l.Printf("listener: type=\"%s\"", args[0])
+		if t, ok := args[0].(listener.Listener); ok {
+			l.Printf("listener: type=\"%s\"", t.Type())
+		}
 	case serviceRunner:
 		if _, ok := args[0].(runner.Listener); ok {
 			l.Println("runner: registered Listener")
@@ -133,7 +136,9 @@ func serviceLogger(msg serviceMsg, args ...interface{}) {
 			l.Println("runner: registered Starter")
 		}
 	case serviceStore:
-		l.Printf("store: type=\"%s\"", args[0])
+		if t, ok := args[0].(store.Filer); ok {
+			l.Printf("store: type=\"%s\"", t.Type())
+		}
 	case serviceStarted:
 		l.Println("started")
 	}
