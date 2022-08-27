@@ -5,25 +5,20 @@ import (
 	"path"
 
 	"github.com/altid/libs/auth"
-	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/internal/files"
 	"github.com/altid/libs/store"
 	"github.com/halfwit/styx"
 )
 
 type Session struct {
-	styx          *styx.Session
-	hasController bool
-	hasConnecter  bool
-	key           string
-	cert          string
-	address       string
-	current       string
-	command       callback.Sender
-	callbacks     callback.Callback
-	list          store.Lister
-	open          store.Opener
-	delete        store.Deleter
+	styx    *styx.Session
+	key     string
+	cert    string
+	address string
+	current string
+	list    store.Lister
+	open    store.Opener
+	delete  store.Deleter
 }
 
 func NewSession(address string, key, cert string) (*Session, error) {
@@ -60,11 +55,10 @@ func (s *Session) Listen() error {
 
 // Here we need a command channel as well to move it out of listen
 // Wrap in a type so we can not do bare channels
-func (s *Session) Register(filer store.Filer, cbs callback.Callback, cmd callback.Sender) error {
+func (s *Session) Register(filer store.Filer) error {
 	if list, ok := filer.(store.Lister); ok {
 		s.list = list
 	}
-	s.command = cmd
 	open, ok := filer.(store.Opener)
 	if !ok {
 		return errors.New("store does not implement required 'Open'")
@@ -73,14 +67,6 @@ func (s *Session) Register(filer store.Filer, cbs callback.Callback, cmd callbac
 
 	if delete, ok := filer.(store.Deleter); ok {
 		s.delete = delete
-	}
-
-	if _, ok := cbs.(callback.Controller); !ok {
-		s.hasController = false
-	}
-
-	if _, ok := cbs.(callback.Connecter); !ok {
-		s.hasConnecter = false
 	}
 
 	return nil
@@ -99,7 +85,7 @@ func getFile(s *Session, current, in string) (store.File, error) {
 		// do a tabs thing
 	case "/ctrl":
 		// Allow buffer modifications
-		d, err := files.Ctrl(s.command)
+		d, err := files.Ctrl()
 		if err != nil {
 			return nil, err
 		}
@@ -127,14 +113,6 @@ func getFile(s *Session, current, in string) (store.File, error) {
 // Technically internal, this is used by Styx
 func (s *Session) Serve9P(x *styx.Session) {
 	var current string
-
-	// Callback on client connection
-	if s.hasConnecter {
-		client := &callback.Client{
-			Username: x.User,
-		}
-		s.callbacks.Connect(client)
-	}
 
 	files := make(map[string]store.File)
 	s.current = "server"

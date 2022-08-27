@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/altid/libs/service/command"
+	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/listener"
 	"github.com/altid/libs/store"
 )
@@ -12,7 +12,7 @@ import (
 type testctrl struct {
 }
 
-func (c *testctrl) Run(ctrl *Control, cmd *command.Command) error {
+func (c *testctrl) Run(ctrl *Control, cmd *commander.Command) error {
 	switch cmd.Name {
 	case "open":
 	case "close":

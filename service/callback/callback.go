@@ -1,11 +1,13 @@
 package callback
 
+import "github.com/altid/libs/service/control"
+
 type Connecter interface {
-	Connect(*Client) error
+	Connect(*Client, *control.Control) error
 }
 
 type Controller interface {
-	Control() error
+	Control(*control.Control) error
 }
 
 type Callback interface {
