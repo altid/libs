@@ -92,7 +92,7 @@ func getFile(c *Client, in string) (store.File, error) {
 		// do a tabs thing
 	case "/ctrl":
 		// Allow buffer modifications
-		d, err := files.Ctrl(c.ctrlWrite)
+		d, err := files.Ctrl(c.ctrlWrite, c.ctrlData)
 		if err != nil {
 			return nil, err
 		}
@@ -175,4 +175,9 @@ func (c *Client) ctrlWrite(ctrl []byte) error {
 	// This doesn't seem right
 	r := c.s.cmd.RunCommand()
 	return r(cmd)
+}
+
+func (c *Client) ctrlData() []byte {
+	r := c.s.cmd.CtrlData()
+	return r()
 }

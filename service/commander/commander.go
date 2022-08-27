@@ -25,8 +25,9 @@ type Commander interface {
 	FromString(string) (*Command, error)
 	FromBytes([]byte) (*Command, error)
 	FindCommand(string, []*Command) (*Command, error)
-	WriteCommands([]*Command, io.WriteCloser) error
+	WriteCommands([]*Command, io.Writer) error
 	RunCommand() func(*Command) error
+	CtrlData() func() []byte
 }
 
 // Allow sorting of our lists

@@ -12,7 +12,8 @@ import (
 )
 
 type Command struct {
-	SendCommand func(*commander.Command) error
+	SendCommand     func(*commander.Command) error
+	CtrlDataCommand func() []byte
 }
 
 const commandTemplate = `{{range .}}	{{.Name}}{{if .Alias}}{{range .Alias}}|{{.}}{{end}}{{end}}{{if .Args}}	{{range .Args}}{{.}} {{end}}{{end}}{{if .Description}}	# {{.Description}}{{end}}
@@ -47,10 +48,8 @@ func (c *Command) FindCommands(b []byte) ([]*commander.Command, error) {
 	return cmdlist, nil
 }
 
-func (c *Command) RunCommand() func(*commander.Command) error {
-	return c.SendCommand
-}
-
+func (c *Command) RunCommand() func(*commander.Command) error { return c.SendCommand }
+func (c *Command) CtrlData() func() []byte                    { return c.CtrlDataCommand }
 func (c *Command) FromBytes(input []byte) (*commander.Command, error) {
 	return c.FromString(string(input))
 }
@@ -78,7 +77,7 @@ func (c *Command) FromString(input string) (*commander.Command, error) {
 	return comm, nil
 }
 
-func (c *Command) WriteCommands(cmdlist []*commander.Command, to io.WriteCloser) error {
+func (c *Command) WriteCommands(cmdlist []*commander.Command, to io.Writer) error {
 	var last int
 
 	curr := cmdlist[0].Heading
@@ -138,7 +137,7 @@ func (c *Command) FindCommand(cmd string, cmdlist []*commander.Command) (*comman
 	return nil, errors.New("command not supported")
 }
 
-func cmdHeading(to io.WriteCloser, heading commander.ComGroup) {
+func cmdHeading(to io.Writer, heading commander.ComGroup) {
 	switch heading {
 	case commander.ActionGroup:
 		to.Write([]byte("emotes:\n"))

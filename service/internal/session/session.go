@@ -1,6 +1,7 @@
 package session
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"log"
@@ -58,7 +59,8 @@ func (s *Session) Listen(debug bool) error {
 
 	// Set up commander
 	s.commander = &command.Command{
-		SendCommand: s.command,
+		SendCommand:     s.sendCommand,
+		CtrlDataCommand: s.ctrlData,
 	}
 
 	s.cmdlist = commander.DefaultCommands
@@ -113,7 +115,7 @@ func (s *Session) Listen(debug bool) error {
 	}
 }
 
-func (s *Session) command(cmd *commander.Command) error {
+func (s *Session) sendCommand(cmd *commander.Command) error {
 	switch cmd.Name {
 	case "shutdown":
 		s.Ctx.Done()
@@ -122,6 +124,13 @@ func (s *Session) command(cmd *commander.Command) error {
 	}
 
 	return s.Runner.Command(cmd)
+}
+
+func (s *Session) ctrlData() (b []byte) {
+	cw := bytes.NewBuffer(b)
+	s.commander.WriteCommands(s.cmdlist, cw)
+
+	return cw.Bytes()
 }
 
 func (s *Session) dispatch() error {
