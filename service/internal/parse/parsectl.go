@@ -1,10 +1,12 @@
-package command
+package parse
 
 import (
 	"errors"
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/altid/libs/service/commander"
 )
 
 /* Files are simple
@@ -25,8 +27,8 @@ const (
 )
 
 // Parse returns any commands found within the byte array
-func ParseCtlFile(b []byte) ([]*Command, error) {
-	var cmdlist []*Command
+func ParseCtlFile(b []byte) ([]*commander.Command, error) {
+	var cmdlist []*commander.Command
 
 	l := &lexer{
 		src:     b,
@@ -56,8 +58,8 @@ func ParseCtlFile(b []byte) ([]*Command, error) {
 	}
 }
 
-func parseCtlFile(l *lexer) (*Command, error) {
-	cmd := &Command{}
+func parseCtlFile(l *lexer) (*commander.Command, error) {
+	cmd := &commander.Command{}
 
 	for {
 		i := l.next()
@@ -281,16 +283,16 @@ func parseEntryDesc(l *lexer) stateFn {
 	}
 }
 
-func headingFromString(b []byte) (ComGroup, error) {
+func headingFromString(b []byte) (commander.ComGroup, error) {
 	switch string(b) {
 	case "general":
-		return DefaultGroup, nil
+		return commander.DefaultGroup, nil
 	case "media":
-		return MediaGroup, nil
+		return commander.MediaGroup, nil
 	case "emotes":
-		return ActionGroup, nil
+		return commander.ActionGroup, nil
 	case "service":
-		return ServiceGroup, nil
+		return commander.ServiceGroup, nil
 	default:
 		return 0, errors.New("unknown heading")
 	}

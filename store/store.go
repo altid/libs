@@ -8,14 +8,18 @@ import (
 // Lister returns an array of paths available on the storage
 // These can be accessed with an Open command, given the same path
 type Lister interface {
-	List() ([]string)
+	List() []string
 }
 
 // Opener returns a single File item from the storage by name
 // If the file does not exist, it is created and returned
-// Files returned by an Opener should be closed with Close() after 
+// Files returned by an Opener should be closed with Close() after
+// Root returns the root directory, which on read returns the filestats for files
+// in the root directory such as "/errors" and "/tabs", and anything in the "/current"
+// buffer will be returned as top-level overlay, such as "/current/main" --> "/main"
 type Opener interface {
 	Open(string) (File, error)
+	Root(current string) (File, error)
 }
 
 // Deleter removes a single File item from the storage by name
@@ -29,6 +33,7 @@ type Filer interface {
 	Lister
 	Opener
 	Deleter
+	Type() string
 }
 
 // File is an interface which represents data for a single file

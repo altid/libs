@@ -3,7 +3,6 @@ package markup
 import (
 	"testing"
 
-
 	fuzz "github.com/google/gofuzz"
 )
 
