@@ -1,5 +1,6 @@
-package service 
+package control
 
+// TODO: Refactor into just a public interface
 import (
 	"context"
 	"errors"
@@ -7,16 +8,21 @@ import (
 	"log"
 	"os"
 
+	"github.com/altid/libs/service/command"
 	"github.com/altid/libs/service/input"
+	"github.com/altid/libs/service/internal/cmd"
+	"github.com/altid/libs/service/internal/ctrl"
 	"github.com/altid/libs/service/listener"
-	"github.com/altid/libs/service/internal/command"
-	"github.com/altid/libs/service/internal/control"
 	"github.com/altid/libs/store"
 )
 
 type Manager interface {
-	Run(*Control, *Command) error
+	Run(*Control, *command.Command) error
 	Quit()
+}
+
+type Sender interface {
+	Send(string)
 }
 
 // Control type can be used to manage a running ctl file session
@@ -26,7 +32,7 @@ type Control struct {
 	ctl			Manager
 	input		input.Handler
 	listener	listener.Listener
-	run			*control.Control
+	run			*ctrl.Control
 	done		chan struct{}
 	req			chan string
 	debug  func(ctlMsg, ...interface{})
@@ -57,7 +63,7 @@ func New(ctl interface{}, store store.Filer, listener listener.Listener, logdir 
 
 	req := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
-	rtc := control.New(ctx, store, logdir, "", "", nil)
+	rtc := ctrl.New(ctx, store, logdir, "", "", nil)
 
 	c := &Control{
 		ctx:        ctx,
@@ -80,11 +86,11 @@ func New(ctl interface{}, store store.Filer, listener listener.Listener, logdir 
 		c.input = input
 	}
 
-	cmdlist := command.DefaultCommands
-	cmdlist = append(cmdlist, &command.Command{
+	cmdlist := cmd.DefaultCommands
+	cmdlist = append(cmdlist, &cmd.Command{
 		Name:        "main",
 		Args:        []string{"<quit|restart|reload>"},
-		Heading:     command.ServiceGroup,
+		Heading:     cmd.ServiceGroup,
 		Description: "Control the lifecycle of a service",
 	})
 
@@ -126,14 +132,22 @@ func (c *Control) Remove(buffer, filename string) error {
 	return c.run.Remove(buffer, filename)
 }
 
-// Listen starts a network listener for incoming clients
-func (c *Control) Listen() error {
-	if c.listener == nil {
-		return errors.New("no listener registered for service controller")
+func (c *Control) SendCommand(input string) error {
+	cmd, err := c.run.BuildCommand(input)
+	if err != nil {
+		return err
 	}
 
-	go dispatch(c)
+	real := translate(cmd)
+	if real.Heading == command.ServiceGroup {
+		return serviceCommand(c, real)
+	}
 
+	return c.ctl.Run(c, real)
+}
+
+// Listen starts a network listener for incoming clients
+func (c *Control) Listen() error {
 	c.debug(ctlStart, "listen")
 	return c.listener.Listen()
 }
@@ -143,23 +157,24 @@ func (c *Control) Listen() error {
 // The resulting command down to RunCommand
 // Commands must include at least a name and a heading
 // Running SetCommands after calling Start or Listen will have no effect
-func (c *Control) SetCommands(cmd ...*Command) error {
+func (c *Control) SetCommands(cmd ...*command.Command) error {
 	for _, comm := range cmd {
 		if comm.Name == "" {
 			return errors.New("command requires Name")
 		}
 
 		switch comm.Heading {
-		case DefaultGroup, MediaGroup, ActionGroup:
+		case command.DefaultGroup, command.MediaGroup, command.ActionGroup:
 			continue
 		default:
 			return errors.New("unsupported or nil Heading set")
 		}
 	}
 
-	if e := setCommands(c.run, cmd...); e != nil {
-		return e
-	}
+	// TODO: Investigate how to do this
+	//if e := setCommands(c.run, cmd...); e != nil {
+	//	return e
+	//}
 
 	return nil
 }
@@ -180,37 +195,37 @@ func (c *Control) Notification(buff, from, msg string) error {
 }
 
 // ErrorWriter returns a WriteCloser attached to a services' errors file
-func (c *Control) ErrorWriter() (*control.WriteCloser, error) {
+func (c *Control) ErrorWriter() (*ctrl.WriteCloser, error) {
 	return c.run.Errorwriter()
 }
 
 // StatusWriter returns a WriteCloser attached to a buffers status file
-func (c *Control) StatusWriter(buffer string) (*control.WriteCloser, error) {
+func (c *Control) StatusWriter(buffer string) (*ctrl.WriteCloser, error) {
 	return c.run.FileWriter(buffer, "status")
 }
 
 // SideWriter returns a WriteCloser attached to a buffers `aside` file
-func (c *Control) SideWriter(buffer string) (*control.WriteCloser, error) {
+func (c *Control) SideWriter(buffer string) (*ctrl.WriteCloser, error) {
 	return c.run.FileWriter(buffer, "aside")
 }
 
 // NavWriter returns a WriteCloser attached to a buffers nav file
-func (c *Control) NavWriter(buffer string) (*control.WriteCloser, error) {
+func (c *Control) NavWriter(buffer string) (*ctrl.WriteCloser, error) {
 	return c.run.FileWriter(buffer, "navi")
 }
 
 // TitleWriter returns a WriteCloser attached to a buffers title file
-func (c *Control) TitleWriter(buffer string) (*control.WriteCloser, error) {
+func (c *Control) TitleWriter(buffer string) (*ctrl.WriteCloser, error) {
 	return c.run.FileWriter(buffer, "title")
 }
 
 // ImageWriter returns a WriteCloser attached to a named file in the buffers' image directory
-func (c *Control) ImageWriter(buffer, resource string) (*control.WriteCloser, error) {
+func (c *Control) ImageWriter(buffer, resource string) (*ctrl.WriteCloser, error) {
 	return c.run.ImageWriter(buffer, resource)
 }
 
 // MainWriter returns a WriteCloser attached to a buffer's main output
-func (c *Control) MainWriter(buffer string) (*control.WriteCloser, error) {
+func (c *Control) MainWriter(buffer string) (*ctrl.WriteCloser, error) {
 	return c.run.FileWriter(buffer, "main")
 }
 
@@ -220,63 +235,31 @@ func (c *Control) Context() context.Context {
 	return c.ctx
 }
 
-func dispatch(c *Control) {
-	// If close is requested on a file which is currently being opened, cancel open request
-	// If open is requested on file which already exists, no-op
-	ew, err := c.run.Errorwriter()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer ew.Close()
-
-	for {
-		select {
-		case line := <-c.req:
-			cmd, err := c.run.BuildCommand(line)
-			if err != nil {
-				fmt.Fprintf(ew, "%v\n", err)
-				continue
-			}
-
-			real := translate(cmd)
-			if real.Heading == ServiceGroup {
-				serviceCommand(c, real, ew)
-				continue
-			}
-
-			c.ctl.Run(c, real)
-		case <-c.done:
-			return
-		case <-c.ctx.Done():
-			return
-		}
-	}
-}
-
-func serviceCommand(c *Control, cmd *Command, ew *control.WriteCloser) {
+func serviceCommand(c *Control, cmd *command.Command) error {
 	switch cmd.Args[0] {
 	case "quit":
 		defer c.cancel()
 		// Close our local listeners, then
 		close(c.done)
 		c.ctl.Quit()
+		return nil
 	// Eventually we may want to access these
 	case "reload", "restart":
 		c.ctl.Run(c, cmd)
+		return nil
 	default:
-		fmt.Fprintf(ew, "unsupported command: %s", cmd.Args[0])
+		return fmt.Errorf("unsupported command: %s", cmd.Args[0])
 	}
 }
 
-func translate(cmd *command.Command) *Command {
-	return &Command{
+func translate(cmd *command.Command) *command.Command {
+	return &command.Command{
 		Name:        cmd.Name,
 		Description: cmd.Description,
 		From:        cmd.From,
 		Args:        cmd.Args,
 		Alias:       cmd.Alias,
-		Heading:     ComGroup(cmd.Heading),
+		Heading:     command.ComGroup(cmd.Heading),
 	}
 }
 
@@ -297,11 +280,11 @@ func ctlLogger(msg ctlMsg, args ...interface{}) {
 	case ctlNotify:
 		l.Printf("notify: buffer=\"%s\" from=\"%s\" msg=\"%s\"\n", args[0], args[1], args[2])
 	case ctlDefault:
-		cmd := args[0].(*Command)
+		cmd := args[0].(*command.Command)
 		switch cmd.Heading {
-		case ActionGroup:
+		case command.ActionGroup:
 			l.Printf("%s group=\"action\" arguments=\"%s\"\n", cmd.Name, cmd.Args)
-		case MediaGroup:
+		case command.MediaGroup:
 			l.Printf("%s group=\"media\" arguments=\"%s\"\n", cmd.Name, cmd.Args)
 		}
 	}

@@ -43,9 +43,9 @@ func TestDir(t *testing.T) {
 func TestFile(t *testing.T) {
 
 	f := File{
-		path: "test",
-		data: []byte(""),
-		offset: 0,
+		path:    "test",
+		data:    []byte(""),
+		offset:  0,
 		streams: make(map[string]*Stream),
 	}
 
@@ -74,9 +74,9 @@ func TestFile(t *testing.T) {
 	}
 
 	f2 := File{
-		path: "test",
-		data: []byte(""),
-		offset: 0,
+		path:    "test",
+		data:    []byte(""),
+		offset:  0,
 		streams: make(map[string]*Stream),
 	}
 
@@ -108,9 +108,9 @@ func TestFile(t *testing.T) {
 
 func TestStream(t *testing.T) {
 	f := File{
-		path: "test",
-		data: []byte(""),
-		offset: 0,
+		path:    "test",
+		data:    []byte(""),
+		offset:  0,
 		streams: make(map[string]*Stream),
 	}
 
@@ -136,7 +136,7 @@ func TestStream(t *testing.T) {
 
 	for {
 		_, err := c.Read(b)
-		switch(err) {
+		switch err {
 		case io.EOF:
 			goto NEXT
 		case nil:
@@ -157,8 +157,8 @@ NEXT:
 	if e := f.Close(); e == nil {
 		t.Error("able to close with active streams")
 	}
-	
-	d.Close();
+
+	d.Close()
 
 	if e := f.Close(); e != nil {
 		t.Error(e)

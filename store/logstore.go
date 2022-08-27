@@ -18,14 +18,14 @@ type LogStore struct {
 
 func NewLogStore(base string) *LogStore {
 	return &LogStore{
-		base: base,
-		root: ramstore.NewRoot(),
+		base:  base,
+		root:  ramstore.NewRoot(),
 		mains: make(map[string]*logstore.File),
 	}
 
 }
 
-func (ls *LogStore) List() ([]string) {
+func (ls *LogStore) List() []string {
 	list := ls.root.List()
 
 	for _, main := range ls.mains {
@@ -62,4 +62,8 @@ func (ls *LogStore) Delete(name string) error {
 	}
 
 	return ls.root.Delete(name)
+}
+
+func (ls *LogStore) Type() string {
+	return "log"
 }
