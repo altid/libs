@@ -3,10 +3,12 @@ package service
 import (
 	"log"
 	"os"
+	"sort"
 
 	"github.com/altid/libs/service/callback"
-	"github.com/altid/libs/service/command"
+	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/control"
+	"github.com/altid/libs/service/internal/command"
 	"github.com/altid/libs/service/listener"
 	"github.com/altid/libs/service/runner"
 	"github.com/altid/libs/store"
@@ -21,18 +23,20 @@ const (
 	serviceRunner
 	serviceControl
 	serviceCommand
+	serviceSetCommands
 	serviceStarted
 	serviceError
 )
 
 type Service struct {
-	store    store.Filer
-	listener listener.Listener
-	callback callback.Callback
-	runner   runner.Runner
+	callback  callback.Callback
+	commander commander.Commander
+	listener  listener.Listener
+	runner    runner.Runner
+	store     store.Filer
 
+	cmdlist []*commander.Command
 	control *control.Control
-	cmd     *command.Command
 	name    string
 	debug   func(serviceMsg, ...interface{})
 }
@@ -70,7 +74,15 @@ func (s *Service) WithRunner(r runner.Runner) {
 	s.runner = r
 }
 
+func (s *Service) SetCommands(cmds []*commander.Command) {
+	s.debug(serviceSetCommands, cmds)
+	s.cmdlist = append(s.cmdlist, cmds...)
+	sort.Sort(commander.CmdList(s.cmdlist))
+}
+
 func (s *Service) Listen() error {
+	var command command.Command
+
 	// Internal:
 	// set up store
 	// set up listener
@@ -78,10 +90,20 @@ func (s *Service) Listen() error {
 	// register runner - if no runner, fail!
 	// start control listens
 
+	s.commander = &command
+	s.debug(serviceCommand)
+
+	// Add defaults
+	s.cmdlist = commander.DefaultCommands
+	sort.Sort(commander.CmdList(s.cmdlist))
+	s.debug(serviceSetCommands, s.cmdlist)
+
+	// Finally run
 	s.debug(serviceStarted)
 	return nil
 }
 
+// Very good logging is beneficial!
 func serviceLogger(msg serviceMsg, args ...interface{}) {
 	l := log.New(os.Stdout, "service ", 0)
 
@@ -95,8 +117,14 @@ func serviceLogger(msg serviceMsg, args ...interface{}) {
 		if _, ok := args[0].(callback.Controller); ok {
 			l.Println("callback: control message callback registered")
 		}
+	case serviceSetCommands:
+		for _, arg := range args {
+			if cmd, ok := arg.(commander.Command); ok {
+				l.Printf("adding command: %v", cmd.Name)
+			}
+		}
 	case serviceCommand:
-		l.Println("command registered")
+		l.Println("commander registered")
 	case serviceControl:
 		l.Println("control registered")
 	case serviceListener:

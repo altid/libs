@@ -1,4 +1,4 @@
-package cmd
+package parse
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ const (
 	cmdErr
 )
 
-func parseCmd(cmd string) (string, string, []string, error) {
+func ParseCmd(cmd string) (string, string, []string, error) {
 	var name, from string
 	var args []string
 

@@ -8,16 +8,16 @@ import (
 	"log"
 	"os"
 
-	"github.com/altid/libs/service/command"
+	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/input"
-	"github.com/altid/libs/service/internal/cmd"
+	"github.com/altid/libs/service/internal/command"
 	"github.com/altid/libs/service/internal/ctrl"
 	"github.com/altid/libs/service/listener"
 	"github.com/altid/libs/store"
 )
 
 type Manager interface {
-	Run(*Control, *command.Command) error
+	Run(*Control, *commander.Command) error
 	Quit()
 }
 
@@ -86,11 +86,11 @@ func New(ctl interface{}, store store.Filer, listener listener.Listener, logdir 
 		c.input = input
 	}
 
-	cmdlist := cmd.DefaultCommands
-	cmdlist = append(cmdlist, &cmd.Command{
+	cmdlist := commander.DefaultCommands
+	cmdlist = append(cmdlist, &commander.Command{
 		Name:        "main",
 		Args:        []string{"<quit|restart|reload>"},
-		Heading:     cmd.ServiceGroup,
+		Heading:     commander.ServiceGroup,
 		Description: "Control the lifecycle of a service",
 	})
 
@@ -138,12 +138,11 @@ func (c *Control) SendCommand(input string) error {
 		return err
 	}
 
-	real := translate(comm)
-	if real.Heading == command.ServiceGroup {
-		return serviceCommand(c, real)
+	if comm.Heading == commander.ServiceGroup {
+		return serviceCommand(c, comm)
 	}
 
-	return c.ctl.Run(c, real)
+	return c.ctl.Run(c, comm)
 }
 
 // Listen starts a network listener for incoming clients
@@ -249,17 +248,6 @@ func serviceCommand(c *Control, cmd *command.Command) error {
 		return nil
 	default:
 		return fmt.Errorf("unsupported command: %s", cmd.Args[0])
-	}
-}
-
-func translate(cmd *command.Command) *command.Command {
-	return &command.Command{
-		Name:        cmd.Name,
-		Description: cmd.Description,
-		From:        cmd.From,
-		Args:        cmd.Args,
-		Alias:       cmd.Alias,
-		Heading:     command.ComGroup(cmd.Heading),
 	}
 }
 

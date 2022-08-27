@@ -1,8 +1,10 @@
-package cmd
+package parse
 
 import (
 	"strings"
 	"unicode/utf8"
+
+	"github.com/altid/libs/service/commander"
 )
 
 type stateFn func(*lexer) stateFn
@@ -15,7 +17,7 @@ type lexer struct {
 	pos     int
 	items   chan item
 	state   stateFn
-	heading ComGroup
+	heading commander.ComGroup
 }
 
 type item struct {

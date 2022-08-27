@@ -1,4 +1,4 @@
-package command
+package commander
 
 import (
 	"os"
@@ -31,6 +31,7 @@ func TestCommands(t *testing.T) {
 	cmdlist2 = append(cmdlist2, testMakeCmd("banana", []string{}, MediaGroup, []string{}))
 	cmdlist2 = append(cmdlist2, testMakeCmd("nocomm", []string{}, ActionGroup, []string{"yacomm", "maybecomm"}))
 
+	// We don't need this in control
 	if e := c.SetCommands(cmdlist2...); e != nil {
 		t.Error("error in setting commands", e)
 	}

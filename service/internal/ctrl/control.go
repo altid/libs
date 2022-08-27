@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"sort"
+
+	//"sort"
 
 	"github.com/altid/libs/markup"
-	"github.com/altid/libs/service/command"
+	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/input"
-	"github.com/altid/libs/service/internal/cmd"
 	"github.com/altid/libs/store"
 )
 
@@ -18,7 +18,7 @@ type Control struct {
 	store   store.Filer
 	tabs    store.File
 	errors  store.File
-	cmdlist []*cmd.Command
+	cmdlist []*commander.Command
 	tablist []*tab
 	done    chan struct{}
 	rundir  string
@@ -77,16 +77,18 @@ func (c *Control) Input(handler input.Handler, buffer string, payload []byte) er
 	return handler.Handle(ep, l)
 }
 
-func (c *Control) SetCommands(cmd ...*cmd.Command) error {
+func (c *Control) SetCommands(cmd ...*commander.Command) error {
 	c.cmdlist = append(c.cmdlist, cmd...)
-	sort.Sort(command.CmdList(c.cmdlist))
+	//sort.Sort(cmd.CmdList(c.cmdlist))
 
 	return nil
 }
 
-func (c *Control) BuildCommand(comm string) (*command.Command, error) {
-	return command.ParseCmd(comm, c.cmdlist)
+/*
+func (c *Control) BuildCommand(comm string) (*commander.Command, error) {
+	return commander.FindCommand(comm, c.cmdlist)
 }
+*/
 
 func (c *Control) Cleanup() {
 	c.tabs.Close()

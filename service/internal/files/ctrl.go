@@ -8,20 +8,16 @@ import (
 	"io/fs"
 	"os"
 	"time"
-
-	"github.com/altid/libs/service/callback"
 )
 
 type CtrlFile struct {
 	Current chan string
-	cb      callback.Sender
 	offset  int64
 }
 
-func Ctrl(cmd callback.Sender) (*CtrlFile, error) {
+func Ctrl() (*CtrlFile, error) {
 	cf := &CtrlFile{
 		Current: make(chan string),
-		cb:      cmd,
 	}
 
 	return cf, nil
@@ -65,7 +61,6 @@ func (c *CtrlFile) Write(p []byte) (n int, err error) {
 		}
 	}(c, p)
 
-	c.cb.SendCommand(string(p))
 	return
 }
 
