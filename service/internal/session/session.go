@@ -103,14 +103,11 @@ func (s *Session) Listen(debug bool) error {
 		echan <- s.Listener.Listen()
 	}(echan)
 
-	go func(chan error) {
-		echan <- s.dispatch()
-	}(echan)
-
 	select {
 	case <-s.Ctx.Done():
 		return nil
 	case err := <-echan:
+		s.debug(sessionError, err)
 		return err
 	}
 }
@@ -133,13 +130,8 @@ func (s *Session) ctrlData() (b []byte) {
 	return cw.Bytes()
 }
 
-func (s *Session) dispatch() error {
-	// TODO: Here we will issue all the internal plumbing - ctrl writes make ctrl messages, input calls handlers
-	return nil
-}
-
 func sessionLogger(msg sessionMsg, args ...interface{}) {
-	l := log.New(os.Stdout, "session", 0)
+	l := log.New(os.Stdout, "session ", 0)
 	switch msg {
 	case sessionError:
 		l.Printf("error: %v", args[0])
