@@ -277,7 +277,7 @@ func lexStrong(l *Lexer) stateFn {
 		switch l.nextChar() {
 		case EOF:
 			l.error("incorrect input: no closing strong tag")
-			
+
 			return nil
 		case '\\':
 			l.escape()

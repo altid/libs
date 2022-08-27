@@ -31,10 +31,10 @@ type Service struct {
 	callback callback.Callback
 	runner   runner.Runner
 
-	control  *control.Control
-	cmd      *command.Command
-	name     string
-	debug    func(serviceMsg, ...interface{})
+	control *control.Control
+	cmd     *command.Command
+	name    string
+	debug   func(serviceMsg, ...interface{})
 }
 
 func New(name string, debug bool) *Service {

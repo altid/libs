@@ -58,7 +58,7 @@ func (np Listen9p) Listen() error {
 
 // TODO: This almost certainly changes, but we shall see
 func (np Listen9p) Register(filer store.Filer, cbs callback.Callback, cmd callback.Sender) error {
-	return np.session.Register(filer, cbs, cmd) 
+	return np.session.Register(filer, cbs, cmd)
 }
 
 func (np Listen9p) Type() string {

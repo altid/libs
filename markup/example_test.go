@@ -8,7 +8,7 @@ func ExampleLexer() {
 	l := markup.NewStringLexer("Text with **bold and _strong tags_**")
 	for {
 		n := l.Next()
-		switch(n.ItemType) {
+		switch n.ItemType {
 		case markup.URLText:
 		case markup.BoldText:
 		case markup.StrongText:

@@ -1,11 +1,10 @@
-package command 
+package command
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/altid/libs/service/internal/command"
-	"github.com/altid/libs/service/internal/control"
+	"github.com/altid/libs/service/internal/cmd"
 )
 
 // ComGroup is a logical grouping of commands
@@ -36,13 +35,13 @@ type Command struct {
 func FindCommands(b []byte) ([]*Command, error) {
 	var cmdlist []*Command
 
-	cl, err := command.ParseCtlFile(b)
+	cl, err := cmd.ParseCtlFile(b)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, cmd := range cl {
-                if cmd.Heading < 0 {
+		if cmd.Heading < 0 {
 			return nil, fmt.Errorf("unable to find a heading for %s", cmd.Name)
 		}
 		c := &Command{
@@ -62,8 +61,8 @@ func FindCommands(b []byte) ([]*Command, error) {
 
 // FromString returns a partially filled command
 // It will have a Heading type of DefaultGroup
-func FromString(cmd string) (*Command, error) {
-	name, from, args, err := command.FindParts(cmd)
+func FromString(comm string) (*Command, error) {
+	name, from, args, err := cmd.FindParts(comm)
 	if err != nil {
 		return nil, err
 	}
@@ -96,19 +95,20 @@ func (c *Command) Bytes() []byte {
 	return []byte(c.String())
 }
 
+/*
 // Conversion functions for our internal command type
-func setCommands(ctrl *control.Control, cmds ...*Command) error {
+func setCommands(ctrl *ctrl.Control, cmds ...*Command) error {
 	// Parse into command structure and set
-	var cmdlist []*command.Command
+	var cmdlist []*cmd.Command
 
-	for _, cmd := range cmds {
-		c := &command.Command{
-			Name:        cmd.Name,
-			Description: cmd.Description,
-			Heading:     command.ComGroup(cmd.Heading),
-			Args:        cmd.Args,
-			Alias:       cmd.Alias,
-			From:        cmd.From,
+	for _, cd := range cmds {
+		c := &cmd.Command{
+			Name:        cd.Name,
+			Description: cd.Description,
+			Heading:     cmd.ComGroup(cd.Heading),
+			Args:        cd.Args,
+			Alias:       cd.Alias,
+			From:        cd.From,
 		}
 
 		cmdlist = append(cmdlist, c)
@@ -116,3 +116,4 @@ func setCommands(ctrl *control.Control, cmds ...*Command) error {
 
 	return ctrl.SetCommands(cmdlist...)
 }
+*/

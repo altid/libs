@@ -14,14 +14,14 @@ import (
 
 type CtrlFile struct {
 	Current chan string
-	cb callback.Sender
-	offset int64
+	cb      callback.Sender
+	offset  int64
 }
 
 func Ctrl(cmd callback.Sender) (*CtrlFile, error) {
 	cf := &CtrlFile{
 		Current: make(chan string),
-		cb: cmd,
+		cb:      cmd,
 	}
 
 	return cf, nil
@@ -57,7 +57,7 @@ func (c *CtrlFile) Write(p []byte) (n int, err error) {
 	n = len(p)
 	c.offset += int64(n)
 
-	go func(c *CtrlFile, p[]byte) {
+	go func(c *CtrlFile, p []byte) {
 		if bytes.HasPrefix(p, []byte("buffer ")) {
 			buffer := bytes.TrimPrefix(p, []byte("buffer "))
 			c.Current <- string(buffer)
@@ -84,12 +84,14 @@ func (c *CtrlFile) Close() error {
 	return nil
 }
 
-func (c *CtrlFile) Stream() (io.ReadCloser, error)  { return nil, errors.New("streams not supported on control file") }
-func (c *CtrlFile) Name() string 					{ return "/ctrl" }
+func (c *CtrlFile) Stream() (io.ReadCloser, error) {
+	return nil, errors.New("streams not supported on control file")
+}
+func (c *CtrlFile) Name() string { return "/ctrl" }
 func (c *CtrlFile) Stat() (fs.FileInfo, error) {
 	cs := &CtrlStat{
-		name: "/ctrl",
-		size: c.offset,
+		name:    "/ctrl",
+		size:    c.offset,
 		modtime: time.Now(),
 	}
 
@@ -97,8 +99,8 @@ func (c *CtrlFile) Stat() (fs.FileInfo, error) {
 }
 
 type CtrlStat struct {
-	name string
-	size int64
+	name    string
+	size    int64
 	modtime time.Time
 }
 
