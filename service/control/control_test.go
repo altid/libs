@@ -1,9 +1,10 @@
-package service
+package control
 
 import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/altid/libs/service/command"
 	"github.com/altid/libs/service/listener"
 	"github.com/altid/libs/store"
 )
@@ -11,7 +12,7 @@ import (
 type testctrl struct {
 }
 
-func (c *testctrl) Run(ctrl *Control, cmd *Command) error {
+func (c *testctrl) Run(ctrl *Control, cmd *command.Command) error {
 	switch cmd.Name {
 	case "open":
 	case "close":

@@ -1,4 +1,4 @@
-package control
+package ctrl
 
 import (
 	"context"
@@ -7,8 +7,9 @@ import (
 	"sort"
 
 	"github.com/altid/libs/markup"
+	"github.com/altid/libs/service/command"
 	"github.com/altid/libs/service/input"
-	"github.com/altid/libs/service/internal/command"
+	"github.com/altid/libs/service/internal/cmd"
 	"github.com/altid/libs/store"
 )
 
@@ -17,7 +18,7 @@ type Control struct {
 	store	store.Filer
 	tabs    store.File
 	errors  store.File
-	cmdlist []*command.Command
+	cmdlist []*cmd.Command
 	tablist []*tab
 	done    chan struct{}
 	rundir  string
@@ -77,7 +78,7 @@ func (c *Control) Input(handler input.Handler, buffer string, payload []byte) er
 	return handler.Handle(ep, l)
 }
 
-func (c *Control) SetCommands(cmd ...*command.Command) error {
+func (c *Control) SetCommands(cmd ...*cmd.Command) error {
 	c.cmdlist = append(c.cmdlist, cmd...)
 	sort.Sort(command.CmdList(c.cmdlist))
 
@@ -203,4 +204,3 @@ func (c *Control) ImageWriter(buffer, resource string) (*WriteCloser, error) {
 	ep := path.Join("/", buffer, "images")
 	return c.FileWriter(ep, resource)
 }
-

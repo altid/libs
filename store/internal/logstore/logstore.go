@@ -12,18 +12,18 @@ import (
 // Wrap an os.File to support streaming
 type Stream struct {
 	data chan []byte
-	done chan struct {}
+	done chan struct{}
 	uuid string
-	f	 *File
+	f    *File
 }
 
 func (s *Stream) Read(b []byte) (n int, err error) {
 	for {
 		select {
-		case inc := <- s.data:
+		case inc := <-s.data:
 			n = copy(b, inc)
 			return n, nil
-		case <- s.done:
+		case <-s.done:
 			return 0, io.EOF
 		}
 	}
@@ -34,11 +34,11 @@ func (s *Stream) Close() error {
 	close(s.data)
 
 	delete(s.f.streams, s.uuid)
-	return	nil
+	return nil
 }
 
 type File struct {
-	f		*os.File
+	f       *os.File
 	streams map[string]*Stream
 }
 
@@ -49,7 +49,7 @@ func Open(path string) (*File, error) {
 	}
 
 	return &File{
-		f: f,
+		f:       f,
 		streams: make(map[string]*Stream),
 	}, nil
 }
@@ -57,10 +57,10 @@ func Open(path string) (*File, error) {
 func (f *File) Stream() (io.ReadCloser, error) {
 	uuid := uuid.New()
 	s := &Stream{
-		f: f,
+		f:    f,
 		uuid: uuid.String(),
-		done: make (chan struct{}),
-		data: make (chan []byte),
+		done: make(chan struct{}),
+		data: make(chan []byte),
 	}
 
 	data, err := ioutil.ReadAll(f.f)
@@ -77,7 +77,7 @@ func (f *File) Stream() (io.ReadCloser, error) {
 				return
 			case <-s.done:
 				return
-		}
+			}
 		}
 	}(s, data)
 
@@ -86,10 +86,10 @@ func (f *File) Stream() (io.ReadCloser, error) {
 }
 
 // Wrap the rest of our interface to the raw files
-func (f *File) Read(b []byte) (int, error) { return f.f.Read(b) }
-func (f *File) Write(p []byte) (int, error) { return f.f.Write(p) }
-func (f *File) Seek(offset int64, whence int) (int64, error) { return f.f.Seek(offset, whence )}
-func (f *File) Close() error { return f.f.Close() }
-func (f *File) Name() string { return f.f.Name() }
-func (f *File) Stat() (fs.FileInfo, error) { return f.f.Stat() }
-func (f *File) Truncate(cap int64) error { return f.f.Truncate(cap) }
+func (f *File) Read(b []byte) (int, error)                   { return f.f.Read(b) }
+func (f *File) Write(p []byte) (int, error)                  { return f.f.Write(p) }
+func (f *File) Seek(offset int64, whence int) (int64, error) { return f.f.Seek(offset, whence) }
+func (f *File) Close() error                                 { return f.f.Close() }
+func (f *File) Name() string                                 { return f.f.Name() }
+func (f *File) Stat() (fs.FileInfo, error)                   { return f.f.Stat() }
+func (f *File) Truncate(cap int64) error                     { return f.f.Truncate(cap) }

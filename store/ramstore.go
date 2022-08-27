@@ -10,12 +10,12 @@ type RamStore struct {
 }
 
 func NewRamStore() *RamStore {
-	return &RamStore {
+	return &RamStore{
 		root: ramstore.NewRoot(),
 	}
 }
 
-func (rs *RamStore) List() ([]string) {
+func (rs *RamStore) List() []string {
 	return rs.root.List()
 }
 
@@ -29,4 +29,8 @@ func (rs *RamStore) Open(name string) (File, error) {
 
 func (rs *RamStore) Delete(path string) error {
 	return rs.root.Delete(path)
+}
+
+func (rs *RamStore) Type() string {
+	return "ram"
 }

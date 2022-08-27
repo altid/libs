@@ -2,8 +2,8 @@ package listener
 
 import (
 	"github.com/altid/libs/auth"
-	"github.com/altid/libs/store"
 	"github.com/altid/libs/service/callback"
+	"github.com/altid/libs/store"
 )
 
 // Listener provides a type which can handle incoming client connections
@@ -16,5 +16,6 @@ type Listener interface {
 	Listen() error
 	// Register accepts a Storage, and associates a Filer datatset with the Listener session
 	// Additionally, a callback can be registered to allow on-connect/command information
-	Register(store.Filer, callback.Callback) error
+	Register(store.Filer, callback.Callback, callback.Sender) error
+	Type() string
 }
