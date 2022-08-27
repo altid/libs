@@ -11,12 +11,17 @@ import (
 
 type CtrlFile struct {
 	cb     func([]byte) error
+	data   []byte
 	offset int64
 }
 
-func Ctrl(cb func([]byte) error) (*CtrlFile, error) {
+// Each ctrl open should have potentially new data of available commands
+// So we send callbacks to generate from the current good commandlist
+// back in the session.go file
+func Ctrl(cb func([]byte) error, data func() []byte) (*CtrlFile, error) {
 	cf := &CtrlFile{
-		cb: cb,
+		cb:   cb,
+		data: data(),
 	}
 
 	return cf, nil
@@ -44,8 +49,15 @@ func (c *CtrlFile) Seek(offset int64, whence int) (int64, error) {
 	return c.offset, nil
 }
 
+// Reads return our ctrl message group
 func (c *CtrlFile) Read(b []byte) (n int, err error) {
-	return 0, errors.New("reading not implemented on ctrl")
+	if (c.offset) >= int64(len(c.data)) {
+		return 0, io.EOF
+	}
+
+	n = copy(b, c.data)
+	c.offset += int64(n)
+	return
 }
 
 func (c *CtrlFile) Write(p []byte) (n int, err error) {
