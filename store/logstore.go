@@ -11,25 +11,23 @@ import (
 
 // We need to include streamer on this
 type LogStore struct {
-	base string
-	files map[string]*ramstore.File
+	base  string
+	root  *ramstore.Dir
 	mains map[string]*logstore.File
 }
 
 func NewLogStore(base string) *LogStore {
 	return &LogStore{
-		base: base,
-		files: make(map[string]*ramstore.File),
+		base:  base,
+		root:  ramstore.NewRoot(),
 		mains: make(map[string]*logstore.File),
 	}
 
 }
 
-func (ls *LogStore) List() ([]string) {
-	var list []string
-	for _, file := range ls.files {
-		list = append(list, file.Name())
-	}
+func (ls *LogStore) List() []string {
+	list := ls.root.List()
+
 	for _, main := range ls.mains {
 		list = append(list, main.Name())
 	}
@@ -37,6 +35,9 @@ func (ls *LogStore) List() ([]string) {
 	return list
 }
 
+func (ls *LogStore) Root(name string) (File, error) {
+	return ls.root.Root(name)
+}
 
 func (ls *LogStore) Open(name string) (File, error) {
 	// Check if our path ends with "/main"
@@ -45,13 +46,7 @@ func (ls *LogStore) Open(name string) (File, error) {
 		return logstore.Open(path.Join(ls.base, name))
 	}
 
-	f, ok := ls.files[name]
-	if !ok || f == nil {
-		f = ramstore.Open(name)
-		ls.files[name] = f
-		return f, nil
-	}
-	return f, nil
+	return ls.root.Open(name)
 }
 
 func (ls *LogStore) Delete(name string) error {
@@ -66,15 +61,9 @@ func (ls *LogStore) Delete(name string) error {
 		return nil
 	}
 
-	f, ok := ls.files[name]
-	if !ok {
-		return fmt.Errorf("to file exists at path %s", name)
-	}
-	
-	if f.InUse() {
-		return fmt.Errorf("attempting to delete an active file")
-	}
-	
-	delete(ls.files, name)
-	return nil
+	return ls.root.Delete(name)
+}
+
+func (ls *LogStore) Type() string {
+	return "log"
 }

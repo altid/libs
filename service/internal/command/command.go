@@ -2,76 +2,82 @@ package command
 
 import (
 	"errors"
+	"fmt"
+	"html/template"
 	"io"
-	"log"
-	"text/template"
+	"strings"
+
+	"github.com/altid/libs/service/commander"
+	"github.com/altid/libs/service/internal/parse"
 )
 
-// ComGroup is a logical grouping of commands
-// To add a ComGroup, please do so in a PR
-type ComGroup int
-
-const (
-	DefaultGroup ComGroup = iota
-	ActionGroup
-	MediaGroup
-	ServiceGroup
-)
-
-//TODO(halfiwt) i18n
-var DefaultCommands = []*Command{
-	{
-		Name:        "open",
-		Args:        []string{"<buffer>"},
-		Heading:     DefaultGroup,
-		Description: "Open and change buffers to a given service",
-	},
-	{
-		Name:        "close",
-		Args:        []string{"<buffer>"},
-		Heading:     DefaultGroup,
-		Description: "Close a buffer and return to the last opened previously",
-	},
-	{
-		Name:        "buffer",
-		Args:        []string{"<buffer>"},
-		Heading:     DefaultGroup,
-		Description: "Change to the named buffer",
-	},
-	{
-		Name:        "link",
-		Args:        []string{"<current>", "<buffer>"},
-		Heading:     DefaultGroup,
-		Description: "Overwrite the current buffer with the named",
-	},
-	{
-		Name:        "quit",
-		Args:        []string{},
-		Heading:     DefaultGroup,
-		Description: "Exits the client",
-	},
+type Command struct {
+	SendCommand     func(*commander.Command) error
+	CtrlDataCommand func() []byte
 }
 
 const commandTemplate = `{{range .}}	{{.Name}}{{if .Alias}}{{range .Alias}}|{{.}}{{end}}{{end}}{{if .Args}}	{{range .Args}}{{.}} {{end}}{{end}}{{if .Description}}	# {{.Description}}{{end}}
 {{end}}`
 
-// Command represents an available command to a service
-type Command struct {
-	Name        string
-	Description string
-	Heading     ComGroup
-	Args        []string
-	Alias       []string
-	From        string
+// FindCommands within a byte array
+// It returns an error if it encounters malformed input
+func (c *Command) FindCommands(b []byte) ([]*commander.Command, error) {
+	var cmdlist []*commander.Command
+
+	cl, err := parse.ParseCtlFile(b)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, comm := range cl {
+		if comm.Heading < 0 {
+			return nil, fmt.Errorf("unable to find a heading for %s", comm.Name)
+		}
+		c := &commander.Command{
+			Name:        comm.Name,
+			Description: comm.Description,
+			Heading:     commander.ComGroup(comm.Heading),
+			Args:        comm.Args,
+			Alias:       comm.Alias,
+			From:        comm.From,
+		}
+
+		cmdlist = append(cmdlist, c)
+	}
+
+	return cmdlist, nil
 }
 
-type CmdList []*Command
+func (c *Command) RunCommand() func(*commander.Command) error { return c.SendCommand }
+func (c *Command) CtrlData() func() []byte                    { return c.CtrlDataCommand }
+func (c *Command) FromBytes(input []byte) (*commander.Command, error) {
+	return c.FromString(string(input))
+}
 
-func (a CmdList) Len() int           { return len(a) }
-func (a CmdList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a CmdList) Less(i, j int) bool { return a[i].Heading < a[j].Heading }
+// FromString returns a partially filled command
+// It will have a Heading type of DefaultGroup
+func (c *Command) FromString(input string) (*commander.Command, error) {
+	name, from, args, err := parse.ParseCmd(input)
+	if err != nil {
+		return nil, err
+	}
 
-func PrintCtlFile(cmdlist []*Command, to io.WriteCloser) error {
+	if from != "" && len(args) < 1 {
+		args = strings.Fields(from)
+		from = ""
+	}
+
+	comm := &commander.Command{
+		Name:    name,
+		From:    from,
+		Args:    args,
+		Heading: commander.DefaultGroup,
+	}
+
+	return comm, nil
+}
+
+func (c *Command) WriteCommands(cmdlist []*commander.Command, to io.Writer) error {
 	var last int
 
 	curr := cmdlist[0].Heading
@@ -108,13 +114,9 @@ func PrintCtlFile(cmdlist []*Command, to io.WriteCloser) error {
 	return nil
 }
 
-func FindParts(cmd string) (string, string, []string, error) {
-	return parseCmd(cmd)
-}
-
 // So for this, we want to parse out a proper cmd - each arg can have spaces if it's wrapped in \" \"
-func ParseCmd(cmd string, cmdlist []*Command) (*Command, error) {
-	name, from, args, err := parseCmd(cmd)
+func (c *Command) FindCommand(cmd string, cmdlist []*commander.Command) (*commander.Command, error) {
+	name, from, args, err := parse.ParseCmd(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -135,34 +137,32 @@ func ParseCmd(cmd string, cmdlist []*Command) (*Command, error) {
 	return nil, errors.New("command not supported")
 }
 
-func cmdHeading(to io.WriteCloser, heading ComGroup) {
+func cmdHeading(to io.Writer, heading commander.ComGroup) {
 	switch heading {
-	case ActionGroup:
+	case commander.ActionGroup:
 		to.Write([]byte("emotes:\n"))
-	case DefaultGroup:
+	case commander.DefaultGroup:
 		to.Write([]byte("general:\n"))
-	case MediaGroup:
+	case commander.MediaGroup:
 		to.Write([]byte("media:\n"))
-	case ServiceGroup:
+	case commander.ServiceGroup:
 		to.Write([]byte("service:\n"))
-	default:
-		log.Fatal("Group not implemented")
 	}
 }
 
-func newFrom(comm *Command, from string, args []string) (*Command, error) {
-	if comm.Heading == ServiceGroup {
-		c := &Command{
+func newFrom(comm *commander.Command, from string, args []string) (*commander.Command, error) {
+	if comm.Heading == commander.ServiceGroup {
+		c := &commander.Command{
 			Name:        comm.Name,
 			Description: comm.Description,
-			Heading:     ServiceGroup,
+			Heading:     commander.ServiceGroup,
 			Args:        args,
 		}
 
 		return c, nil
 	}
 
-	c := &Command{
+	c := &commander.Command{
 		Name:        comm.Name,
 		Description: comm.Description,
 		Heading:     comm.Heading,
@@ -170,5 +170,6 @@ func newFrom(comm *Command, from string, args []string) (*Command, error) {
 		Alias:       comm.Alias,
 		From:        from,
 	}
+
 	return c, nil
 }

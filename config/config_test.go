@@ -2,7 +2,7 @@ package config
 
 import (
 	"testing"
-	
+
 	"github.com/altid/libs/config/types"
 )
 
@@ -31,7 +31,7 @@ func TestMarshal(t *testing.T) {
 	}
 }
 
-/* Testing create requires a stdin/stdout, therefore this is audited manually 
+/* Testing create requires a stdin/stdout, therefore this is audited manually
 func TestCreate(t *testing.T) {
 	conf := struct {
 		Address string `Enter the address you wish to connect on`

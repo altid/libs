@@ -8,9 +8,9 @@ import (
 
 func TestFind(t *testing.T) {
 	r := &request.Request{
-		Field:   "Auth",
-		Key:     "auth",
-		Prompt:  "Auth to use",
+		Field:    "Auth",
+		Key:      "auth",
+		Prompt:   "Auth to use",
 		Defaults: "password",
 	}
 
@@ -21,7 +21,7 @@ func TestFind(t *testing.T) {
 		},
 	}
 
-	if _, ok := Find(r, entries); ! ok {
+	if _, ok := Find(r, entries); !ok {
 		t.Error("Find error: could not locate entry")
 	}
 }
