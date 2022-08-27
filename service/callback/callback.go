@@ -1,18 +1,15 @@
 package callback
 
-import "github.com/altid/libs/service/control"
+import (
+	"github.com/altid/libs/service/controller"
+)
 
 type Connecter interface {
-	Connect(*Client, *control.Control) error
-}
-
-type Controller interface {
-	Control(*control.Control) error
+	Connect(*Client, controller.Controller) error
 }
 
 type Callback interface {
 	Connecter
-	Controller
 }
 
 // Sender interface is used by the listeners to handle control messages

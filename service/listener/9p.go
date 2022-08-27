@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/altid/libs/auth"
+	"github.com/altid/libs/service/callback"
+	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/internal/listen9p"
 	"github.com/altid/libs/store"
 )
@@ -56,8 +58,8 @@ func (np Listen9p) Listen() error {
 }
 
 // TODO: This almost certainly changes, but we shall see
-func (np Listen9p) Register(filer store.Filer) error {
-	return np.session.Register(filer)
+func (np Listen9p) Register(filer store.Filer, commander commander.Commander, callback callback.Callback) error {
+	return np.session.Register(filer, commander, callback)
 }
 
 func (np Listen9p) Type() string {
