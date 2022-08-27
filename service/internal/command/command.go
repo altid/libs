@@ -11,7 +11,9 @@ import (
 	"github.com/altid/libs/service/internal/parse"
 )
 
-type Command int
+type Command struct {
+	SendCommand func(*commander.Command) error
+}
 
 const commandTemplate = `{{range .}}	{{.Name}}{{if .Alias}}{{range .Alias}}|{{.}}{{end}}{{end}}{{if .Args}}	{{range .Args}}{{.}} {{end}}{{end}}{{if .Description}}	# {{.Description}}{{end}}
 {{end}}`
@@ -43,6 +45,14 @@ func (c *Command) FindCommands(b []byte) ([]*commander.Command, error) {
 	}
 
 	return cmdlist, nil
+}
+
+func (c *Command) RunCommand() func(*commander.Command) error {
+	return c.SendCommand
+}
+
+func (c *Command) FromBytes(input []byte) (*commander.Command, error) {
+	return c.FromString(string(input))
 }
 
 // FromString returns a partially filled command

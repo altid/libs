@@ -1,14 +1,15 @@
 package service
 
 import (
+	"context"
 	"log"
 	"os"
 	"sort"
 
 	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/commander"
-	"github.com/altid/libs/service/control"
-	"github.com/altid/libs/service/internal/command"
+	"github.com/altid/libs/service/controller"
+	"github.com/altid/libs/service/internal/session"
 	"github.com/altid/libs/service/listener"
 	"github.com/altid/libs/service/runner"
 	"github.com/altid/libs/store"
@@ -29,22 +30,23 @@ const (
 )
 
 type Service struct {
-	callback  callback.Callback
-	commander commander.Commander
-	listener  listener.Listener
-	runner    runner.Runner
-	store     store.Filer
+	ctx      context.Context
+	callback callback.Callback
+	control  controller.Controller
+	listener listener.Listener
+	runner   runner.Runner
+	store    store.Filer
 
 	cmdlist []*commander.Command
-	control *control.Control
 	name    string
+	address string
 	debug   func(serviceMsg, ...interface{})
 }
 
-func New(name string, debug bool) *Service {
-	// Service will get store/listener/callback/runner
+func New(name string, address string, debug bool) *Service {
 	s := &Service{
-		name: name,
+		name:    name,
+		address: address,
 	}
 
 	if debug {
@@ -52,6 +54,10 @@ func New(name string, debug bool) *Service {
 	}
 
 	return s
+}
+
+func (s *Service) WithContext(ctx context.Context) {
+	s.ctx = ctx
 }
 
 func (s *Service) WithStore(st store.Filer) {
@@ -81,26 +87,23 @@ func (s *Service) SetCommands(cmds []*commander.Command) {
 }
 
 func (s *Service) Listen() error {
-	var command command.Command
+	session := &session.Session{
+		Ctx:      s.ctx,
+		Callback: s.callback,
+		Control:  s.control,
+		Listener: s.listener,
+		Runner:   s.runner,
+		Store:    s.store,
 
-	// Internal:
-	// set up store
-	// set up listener
-	// register callbacks
-	// register runner - if no runner, fail!
-	// start control listens
+		Name:    s.name,
+		Address: s.address,
+	}
 
-	s.commander = &command
-	s.debug(serviceCommand)
+	if s.debug == nil {
+		return session.Listen(false)
+	}
 
-	// Add defaults
-	s.cmdlist = commander.DefaultCommands
-	sort.Sort(commander.CmdList(s.cmdlist))
-	s.debug(serviceSetCommands, s.cmdlist)
-
-	// Finally run
-	s.debug(serviceStarted)
-	return nil
+	return session.Listen(true)
 }
 
 // Very good logging is beneficial!
@@ -114,19 +117,12 @@ func serviceLogger(msg serviceMsg, args ...interface{}) {
 		if _, ok := args[0].(callback.Connecter); ok {
 			l.Println("callback: client connection callback registered")
 		}
-		if _, ok := args[0].(callback.Controller); ok {
-			l.Println("callback: control message callback registered")
-		}
 	case serviceSetCommands:
 		for _, arg := range args {
 			if cmd, ok := arg.(commander.Command); ok {
 				l.Printf("adding command: %v", cmd.Name)
 			}
 		}
-	case serviceCommand:
-		l.Println("commander registered")
-	case serviceControl:
-		l.Println("control registered")
 	case serviceListener:
 		l.Printf("listener: type=\"%s\"", args[0])
 	case serviceRunner:

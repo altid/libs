@@ -1,7 +1,6 @@
 package files
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -11,13 +10,13 @@ import (
 )
 
 type CtrlFile struct {
-	Current chan string
-	offset  int64
+	cb     func([]byte) error
+	offset int64
 }
 
-func Ctrl() (*CtrlFile, error) {
+func Ctrl(cb func([]byte) error) (*CtrlFile, error) {
 	cf := &CtrlFile{
-		Current: make(chan string),
+		cb: cb,
 	}
 
 	return cf, nil
@@ -52,14 +51,7 @@ func (c *CtrlFile) Read(b []byte) (n int, err error) {
 func (c *CtrlFile) Write(p []byte) (n int, err error) {
 	n = len(p)
 	c.offset += int64(n)
-
-	go func(c *CtrlFile, p []byte) {
-		if bytes.HasPrefix(p, []byte("buffer ")) {
-			buffer := bytes.TrimPrefix(p, []byte("buffer "))
-			c.Current <- string(buffer)
-			return
-		}
-	}(c, p)
+	err = c.cb(p)
 
 	return
 }
@@ -74,7 +66,6 @@ func (c *CtrlFile) Truncate(cap int64) error {
 }
 
 func (c *CtrlFile) Close() error {
-	close(c.Current)
 	c.offset = 0
 	return nil
 }

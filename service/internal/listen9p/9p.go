@@ -3,8 +3,11 @@ package listen9p
 import (
 	"errors"
 	"path"
+	"strings"
 
 	"github.com/altid/libs/auth"
+	"github.com/altid/libs/service/callback"
+	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/internal/files"
 	"github.com/altid/libs/store"
 	"github.com/halfwit/styx"
@@ -15,7 +18,8 @@ type Session struct {
 	key     string
 	cert    string
 	address string
-	current string
+	cmd     commander.Commander
+	cb      callback.Callback
 	list    store.Lister
 	open    store.Opener
 	delete  store.Deleter
@@ -55,7 +59,7 @@ func (s *Session) Listen() error {
 
 // Here we need a command channel as well to move it out of listen
 // Wrap in a type so we can not do bare channels
-func (s *Session) Register(filer store.Filer) error {
+func (s *Session) Register(filer store.Filer, cmd commander.Commander, cb callback.Callback) error {
 	if list, ok := filer.(store.Lister); ok {
 		s.list = list
 	}
@@ -69,41 +73,39 @@ func (s *Session) Register(filer store.Filer) error {
 		s.delete = delete
 	}
 
+	s.cmd = cmd
+	s.cb = cb
+
 	return nil
 }
 
 // Build the files from the store, do not produce as-is since they'll be broken
-func getFile(s *Session, current, in string) (store.File, error) {
+func getFile(c *Client, in string) (store.File, error) {
 	switch in {
 	case "/":
 		// Returns our base dir with our current buffer keyed
-		return s.open.Root(current)
+		return c.s.open.Root(c.current)
 	case "/errors":
-		return s.open.Open("/errors")
+		return c.s.open.Open("/errors")
 	case "/tabs":
-		return s.open.Open("/tabs")
+		return c.s.open.Open("/tabs")
 		// do a tabs thing
 	case "/ctrl":
 		// Allow buffer modifications
-		d, err := files.Ctrl()
+		d, err := files.Ctrl(c.ctrlWrite)
 		if err != nil {
 			return nil, err
 		}
-		go func(s *Session, ctrl *files.CtrlFile) {
-			if current, ok := <-ctrl.Current; ok {
-				s.current = current
-			}
-		}(s, d)
 		return d, nil
 	case "/input":
-		return s.open.Open("/input")
+		return c.s.open.Open("/input")
 		// do a special input thing
 	default:
-		fp := path.Join(current, in)
-		for _, item := range s.list.List() {
+		fp := path.Join(c.current, in)
+		for _, item := range c.s.list.List() {
 			// Only open items we have buffers open with
-			if path.Clean(item) == current {
-				return s.open.Open(fp)
+			if path.Clean(item) == c.current {
+				return c.s.open.Open(fp)
 			}
 		}
 	}
@@ -112,14 +114,16 @@ func getFile(s *Session, current, in string) (store.File, error) {
 
 // Technically internal, this is used by Styx
 func (s *Session) Serve9P(x *styx.Session) {
-	var current string
+	client := &Client{
+		s:       s,
+		current: "server",
+	}
 
 	files := make(map[string]store.File)
-	s.current = "server"
 
 	for x.Next() {
 		req := x.Request()
-		f, err := getFile(s, current, req.Path())
+		f, err := getFile(client, req.Path())
 		if err != nil {
 			req.Rerror("%s", err)
 			continue
@@ -147,4 +151,28 @@ func (s *Session) Serve9P(x *styx.Session) {
 			}
 		}
 	}
+}
+
+type Client struct {
+	s       *Session
+	current string
+}
+
+// Callback passed to ctrl's open, we get this on write
+// we want to intercept buffer commands
+func (c *Client) ctrlWrite(ctrl []byte) error {
+	cmd, err := c.s.cmd.FromBytes(ctrl)
+	if err != nil {
+		return nil
+	}
+
+	switch cmd.Name {
+	case "buffer":
+		c.current = strings.Join(cmd.Args, " ")
+		return nil
+	}
+
+	// This doesn't seem right
+	r := c.s.cmd.RunCommand()
+	return r(cmd)
 }

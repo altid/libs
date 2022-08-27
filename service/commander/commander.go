@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/altid/libs/service/callback"
 )
 
 // ComGroup is a logical grouping of commands
@@ -21,8 +23,10 @@ const (
 type Commander interface {
 	FindCommands(b []byte) ([]*Command, error)
 	FromString(string) (*Command, error)
+	FromBytes([]byte) (*Command, error)
 	FindCommand(string, []*Command) (*Command, error)
 	WriteCommands([]*Command, io.WriteCloser) error
+	RunCommand() func(*Command) error
 }
 
 // Allow sorting of our lists
@@ -41,6 +45,7 @@ type Command struct {
 	Args        []string
 	Alias       []string
 	From        string
+	Sender      callback.Sender
 }
 
 func (c *Command) String() string {
