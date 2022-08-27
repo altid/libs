@@ -2,6 +2,8 @@ package listen9p
 
 import (
 	"errors"
+	"log"
+	"os"
 	"path"
 	"strings"
 
@@ -10,7 +12,15 @@ import (
 	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/internal/files"
 	"github.com/altid/libs/store"
+	"github.com/google/uuid"
 	"github.com/halfwit/styx"
+)
+
+type sessionMsg int
+
+const (
+	sessionStart sessionMsg = iota
+	sessionClient
 )
 
 type Session struct {
@@ -23,14 +33,20 @@ type Session struct {
 	list    store.Lister
 	open    store.Opener
 	delete  store.Deleter
+	debug   func(sessionMsg, ...interface{})
 }
 
-func NewSession(address string, key, cert string) (*Session, error) {
+func NewSession(address string, key, cert string, debug bool) (*Session, error) {
 	s := &Session{
 		address: address,
 		styx:    &styx.Session{},
 		key:     key,
 		cert:    cert,
+		debug:   func(sessionMsg, ...interface{}) {},
+	}
+
+	if debug {
+		s.debug = sessionLogger
 	}
 
 	return s, nil
@@ -116,8 +132,12 @@ func getFile(c *Client, in string) (store.File, error) {
 func (s *Session) Serve9P(x *styx.Session) {
 	client := &Client{
 		s:       s,
+		uuid:    uuid.New(),
+		name:    x.User,
 		current: "server",
 	}
+
+	s.debug(sessionClient, client)
 
 	files := make(map[string]store.File)
 
@@ -155,6 +175,8 @@ func (s *Session) Serve9P(x *styx.Session) {
 
 type Client struct {
 	s       *Session
+	name    string
+	uuid    uuid.UUID
 	current string
 }
 
@@ -180,4 +202,16 @@ func (c *Client) ctrlWrite(ctrl []byte) error {
 func (c *Client) ctrlData() []byte {
 	r := c.s.cmd.CtrlData()
 	return r()
+}
+
+func sessionLogger(msg sessionMsg, args ...interface{}) {
+	l := log.New(os.Stdout, "listen9p ", 0)
+	switch msg {
+	case sessionStart:
+		l.Println("starting session")
+	case sessionClient:
+		if client, ok := args[0].(*Client); ok {
+			l.Printf("client: user=\"%s\" buffer=\"%s\" id=\"%s\"\n", client.name, client.current, client.uuid.String())
+		}
+	}
 }

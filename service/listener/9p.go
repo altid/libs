@@ -31,7 +31,7 @@ type Listen9p struct {
 // NewListen9p returns a new listener
 // If a key and cert are provided, the listener will use TLS
 func NewListen9p(addr string, key, cert string, debug bool) (Listen9p, error) {
-	session, err := listen9p.NewSession(addr, key, cert)
+	session, err := listen9p.NewSession(addr, key, cert, debug)
 	l := Listen9p{
 		session: session,
 	}
