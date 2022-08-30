@@ -1,11 +1,9 @@
 package listen9p
 
 import (
-	"errors"
 	"log"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/altid/libs/auth"
 	"github.com/altid/libs/service/callback"
@@ -16,11 +14,22 @@ import (
 	"github.com/halfwit/styx"
 )
 
+var l *log.Logger
+
+type Err9p string
+
+const (
+	Err9pNoOpen       = Err9p("store does not implement Opener")
+	Err9pFileNotFound = Err9p("file not found")
+)
+
 type sessionMsg int
 
 const (
 	sessionStart sessionMsg = iota
 	sessionClient
+	sessionBuffer
+	sessionOpen
 )
 
 type Session struct {
@@ -33,6 +42,7 @@ type Session struct {
 	list    store.Lister
 	open    store.Opener
 	delete  store.Deleter
+	stream  store.Streamer
 	debug   func(sessionMsg, ...interface{})
 }
 
@@ -47,9 +57,14 @@ func NewSession(address string, key, cert string, debug bool) (*Session, error) 
 
 	if debug {
 		s.debug = sessionLogger
+		l = log.New(os.Stdout, "listen9p ", 0)
 	}
 
 	return s, nil
+}
+
+func (e Err9p) Error() string {
+	return string(e)
 }
 
 // Proxy the auth over the raw connection
@@ -81,9 +96,13 @@ func (s *Session) Register(filer store.Filer, cmd commander.Commander, cb callba
 	}
 	open, ok := filer.(store.Opener)
 	if !ok {
-		return errors.New("store does not implement required 'Open'")
+		return Err9pNoOpen
 	}
 	s.open = open
+
+	if stream, ok := filer.(store.Streamer); ok {
+		s.stream = stream
+	}
 
 	if delete, ok := filer.(store.Deleter); ok {
 		s.delete = delete
@@ -108,24 +127,27 @@ func getFile(c *Client, in string) (store.File, error) {
 		// do a tabs thing
 	case "/ctrl":
 		// Allow buffer modifications
-		d, err := files.Ctrl(c.ctrlWrite, c.ctrlData)
+		return files.Ctrl(c.ctrlWrite, c.ctrlData)
+	case "/input":
+		return files.Input(c.current, c.s.cb)
+	case "/feed":
+		feed, err := c.s.open.Open(path.Join(c.current, "feed"))
 		if err != nil {
 			return nil, err
 		}
-		return d, nil
-	case "/input":
-		return c.s.open.Open("/input")
-		// do a special input thing
+
+		return files.Feed(c.current, c.s.stream, feed)
 	default:
 		fp := path.Join(c.current, in)
 		for _, item := range c.s.list.List() {
 			// Only open items we have buffers open with
 			if path.Clean(item) == c.current {
+				c.s.debug(sessionOpen, fp)
 				return c.s.open.Open(fp)
 			}
 		}
 	}
-	return nil, errors.New("file not found")
+	return nil, Err9pFileNotFound
 }
 
 // Technically internal, this is used by Styx
@@ -149,6 +171,7 @@ func (s *Session) Serve9P(x *styx.Session) {
 			continue
 		}
 
+		log.Printf("Looping with current: %s\n", client.current)
 		switch t := req.(type) {
 		case styx.Twalk:
 			t.Rwalk(f.Stat())
@@ -190,7 +213,8 @@ func (c *Client) ctrlWrite(ctrl []byte) error {
 
 	switch cmd.Name {
 	case "buffer":
-		c.current = strings.Join(cmd.Args, " ")
+		c.s.debug(sessionBuffer, cmd)
+		c.current = cmd.Args[0]
 		return nil
 	}
 
@@ -205,10 +229,15 @@ func (c *Client) ctrlData() []byte {
 }
 
 func sessionLogger(msg sessionMsg, args ...interface{}) {
-	l := log.New(os.Stdout, "listen9p ", 0)
 	switch msg {
 	case sessionStart:
 		l.Println("starting session")
+	case sessionOpen:
+		l.Printf("open: %s", args[0])
+	case sessionBuffer:
+		if cmd, ok := args[0].(*commander.Command); ok {
+			l.Printf("buffer: name=\"%s\" args=\"%s\" from=\"%s\"", cmd.Name, cmd.Args[0], cmd.From)
+		}
 	case sessionClient:
 		if client, ok := args[0].(*Client); ok {
 			l.Printf("client: user=\"%s\" buffer=\"%s\" id=\"%s\"\n", client.name, client.current, client.uuid.String())

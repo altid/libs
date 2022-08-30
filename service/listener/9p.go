@@ -13,6 +13,8 @@ import (
 	"github.com/altid/libs/store"
 )
 
+var l *log.Logger
+
 type listenMsg int
 
 const (
@@ -32,15 +34,16 @@ type Listen9p struct {
 // If a key and cert are provided, the listener will use TLS
 func NewListen9p(addr string, key, cert string, debug bool) (Listen9p, error) {
 	session, err := listen9p.NewSession(addr, key, cert, debug)
-	l := Listen9p{
+	lp := Listen9p{
 		session: session,
 	}
 
 	if debug {
-		l.debug = listenLogger
+		l = log.New(os.Stdout, "9p ", 0)
+		lp.debug = listenLogger
 	}
 
-	return l, err
+	return lp, err
 }
 
 func (np Listen9p) Auth(ap *auth.Protocol) error {
@@ -67,8 +70,6 @@ func (np Listen9p) Type() string {
 }
 
 func listenLogger(msg listenMsg, args ...interface{}) {
-	l := log.New(os.Stdout, "9p ", 0)
-
 	switch msg {
 	case listenAuth:
 		//auth := args[0].(*auth.Protocol)

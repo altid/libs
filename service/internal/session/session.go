@@ -18,6 +18,8 @@ import (
 	"github.com/altid/libs/store"
 )
 
+var l *log.Logger
+
 type sessionMsg int
 
 const (
@@ -47,15 +49,16 @@ type Session struct {
 func (s *Session) Listen(debug bool) error {
 	if debug {
 		s.debug = sessionLogger
+		l = log.New(os.Stdout, "session ", 0)
 	}
 
 	s.debug(sessionStart)
 	if s.Store == nil {
 		s.debug(sessionDefaultStore)
-		s.Store = store.NewRamStore()
+		s.Store = store.NewRamStore(debug)
 	}
 
-	s.Control = files.New(s.Store)
+	s.Control = files.New(s.Store, debug)
 
 	// Set up commander
 	s.commander = &command.Command{
@@ -131,7 +134,6 @@ func (s *Session) ctrlData() (b []byte) {
 }
 
 func sessionLogger(msg sessionMsg, args ...interface{}) {
-	l := log.New(os.Stdout, "session ", 0)
 	switch msg {
 	case sessionError:
 		l.Printf("error: %v", args[0])

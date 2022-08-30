@@ -1,7 +1,18 @@
 package store
 
 import (
+	"io"
+
 	"github.com/altid/libs/store/internal/ramstore"
+)
+
+// Forward errors from internal
+const (
+	ErrInvalidTrunc = ramstore.ErrInvalidTrunc
+	ErrShortSeek    = ramstore.ErrShortSeek
+	ErrActiveStream = ramstore.ErrActiveStream
+	ErrDirExists    = ramstore.ErrDirExists
+	ErrFileClosed   = ramstore.ErrFileClosed
 )
 
 // RamStore is a type that implements Filer as an in-memory data store
@@ -9,10 +20,14 @@ type RamStore struct {
 	root *ramstore.Dir
 }
 
-func NewRamStore() *RamStore {
+func NewRamStore(debug bool) *RamStore {
 	return &RamStore{
-		root: ramstore.NewRoot(),
+		root: ramstore.NewRoot(debug),
 	}
+}
+
+func (rs *RamStore) Stream(buffer string) (io.ReadCloser, error) {
+	return rs.root.Stream(buffer)
 }
 
 func (rs *RamStore) List() []string {
@@ -33,4 +48,12 @@ func (rs *RamStore) Delete(path string) error {
 
 func (rs *RamStore) Type() string {
 	return "ram"
+}
+
+func (rs *RamStore) Mkdir(dir string) error {
+	return rs.root.Mkdir(dir)
+}
+
+func (rs *RamStore) Dump() []byte {
+	return rs.root.Dump()
 }

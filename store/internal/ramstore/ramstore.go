@@ -1,9 +1,10 @@
 package ramstore
 
+// TODO: debug logging - we want to know when things are written and to be able to dump the logs of files
 import (
-	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -12,20 +13,77 @@ import (
 	"github.com/google/uuid"
 )
 
+var l *log.Logger
+
+type storeMsg int
+
+const (
+	storeErr storeMsg = iota
+	storeMkdir
+	storeStream
+	storeRoot
+	storeDir
+	storeData
+	storeReadStream
+)
+
+type errRamstore string
+
+const (
+	ErrInvalidTrunc = errRamstore("truncation invalid")
+	ErrInvalidPath  = errRamstore("invalid path supplied to Mkdir")
+	ErrShortSeek    = errRamstore("attempted negative seek")
+	ErrActiveStream = errRamstore("attempted to close a file with active streams")
+	ErrDirExists    = errRamstore("directory exists")
+	ErrFileClosed   = errRamstore("invalid action on closed file")
+)
+
 // This is not great for multiple readers/writers - needs to be reworked
 // Very large structures will cause fairly large allocations due to the recursive maps here
 type Dir struct {
 	name  string
 	dirs  map[string]*Dir
 	files map[string]*File
+	debug func(storeMsg, ...interface{})
 }
 
-func NewRoot() *Dir {
-	return &Dir{
+func NewRoot(debug bool) *Dir {
+	d := &Dir{
 		name:  "/",
 		dirs:  make(map[string]*Dir),
 		files: make(map[string]*File),
+		debug: func(storeMsg, ...interface{}) {},
 	}
+
+	if debug {
+		d.debug = storeLogger
+		l = log.New(os.Stdout, "store ", 0)
+	}
+
+	return d
+}
+
+func (d *Dir) Mkdir(name string) error {
+	if _, ok := d.dirs[name]; ok {
+		d.debug(storeErr, ErrDirExists)
+		return ErrDirExists
+	}
+
+	if path.Clean(name) != name {
+		d.debug(storeErr, ErrInvalidPath)
+		return ErrInvalidPath
+	}
+
+	dir := &Dir{
+		name:  name,
+		dirs:  make(map[string]*Dir),
+		files: make(map[string]*File),
+		debug: d.debug,
+	}
+
+	d.debug(storeMkdir, name)
+	d.dirs[name] = dir
+	return nil
 }
 
 // List of files and dirs; dirs get a trailing slash
@@ -43,6 +101,22 @@ func (d *Dir) List() []string {
 	return list
 }
 
+func (d *Dir) Stream(buffer string) (io.ReadCloser, error) {
+	fp := path.Join(buffer, "feed")
+	if s, ok := d.files[fp]; ok {
+		return s.Stream()
+	}
+
+	f, err := d.Open(fp)
+	if err != nil {
+		d.debug(storeErr, err)
+		return nil, err
+	}
+
+	d.debug(storeStream, buffer)
+	return f.Stream()
+}
+
 func (d *Dir) Root(buffer string) (*File, error) {
 	var err error
 	f := &File{
@@ -54,9 +128,11 @@ func (d *Dir) Root(buffer string) (*File, error) {
 		modTime: time.Now(),
 		readdir: make(chan fs.FileInfo, 10),
 		done:    make(chan struct{}),
+		debug:   d.debug,
 	}
 
 	go listRoot(d, f, buffer)
+	d.debug(storeRoot, buffer)
 	return f, err
 }
 
@@ -90,6 +166,7 @@ func (d *Dir) Open(name string) (*File, error) {
 			isdir:   false,
 			streams: make(map[string]*Stream),
 			modTime: time.Now(),
+			debug:   d.debug,
 		}
 
 		d.files[paths[0]] = f
@@ -115,9 +192,11 @@ func (d *Dir) Open(name string) (*File, error) {
 			modTime: time.Now(),
 			readdir: make(chan fs.FileInfo, 10),
 			done:    make(chan struct{}),
+			debug:   d.debug,
 		}
 
 		go listDir(d, f)
+		d.debug(storeDir, name)
 		return f, nil
 	}
 
@@ -128,11 +207,8 @@ func (d *Dir) Open(name string) (*File, error) {
 		name:  paths[0],
 		dirs:  make(map[string]*Dir),
 		files: make(map[string]*File),
+		debug: d.debug,
 	}
-
-	//if (d.name != "/") {
-	d.dirs[paths[0]] = wd
-	//}
 
 	if len(paths) > 1 {
 		paths[0] = "/"
@@ -149,14 +225,21 @@ func (d *Dir) Open(name string) (*File, error) {
 		modTime: time.Now(),
 		readdir: make(chan fs.FileInfo, 10),
 		done:    make(chan struct{}),
+		debug:   d.debug,
 	}
 
+	d.debug(storeDir, name)
 	go listDir(d, f)
 	return f, nil
 }
 
 func (d *Dir) Delete(name string) error {
 	// TODO: Walk the dirs and delete the entry if found
+	return nil
+}
+
+func (d *Dir) Dump() []byte {
+	// TODO: Output what we have in our store
 	return nil
 }
 
@@ -168,6 +251,7 @@ type Stream struct {
 }
 
 func (s *Stream) Read(b []byte) (n int, err error) {
+	log.Printf("In stream with %s\n", b)
 	for {
 		select {
 		case inc := <-s.data:
@@ -197,11 +281,13 @@ type File struct {
 	modTime time.Time
 	readdir chan os.FileInfo
 	done    chan struct{}
+	debug   func(storeMsg, ...interface{})
 }
 
 func (f *File) Read(b []byte) (n int, err error) {
 	if f.closed {
-		return 0, fmt.Errorf("attempted to read on closed file")
+		f.debug(storeErr, ErrFileClosed)
+		return 0, ErrFileClosed
 	}
 
 	if int64(len(f.data)) < f.offset {
@@ -221,10 +307,12 @@ func (f *File) Read(b []byte) (n int, err error) {
 
 func (f *File) Write(p []byte) (n int, err error) {
 	if f.closed {
-		return 0, fmt.Errorf("attemted to write on a closed file")
+		f.debug(storeErr, ErrFileClosed)
+		return 0, ErrFileClosed
 	}
 
 	// Enable seek
+	f.debug(storeData, f.path, p)
 	f.data = append(f.data[:f.offset], p...)
 	n = len(p)
 	f.offset += int64(n)
@@ -250,7 +338,8 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if f.closed {
-		return 0, fmt.Errorf("attempted to seek on a closed file")
+		f.debug(storeErr, ErrFileClosed)
+		return 0, ErrFileClosed
 	}
 
 	switch whence {
@@ -263,7 +352,8 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	if f.offset < 0 {
-		return 0, fmt.Errorf("attempted to seek before start of file")
+		f.debug(storeErr, ErrShortSeek)
+		return 0, ErrShortSeek
 	}
 
 	if f.offset > int64(len(f.data)) {
@@ -279,11 +369,12 @@ func (f *File) InUse() bool {
 
 func (f *File) Close() error {
 	if f.closed {
-		return fmt.Errorf("attempted to close a file which was already closed")
+		f.debug(storeErr, ErrFileClosed)
+		return ErrFileClosed
 	}
 
 	if len(f.streams) > 0 {
-		return fmt.Errorf("attempted to close a file with active streams")
+		return ErrActiveStream
 	}
 
 	if f.isdir {
@@ -297,11 +388,13 @@ func (f *File) Close() error {
 
 func (f *File) Truncate(cap int64) error {
 	if cap > int64(len(f.data)) {
-		return fmt.Errorf("truncation beyond size of file")
+		f.debug(storeErr, ErrInvalidTrunc)
+		return ErrInvalidTrunc
 	}
 
 	if cap < 0 {
-		return fmt.Errorf("truncation to less than 0 invalid")
+		f.debug(storeErr, ErrInvalidTrunc)
+		return ErrInvalidTrunc
 	}
 
 	f.data = f.data[:cap]
@@ -323,6 +416,7 @@ func (f *File) Stream() (io.ReadCloser, error) {
 		for {
 			select {
 			case s.data <- data:
+				f.debug(storeReadStream, f.Name())
 				return
 			case <-s.done:
 				return
@@ -472,3 +566,26 @@ func (fi FileInfo) IsDir() bool        { return false }
 func (fi FileInfo) ModTime() time.Time { return fi.modtime }
 func (fi FileInfo) Mode() os.FileMode  { return 0644 }
 func (fi FileInfo) Sys() interface{}   { return nil }
+
+func (e errRamstore) Error() string {
+	return string(e)
+}
+
+func storeLogger(msg storeMsg, args ...interface{}) {
+	switch msg {
+	case storeErr:
+		l.Printf("error: %s", args[0])
+	case storeMkdir:
+		l.Printf("Mkdir: %s", args[0])
+	case storeStream:
+		l.Printf("stream: starting for %s", args[0])
+	case storeRoot:
+		l.Printf("root: created at %s", args[0])
+	case storeData:
+		l.Printf("incoming data: file=\"%s\" %s", args[0], args[1])
+	case storeDir:
+		l.Printf("opening dir: %s", args[0])
+	case storeReadStream:
+		l.Printf("stream: reading initial data for %s", args[0])
+	}
+}

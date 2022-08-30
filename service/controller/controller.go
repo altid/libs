@@ -1,9 +1,6 @@
 package controller
 
-import "github.com/altid/libs/service/input"
-
 type Controller interface {
-	Input(input.Handler, string, []byte) error
 	CreateBuffer(string) error
 	DeleteBuffer(string) error
 	Remove(string, string) error
@@ -15,6 +12,7 @@ type Controller interface {
 	TitleWriter(string) (WriteCloser, error)
 	ImageWriter(string, string) (WriteCloser, error)
 	MainWriter(string) (WriteCloser, error)
+	FeedWriter(string) (WriteCloser, error)
 	HasBuffer(string) bool
 }
 
