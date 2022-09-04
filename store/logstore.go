@@ -3,7 +3,6 @@ package store
 // TODO: logging
 import (
 	"fmt"
-	"io"
 	"os"
 	"path"
 
@@ -35,11 +34,6 @@ func (ls *LogStore) List() []string {
 	}
 
 	return list
-}
-
-func (ls *LogStore) Stream(buffer string) (io.ReadCloser, error) {
-	// TODO: We should actually return a Stream reader from the file itself
-	return ls.root.Stream(buffer)
 }
 
 func (ls *LogStore) Root(name string) (File, error) {

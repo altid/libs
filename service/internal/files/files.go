@@ -41,7 +41,7 @@ func (w WriteCloser) Write(b []byte) (int, error) {
 }
 
 func (w WriteCloser) Close() error {
-	return nil
+	return w.store.Close()
 }
 
 func New(store store.Filer, debug bool) *Files {
@@ -67,22 +67,23 @@ func (c *Files) Cleanup() {
 
 func (c *Files) CreateBuffer(name string) error {
 	// Make a store item
+	name = path.Join("/", name)
+
 	switch e := c.store.Mkdir(name); e {
 	case nil:
+		c.debug(fileBuffer, name)
+		c.tablist[name] = nil
+		return c.writetab()
 	case store.ErrDirExists:
+		return nil
 	default:
 		c.debug(fileErr, e)
 		return e
 	}
-
-	c.debug(fileBuffer, name)
-	c.tablist[name] = nil
-	writetab(c.store, c.tablist)
-
-	return nil
 }
 
 func (c *Files) DeleteBuffer(name string) error {
+	name = path.Join("/", name)
 	if e := c.store.Delete(name); e != nil {
 		c.debug(fileErr, e)
 		return e
@@ -90,7 +91,7 @@ func (c *Files) DeleteBuffer(name string) error {
 
 	delete(c.tablist, name)
 	c.debug(fileDelete, name)
-	if e := writetab(c.store, c.tablist); e != nil {
+	if e := c.writetab(); e != nil {
 		c.debug(fileErr, e)
 	}
 
@@ -98,6 +99,7 @@ func (c *Files) DeleteBuffer(name string) error {
 }
 
 func (c *Files) HasBuffer(name string) bool {
+	name = path.Join("/", name)
 	if _, ok := c.tablist[name]; ok {
 		return true
 	}
@@ -120,6 +122,7 @@ func (c *Files) Notification(buff, from, msg string) error {
 	}
 
 	defer f.Close()
+	f.Seek(0, io.SeekStart)
 	c.debug(fileNotify, buff, from, msg)
 	fmt.Fprintf(f, "%s\n%s\n", from, msg)
 
@@ -127,30 +130,47 @@ func (c *Files) Notification(buff, from, msg string) error {
 }
 
 func (c *Files) FeedWriter(buffer string) (controller.WriteCloser, error) {
-	return c.FileWriter(buffer, "feed")
+	return c.appendWriter(buffer, "feed")
 }
 
 func (c *Files) MainWriter(buffer string) (controller.WriteCloser, error) {
-	return c.FileWriter(buffer, "main")
+	return c.appendWriter(buffer, "main")
 }
 
 func (c *Files) NavWriter(buffer string) (controller.WriteCloser, error) {
-	return c.FileWriter(buffer, "navi")
+	return c.fileWriter(buffer, "navi")
 }
 
 func (c *Files) SideWriter(buffer string) (controller.WriteCloser, error) {
-	return c.FileWriter(buffer, "aside")
+	return c.fileWriter(buffer, "aside")
 }
 
 func (c *Files) StatusWriter(buffer string) (controller.WriteCloser, error) {
-	return c.FileWriter(buffer, "status")
+	return c.fileWriter(buffer, "status")
 }
 
 func (c *Files) TitleWriter(buffer string) (controller.WriteCloser, error) {
-	return c.FileWriter(buffer, "title")
+	return c.fileWriter(buffer, "title")
 }
 
-func (c *Files) FileWriter(buffer, target string) (controller.WriteCloser, error) {
+func (c *Files) appendWriter(buffer, target string) (controller.WriteCloser, error) {
+	ep := path.Join("/", buffer, target)
+	mf, err := c.store.Open(ep)
+	if err != nil {
+		c.debug(fileErr, err)
+		return nil, err
+	}
+
+	mf.Seek(0, io.SeekEnd)
+	wc := &WriteCloser{
+		store: mf,
+		path:  ep,
+	}
+
+	return wc, nil
+}
+
+func (c *Files) fileWriter(buffer, target string) (controller.WriteCloser, error) {
 	ep := path.Join("/", buffer, target)
 	mf, err := c.store.Open(ep)
 	if err != nil {
@@ -183,33 +203,35 @@ func (c *Files) ErrorWriter() (controller.WriteCloser, error) {
 
 func (c *Files) ImageWriter(buffer, resource string) (controller.WriteCloser, error) {
 	ep := path.Join("/", buffer, "images")
-	return c.FileWriter(ep, resource)
+	return c.fileWriter(ep, resource)
 }
 
-func writetab(store store.Opener, list map[string]interface{}) error {
+func (c *Files) writetab() error {
 	var size int
-	tabs, err := store.Open("/tabs")
+	tabs, err := c.store.Open("/tabs")
 	if err != nil {
 		return err
 	}
 
+	defer tabs.Close()
 	tabs.Seek(0, io.SeekStart)
 	b := bufio.NewWriter(tabs)
-	for tab := range list {
-		n, err := b.WriteString(tab + "\n")
-		if err != nil {
 
+	for tab := range c.tablist {
+		n, err := b.WriteString(path.Base(tab) + "\n")
+		if err != nil {
 			return err
 		}
 
 		size += n
 	}
 
+	b.Flush()
 	if e := tabs.Truncate(int64(size)); e != nil {
 		return e
 	}
 
-	return tabs.Close()
+	return nil
 }
 
 func fileLogger(msg fileMsg, args ...interface{}) {

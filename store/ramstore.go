@@ -1,8 +1,6 @@
 package store
 
 import (
-	"io"
-
 	"github.com/altid/libs/store/internal/ramstore"
 )
 
@@ -24,10 +22,6 @@ func NewRamStore(debug bool) *RamStore {
 	return &RamStore{
 		root: ramstore.NewRoot(debug),
 	}
-}
-
-func (rs *RamStore) Stream(buffer string) (io.ReadCloser, error) {
-	return rs.root.Stream(buffer)
 }
 
 func (rs *RamStore) List() []string {
@@ -52,8 +46,4 @@ func (rs *RamStore) Type() string {
 
 func (rs *RamStore) Mkdir(dir string) error {
 	return rs.root.Mkdir(dir)
-}
-
-func (rs *RamStore) Dump() []byte {
-	return rs.root.Dump()
 }
