@@ -1,7 +1,6 @@
 package store
 
 import (
-	"io"
 	"io/fs"
 )
 
@@ -33,16 +32,8 @@ type Filer interface {
 	Lister
 	Opener
 	Deleter
-	Streamer
 	Mkdir(string) error
 	Type() string
-}
-
-type Streamer interface {
-	// Stream ReadCloser that can be used to read bytes in a continuous manner
-	// Each call to stream will get a copy of what has been written to the file
-	// All further reads will block until there is new data, or Close() is called
-	Stream(string) (io.ReadCloser, error)
 }
 
 // File is an interface which represents data for a single file

@@ -1,6 +1,7 @@
 package listen9p
 
 import (
+	"io/fs"
 	"log"
 	"os"
 	"path"
@@ -42,7 +43,6 @@ type Session struct {
 	list    store.Lister
 	open    store.Opener
 	delete  store.Deleter
-	stream  store.Streamer
 	debug   func(sessionMsg, ...interface{})
 }
 
@@ -94,15 +94,12 @@ func (s *Session) Register(filer store.Filer, cmd commander.Commander, cb callba
 	if list, ok := filer.(store.Lister); ok {
 		s.list = list
 	}
+
 	open, ok := filer.(store.Opener)
 	if !ok {
 		return Err9pNoOpen
 	}
 	s.open = open
-
-	if stream, ok := filer.(store.Streamer); ok {
-		s.stream = stream
-	}
 
 	if delete, ok := filer.(store.Deleter); ok {
 		s.delete = delete
@@ -114,71 +111,26 @@ func (s *Session) Register(filer store.Filer, cmd commander.Commander, cb callba
 	return nil
 }
 
-// Build the files from the store, do not produce as-is since they'll be broken
-func getFile(c *Client, in string) (store.File, error) {
-	switch in {
-	case "/":
-		// Returns our base dir with our current buffer keyed
-		return c.s.open.Root(c.current)
-	case "/errors":
-		return c.s.open.Open("/errors")
-	case "/tabs":
-		return c.s.open.Open("/tabs")
-		// do a tabs thing
-	case "/ctrl":
-		// Allow buffer modifications
-		return files.Ctrl(c.ctrlWrite, c.ctrlData)
-	case "/input":
-		return files.Input(c.current, c.s.cb)
-	case "/feed":
-		feed, err := c.s.open.Open(path.Join(c.current, "feed"))
-		if err != nil {
-			return nil, err
-		}
-
-		return files.Feed(c.current, c.s.stream, feed)
-	default:
-		fp := path.Join(c.current, in)
-		for _, item := range c.s.list.List() {
-			// Only open items we have buffers open with
-			if path.Clean(item) == c.current {
-				c.s.debug(sessionOpen, fp)
-				return c.s.open.Open(fp)
-			}
-		}
-	}
-	return nil, Err9pFileNotFound
-}
-
 // Technically internal, this is used by Styx
 func (s *Session) Serve9P(x *styx.Session) {
-	client := &Client{
+	client := &client{
 		s:       s,
 		uuid:    uuid.New(),
 		name:    x.User,
-		current: "server",
+		current: path.Dir(s.list.List()[0]),
 	}
 
 	s.debug(sessionClient, client)
-
-	files := make(map[string]store.File)
-
 	for x.Next() {
 		req := x.Request()
-		f, err := getFile(client, req.Path())
-		if err != nil {
-			req.Rerror("%s", err)
-			continue
-		}
-
-		log.Printf("Looping with current: %s\n", client.current)
 		switch t := req.(type) {
 		case styx.Twalk:
-			t.Rwalk(f.Stat())
+			t.Rwalk(client.walk(req.Path()))
 		case styx.Tstat:
-			t.Rstat(f.Stat())
+			t.Rstat(client.stat(req.Path()))
 		case styx.Topen:
-			t.Ropen(f, nil)
+			// We should reopen here
+			t.Ropen(client.open(req.Path()))
 		case styx.Tutimes:
 			t.Rutimes(nil)
 		case styx.Ttruncate:
@@ -187,7 +139,6 @@ func (s *Session) Serve9P(x *styx.Session) {
 		case styx.Tremove:
 			switch t.Path() {
 			case "/notification", "/notify":
-				delete(files, f.Name())
 				t.Rremove(s.delete.Delete(req.Path()))
 			default:
 				t.Rerror("%s", "permission denied")
@@ -196,16 +147,39 @@ func (s *Session) Serve9P(x *styx.Session) {
 	}
 }
 
-type Client struct {
+type client struct {
 	s       *Session
 	name    string
 	uuid    uuid.UUID
 	current string
 }
 
+func (c *client) stat(buffer string) (fs.FileInfo, error) {
+	f, err := c.getFile(buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	defer f.Close()
+	return f.Stat()
+}
+
+func (c *client) walk(buffer string) (fs.FileInfo, error) {
+	return c.stat(buffer)
+}
+
+func (c *client) open(buffer string) (store.File, error) {
+	f, err := c.getFile(buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
+}
+
 // Callback passed to ctrl's open, we get this on write
 // we want to intercept buffer commands
-func (c *Client) ctrlWrite(ctrl []byte) error {
+func (c *client) ctrlWrite(ctrl []byte) error {
 	cmd, err := c.s.cmd.FromBytes(ctrl)
 	if err != nil {
 		return nil
@@ -223,9 +197,38 @@ func (c *Client) ctrlWrite(ctrl []byte) error {
 	return r(cmd)
 }
 
-func (c *Client) ctrlData() []byte {
+func (c *client) ctrlData() []byte {
 	r := c.s.cmd.CtrlData()
 	return r()
+}
+
+// Build the files from the store, do not produce as-is since they'll be broken
+func (c *client) getFile(in string) (store.File, error) {
+	switch in {
+	case "/":
+		return c.s.open.Root(c.current)
+	case "/errors":
+		return c.s.open.Open("/errors")
+	case "/tabs":
+		return c.s.open.Open("/tabs")
+	case "/ctrl":
+		return files.Ctrl(c.ctrlWrite, c.ctrlData)
+	case "/input":
+		return files.Input(c.current, c.s.cb)
+	case "/feed":
+		fp := path.Join("/", c.current, in)
+		return files.Feed(c.s.open.Open(fp))
+	default:
+		fp := path.Join("/", c.current, in)
+		for _, item := range c.s.list.List() {
+			// Only open items we have buffers open with
+			if path.Clean(item) == c.current {
+				c.s.debug(sessionOpen, fp)
+				return c.s.open.Open(fp)
+			}
+		}
+	}
+	return nil, Err9pFileNotFound
 }
 
 func sessionLogger(msg sessionMsg, args ...interface{}) {
@@ -239,7 +242,7 @@ func sessionLogger(msg sessionMsg, args ...interface{}) {
 			l.Printf("buffer: name=\"%s\" args=\"%s\" from=\"%s\"", cmd.Name, cmd.Args[0], cmd.From)
 		}
 	case sessionClient:
-		if client, ok := args[0].(*Client); ok {
+		if client, ok := args[0].(*client); ok {
 			l.Printf("client: user=\"%s\" buffer=\"%s\" id=\"%s\"\n", client.name, client.current, client.uuid.String())
 		}
 	}
