@@ -1,6 +1,7 @@
 package callback
 
 import (
+	"github.com/altid/libs/markup"
 	"github.com/altid/libs/service/controller"
 )
 
@@ -10,6 +11,13 @@ type Connecter interface {
 
 type Callback interface {
 	Connecter
+	Handler
+}
+
+// Handler is called when data is written to an `input` file
+// The path will be the buffer in which the data was written
+type Handler interface {
+	Handle(path string, c *markup.Lexer) error
 }
 
 // Sender interface is used by the listeners to handle control messages

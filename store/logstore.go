@@ -1,5 +1,6 @@
 package store
 
+// TODO: logging
 import (
 	"fmt"
 	"os"
@@ -16,10 +17,10 @@ type LogStore struct {
 	mains map[string]*logstore.File
 }
 
-func NewLogStore(base string) *LogStore {
+func NewLogStore(base string, debug bool) *LogStore {
 	return &LogStore{
 		base:  base,
-		root:  ramstore.NewRoot(),
+		root:  ramstore.NewRoot(debug),
 		mains: make(map[string]*logstore.File),
 	}
 
@@ -66,4 +67,8 @@ func (ls *LogStore) Delete(name string) error {
 
 func (ls *LogStore) Type() string {
 	return "log"
+}
+
+func (ls *LogStore) Mkdir(name string) error {
+	return ls.root.Mkdir(name)
 }

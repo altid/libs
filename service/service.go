@@ -15,6 +15,8 @@ import (
 	"github.com/altid/libs/store"
 )
 
+var l *log.Logger
+
 type serviceMsg int
 
 const (
@@ -51,6 +53,7 @@ func New(name string, address string, debug bool) *Service {
 	}
 
 	if debug {
+		l = log.New(os.Stdout, "service ", 0)
 		s.debug = serviceLogger
 	}
 
@@ -109,8 +112,6 @@ func (s *Service) Listen() error {
 
 // Very good logging is beneficial!
 func serviceLogger(msg serviceMsg, args ...interface{}) {
-	l := log.New(os.Stdout, "service ", 0)
-
 	switch msg {
 	case serviceError:
 		l.Printf("error: loc=\"%s\" err=\"%v\"", args[0], args[1])

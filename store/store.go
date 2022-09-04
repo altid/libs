@@ -1,7 +1,6 @@
 package store
 
 import (
-	"io"
 	"io/fs"
 )
 
@@ -33,6 +32,7 @@ type Filer interface {
 	Lister
 	Opener
 	Deleter
+	Mkdir(string) error
 	Type() string
 }
 
@@ -51,10 +51,6 @@ type File interface {
 	Name() string
 	// Stat returns a FileInfo for the File, useful with some listener implementations
 	Stat() (fs.FileInfo, error)
-	// Stream ReadCloser that can be used to read bytes in a continuous manner
-	// Each call to stream will get a copy of what has been written to the file
-	// All further reads will block until there is new data, or Close() is called
-	Stream() (io.ReadCloser, error)
 	// Truncate limits the size of the file to the given int64 value
 	Truncate(int64) error
 }

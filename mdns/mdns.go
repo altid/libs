@@ -5,8 +5,6 @@
 package mdns
 
 import (
-	"fmt"
-
 	"github.com/grandcat/zeroconf"
 )
 
@@ -21,9 +19,7 @@ type Entry struct {
 
 // Register adds the service listing to the intranet registry
 func Register(srv *Entry) error {
-	sname := fmt.Sprintf("_%s._altid", srv.Name)
-
-	entry, err := zeroconf.Register("altid", sname, "local.", srv.Port, []string(srv.Txt), nil)
+	entry, err := zeroconf.Register(srv.Name, "_altid._tcp", "local.", srv.Port, srv.Txt, nil)
 	if err != nil {
 		return err
 	}
