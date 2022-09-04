@@ -2,23 +2,25 @@ package files
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"time"
 
 	"github.com/altid/libs/markup"
-	"github.com/altid/libs/service/input"
+	"github.com/altid/libs/service/callback"
 )
 
 // Callback - forward handler from listener Registration
 // Call back in Write
 type InputFile struct {
-	handle input.Handler
+	handle callback.Handler
 	buffer string
 	offset int64
 }
 
-func Input(buffer string, handle input.Handler) (*InputFile, error) {
+func Input(buffer string, handle callback.Handler) (*InputFile, error) {
 	i := &InputFile{
 		buffer: buffer,
 		handle: handle,
@@ -28,15 +30,37 @@ func Input(buffer string, handle input.Handler) (*InputFile, error) {
 }
 
 func (i *InputFile) Read(b []byte) (n int, err error) {
-	return 0, errors.New("reads not supported on input")
+	return 0, errors.New("reads not supported on /input")
 }
 
 func (i *InputFile) Write(p []byte) (n int, err error) {
 	n = len(p)
 	i.offset += int64(n)
 	c := markup.NewLexer(p)
+	err = i.handle.Handle(i.buffer, c)
+	return
+}
 
-	return n, i.handle.Handle(i.buffer, c)
+// Support seeking for potential large control writes
+func (i *InputFile) Seek(offset int64, whence int) (int64, error) {
+	switch whence {
+	case io.SeekStart:
+		i.offset = offset
+	case io.SeekCurrent:
+		i.offset += offset
+	case io.SeekEnd:
+		i.offset = 0 + offset
+	}
+
+	if i.offset < 0 {
+		return 0, fmt.Errorf("attempted to seek before start of file")
+	}
+
+	if i.offset > 0 {
+		return 0, io.EOF
+	}
+
+	return i.offset, nil
 }
 
 func (i *InputFile) Close() error {

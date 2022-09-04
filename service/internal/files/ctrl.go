@@ -82,9 +82,6 @@ func (c *CtrlFile) Close() error {
 	return nil
 }
 
-func (c *CtrlFile) Stream() (io.ReadCloser, error) {
-	return nil, errors.New("streams not supported on control file")
-}
 func (c *CtrlFile) Name() string { return "/ctrl" }
 func (c *CtrlFile) Stat() (fs.FileInfo, error) {
 	cs := &CtrlStat{

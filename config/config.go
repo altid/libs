@@ -70,7 +70,7 @@ func Marshal(requests interface{}, service string, configFile string, debug bool
 //		log.Fatal(e)
 //	}
 //
-//  os.Exit()
+//  os.Exit(0)
 //
 // Notably, Create will parse entries for altid struct tags with the field "prompt". These will prompt a user
 // for the value on the command line, optionally with a whitelisted array of selections to pick from
