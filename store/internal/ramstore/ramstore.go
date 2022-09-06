@@ -1,13 +1,12 @@
 package ramstore
 
-// TODO: Decouple the data from a "file", the File is just an accessor to the data with offsets
-// TODO: sync.RWMutex is better for many-reader performance
 import (
 	"io"
 	"io/fs"
 	"log"
 	"os"
 	"path"
+	//"sync"
 	"time"
 )
 
@@ -32,6 +31,7 @@ const (
 	ErrInvalidTrunc = errRamstore("truncation invalid")
 	ErrInvalidPath  = errRamstore("invalid path supplied to Mkdir")
 	ErrShortSeek    = errRamstore("attempted negative seek")
+	ErrSeekOver     = errRamstore("attempted seek past end of file")
 	ErrActiveStream = errRamstore("attempted to close a file with active streams")
 	ErrDirExists    = errRamstore("directory exists")
 	ErrFileClosed   = errRamstore("invalid action on closed file")
@@ -44,6 +44,18 @@ type Dir struct {
 	dirs  map[string]*Dir
 	files map[string]*File
 	debug func(storeMsg, ...interface{})
+}
+
+type File struct {
+	path    string
+	data    *store
+	offset  int
+	closed  bool
+	isdir   bool
+	modTime time.Time
+	readdir chan os.FileInfo
+	done    chan struct{}
+	debug   func(storeMsg, ...interface{})
 }
 
 // Internal data store
@@ -187,68 +199,41 @@ func (d *Dir) Delete(name string) error {
 	return nil
 }
 
-type File struct {
-	path    string
-	data    *store
-	offset  int64
-	isdir   bool
-	closed  bool
-	modTime time.Time
-	readdir chan os.FileInfo
-	done    chan struct{}
-	debug   func(storeMsg, ...interface{})
-}
-
 func (f *File) Read(b []byte) (n int, err error) {
 	if f.closed {
-		f.debug(storeErr, ErrFileClosed)
 		return 0, ErrFileClosed
 	}
-
-	if f.offset >= int64(len(f.data.bytes)) {
-		return 0, io.EOF
-	}
-
 	n = copy(b, f.data.bytes[f.offset:])
-	f.offset += int64(n)
+	f.offset += n
+	if f.offset >= len(f.data.bytes) {
+		return n, io.EOF
+	}
 	return n, nil
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
 	if f.closed {
-		f.debug(storeErr, ErrFileClosed)
 		return 0, ErrFileClosed
 	}
-
-	if int64(len(f.data.bytes)+len(p)) >= f.offset {
-		tmp := make([]byte, (cap(f.data.bytes)*2)+len(p))
-		copy(tmp, f.data.bytes)
-		f.data.bytes = tmp
-	}
-
-	var i int64
-	for i = 0; i < int64(len(p)); i++ {
-		f.data.bytes[f.offset] = p[i]
-		f.offset++
-	}
-
+	m := f.data.grow(f.offset, len(p))
+	n = copy(f.data.bytes[m:], p)
+	f.offset += n
 	f.modTime = time.Now()
-	return len(p), nil
+
+	return
 }
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if f.closed {
-		f.debug(storeErr, ErrFileClosed)
 		return 0, ErrFileClosed
 	}
-
 	switch whence {
 	case io.SeekStart:
-		f.offset = offset
+		f.offset = int(offset)
 	case io.SeekCurrent:
-		f.offset += offset
+		f.offset += int(offset)
 	case io.SeekEnd:
-		f.offset = int64(len(f.data.bytes)) + offset
+		f.offset = len(f.data.bytes) + int(offset)
 	}
 
 	if f.offset < 0 {
@@ -256,35 +241,27 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		return 0, ErrShortSeek
 	}
 
-	if f.offset > int64(len(f.data.bytes)) {
-		return 0, io.EOF
+	if f.offset > len(f.data.bytes) {
+		f.debug(storeErr, ErrSeekOver)
+		return 0, ErrSeekOver
 	}
 
-	return f.offset, nil
+	return int64(f.offset), nil
 }
 
 func (f *File) Close() error {
-	if f.closed {
-		f.debug(storeErr, ErrFileClosed)
-		return ErrFileClosed
-	}
-
 	if f.isdir {
 		close(f.done)
 	}
-
-	f.offset = 0
 	f.closed = true
 	return nil
 }
 
 func (f *File) Truncate(cap int64) error {
-	if cap > int64(len(f.data.bytes)) {
-		f.debug(storeErr, ErrInvalidTrunc)
-		return ErrInvalidTrunc
+	if f.closed {
+		return ErrFileClosed
 	}
-
-	if cap < 0 {
+	if cap > int64(len(f.data.bytes)) {
 		f.debug(storeErr, ErrInvalidTrunc)
 		return ErrInvalidTrunc
 	}
@@ -333,13 +310,56 @@ func (f *File) Readdir(n int) ([]fs.FileInfo, error) {
 
 }
 
+// The following three functions are adapted from the bytes.Buffer package
+func growSlice(b []byte, n int) []byte {
+	c := len(b) + n // ensure enough space for n elements
+	if c < 2*cap(b) {
+		c = 2 * cap(b)
+	}
+	// Double our buffer
+	b2 := append([]byte(nil), make([]byte, c)...)
+	copy(b2, b)
+	return b2[:len(b)]
+}
+
+func (s *store) tryGrowByReslice(n int) (int, bool) {
+	if l := len(s.bytes); n <= cap(s.bytes)-l {
+		s.bytes = s.bytes[:l+n]
+		return l, true
+	}
+	return 0, false
+}
+
+func (s *store) grow(off, n int) int {
+	m := len(s.bytes)
+	// If our buffer is empty, reset the slice
+	if i, ok := s.tryGrowByReslice(n); ok {
+		return i
+	}
+	if m == 0 {
+		s.bytes = s.bytes[:0]
+	}
+	if s.bytes == nil && n <= 256 {
+		s.bytes = make([]byte, n, 256)
+		return 0
+	}
+	c := cap(s.bytes)
+	if n <= c/2-m {
+		copy(s.bytes, s.bytes[off:])
+	} else {
+		s.bytes = growSlice(s.bytes[off:], off+n)
+	}
+	s.bytes = s.bytes[:m+n]
+	return m
+}
+
 // We want to return our file wrapper to allow multiple simultaneous reader/writers
 func copyFile(in *File) (*File, error) {
+	// TODO: sync.Pool for preallocated File and Dir members may prove beneficial
 	f := &File{
 		path:    in.path,
 		data:    in.data,
 		offset:  0,
-		closed:  false,
 		isdir:   in.isdir,
 		modTime: in.modTime,
 		debug:   in.debug,

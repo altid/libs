@@ -2,11 +2,10 @@ package callback
 
 import (
 	"github.com/altid/libs/markup"
-	"github.com/altid/libs/service/controller"
 )
 
 type Connecter interface {
-	Connect(*Client, controller.Controller) error
+	Connect(Username string) error
 }
 
 type Callback interface {
@@ -26,7 +25,3 @@ type Sender interface {
 	SendCommand(string) error
 }
 
-// A client is returned on Client connection
-type Client struct {
-	Username string
-}
