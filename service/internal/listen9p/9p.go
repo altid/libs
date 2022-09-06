@@ -31,6 +31,7 @@ const (
 	sessionClient
 	sessionBuffer
 	sessionOpen
+	sessionErr
 )
 
 type Session struct {
@@ -118,6 +119,11 @@ func (s *Session) Serve9P(x *styx.Session) {
 		uuid:    uuid.New(),
 		name:    x.User,
 		current: path.Dir(s.list.List()[0]),
+	}
+
+	if e := s.cb.Connect(x.User); e != nil {
+		s.debug(sessionErr, e)
+		return
 	}
 
 	s.debug(sessionClient, client)
@@ -221,9 +227,7 @@ func (c *client) getFile(in string) (store.File, error) {
 	default:
 		fp := path.Join("/", c.current, in)
 		for _, item := range c.s.list.List() {
-			// Only open items we have buffers open with
-			if path.Clean(item) == c.current {
-				c.s.debug(sessionOpen, fp)
+			if(item == fp) {
 				return c.s.open.Open(fp)
 			}
 		}
@@ -233,6 +237,8 @@ func (c *client) getFile(in string) (store.File, error) {
 
 func sessionLogger(msg sessionMsg, args ...interface{}) {
 	switch msg {
+	case sessionErr:
+		l.Printf("error: %e", args[0])
 	case sessionStart:
 		l.Println("starting session")
 	case sessionOpen:
