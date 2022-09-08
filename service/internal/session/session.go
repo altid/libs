@@ -80,6 +80,7 @@ func (s *Session) Listen(debug bool) error {
 
 		s.Listener = listener
 	}
+
 	if e := s.Listener.Register(s.Store, s.commander, s.Callback); e != nil {
 		s.debug(sessionError, e)
 		return e
@@ -102,7 +103,7 @@ func (s *Session) Listen(debug bool) error {
 
 	// Finally run
 	echan := make(chan error)
-	go func(chan error) {
+	go func(echan chan error) {
 		echan <- s.Listener.Listen()
 	}(echan)
 

@@ -8,34 +8,40 @@ import (
 	"github.com/altid/libs/store"
 )
 
-// On Feed() create a channel that will drain to Read() until close
-// fill channel from Write as well as writing to underlying f.feed.Write
-// QUESTION(halfwit) Do we need a really big queue of data? Readers should be on read without more than a few milliseconds delay
 type FeedFile struct {
 	feed store.File
+	offset int64
 }
 
-// Hold our offset, read to EOF, return; but don't return EOF from here
 func Feed(feed store.File, err error) (*FeedFile, error) {
 	feed.Seek(0, io.SeekStart)
 	f := &FeedFile{
 		feed: feed,
+		offset: 0,
 	}
-
-	return f, nil
+	return f, err
 }
 
 // Attempt to do the right thing here with the reads
 func (f *FeedFile) Read(b []byte) (n int, err error) {
-	switch n, err = f.feed.Read(b); err {
-	case io.EOF:
-		time.Sleep(time.Millisecond * 400)
-		return n, nil
-	case nil:
-		return n, nil
-	default:
-		return 0, err
-	}
+	LOOP:
+		n, err = f.feed.Read(b)
+		f.offset += int64(n)
+		switch err {
+		case store.ErrFileClosed:
+			return n, err
+		case io.EOF:
+			time.Sleep(time.Second)
+			f.feed.Seek(f.offset, io.SeekStart)
+			if n > 0 {
+				return len(b), nil
+			}
+			goto LOOP
+		case nil:
+			return len(b), nil
+		default:
+			return n, err
+		}
 }
 
 func (f *FeedFile) Write(p []byte) (n int, err error)            { return f.feed.Write(p) }

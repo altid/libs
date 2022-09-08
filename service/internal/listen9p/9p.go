@@ -31,6 +31,7 @@ const (
 	sessionClient
 	sessionBuffer
 	sessionOpen
+	sessionErr
 )
 
 type Session struct {
@@ -120,6 +121,15 @@ func (s *Session) Serve9P(x *styx.Session) {
 		current: path.Dir(s.list.List()[0]),
 	}
 
+	if x.Access != "" {
+		client.current = x.Access
+	}
+
+	if e := s.cb.Connect(x.User); e != nil {
+		s.debug(sessionErr, e)
+		return
+	}
+
 	s.debug(sessionClient, client)
 	for x.Next() {
 		req := x.Request()
@@ -151,6 +161,7 @@ type client struct {
 	s       *Session
 	name    string
 	uuid    uuid.UUID
+	closer  func() error
 	current string
 }
 
@@ -188,8 +199,16 @@ func (c *client) ctrlWrite(ctrl []byte) error {
 	switch cmd.Name {
 	case "buffer":
 		c.s.debug(sessionBuffer, cmd)
+		if c.closer != nil {
+			c.closer()
+		}
 		c.current = cmd.Args[0]
 		return nil
+	case "open", "link":
+		// If we have a feed going, close it here
+		if c.closer != nil {
+			c.closer()
+		}
 	}
 
 	// This doesn't seem right
@@ -217,13 +236,15 @@ func (c *client) getFile(in string) (store.File, error) {
 		return files.Input(c.current, c.s.cb)
 	case "/feed":
 		fp := path.Join("/", c.current, in)
-		return files.Feed(c.s.open.Open(fp))
+		f, err := c.s.open.Open(fp)
+		// We need to signal the store that we're done with the Reads on Feed
+		// Send a close when we change current buffer/open/link
+		c.closer = f.Close
+		return files.Feed(f, err)
 	default:
 		fp := path.Join("/", c.current, in)
 		for _, item := range c.s.list.List() {
-			// Only open items we have buffers open with
-			if path.Clean(item) == c.current {
-				c.s.debug(sessionOpen, fp)
+			if(item == fp) {
 				return c.s.open.Open(fp)
 			}
 		}
@@ -233,6 +254,8 @@ func (c *client) getFile(in string) (store.File, error) {
 
 func sessionLogger(msg sessionMsg, args ...interface{}) {
 	switch msg {
+	case sessionErr:
+		l.Printf("error: %e", args[0])
 	case sessionStart:
 		l.Println("starting session")
 	case sessionOpen:
