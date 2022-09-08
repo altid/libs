@@ -53,6 +53,9 @@ func New(store store.Filer, debug bool) *Files {
 		debug:   func(fileMsg, ...interface{}) {},
 	}
 
+	cw, _ := store.Open("/ctrl")
+	cw.Close()
+
 	if debug {
 		l = log.New(os.Stdout, "files ", 0)
 		f.debug = fileLogger

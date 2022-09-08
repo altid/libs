@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	"path"
-	//"sync"
+	"sync"
 	"time"
 )
 
@@ -37,13 +37,13 @@ const (
 	ErrFileClosed   = errRamstore("invalid action on closed file")
 )
 
-// This is not great for multiple readers/writers - needs to be reworked
-// Very large structures will cause fairly large allocations due to the recursive maps here
+// TODO: Test allocations to see if we need to use something like sync.Pool
 type Dir struct {
 	name  string
 	dirs  map[string]*Dir
 	files map[string]*File
 	debug func(storeMsg, ...interface{})
+	sync.RWMutex
 }
 
 type File struct {
@@ -80,6 +80,9 @@ func NewRoot(debug bool) *Dir {
 }
 
 func (d *Dir) Mkdir(name string) error {
+	d.Lock()
+	defer d.Unlock()
+
 	if _, ok := d.dirs[name]; ok {
 		return ErrDirExists
 	}
@@ -140,6 +143,10 @@ func (d *Dir) Root(buffer string) (*File, error) {
 
 // Open works by either returning a file/directory, or recursing if we are still rooted in a path
 func (d *Dir) Open(name string) (*File, error) {
+	d.Lock()
+	defer d.Unlock()
+
+	// TODO: cleanup
 	// Use strings split os.pathesparator
 	// switch on the len of that array
 	// do d[path[0]], make if missing up to n times
@@ -189,7 +196,7 @@ func (d *Dir) Open(name string) (*File, error) {
 
 	d.Mkdir(root)
 	d.dirs[root].files[path.Join("/", base)] = f
-	//d.debug(storeOpen, f)
+	d.debug(storeOpen, f)
 
 	return f, nil
 }
@@ -242,8 +249,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	if f.offset > len(f.data.bytes) {
-		f.debug(storeErr, ErrSeekOver)
-		return 0, ErrSeekOver
+		f.offset = len(f.data.bytes)
 	}
 
 	return int64(f.offset), nil
