@@ -3,7 +3,6 @@ package files
 import (
 	"io"
 	"io/fs"
-	"log"
 	"time"
 
 	"github.com/altid/libs/store"
@@ -11,31 +10,38 @@ import (
 
 type FeedFile struct {
 	feed store.File
+	offset int64
 }
 
 func Feed(feed store.File, err error) (*FeedFile, error) {
 	feed.Seek(0, io.SeekStart)
 	f := &FeedFile{
 		feed: feed,
+		offset: 0,
 	}
 	return f, err
 }
 
 // Attempt to do the right thing here with the reads
 func (f *FeedFile) Read(b []byte) (n int, err error) {
-	n, err = f.feed.Read(b)
-	switch err {
-	case store.ErrFileClosed:
-		return 0, io.EOF
-	case io.EOF:
-		time.Sleep(time.Millisecond * 500)
-		fallthrough
-	case nil:
-		log.Printf("bits read %d", n)
-		return n, nil
-	default:
-		return 0, err
-	}
+	LOOP:
+		n, err = f.feed.Read(b)
+		f.offset += int64(n)
+		switch err {
+		case store.ErrFileClosed:
+			return n, err
+		case io.EOF:
+			time.Sleep(time.Second)
+			f.feed.Seek(f.offset, io.SeekStart)
+			if n > 0 {
+				return len(b), nil
+			}
+			goto LOOP
+		case nil:
+			return len(b), nil
+		default:
+			return n, err
+		}
 }
 
 func (f *FeedFile) Write(p []byte) (n int, err error)            { return f.feed.Write(p) }
