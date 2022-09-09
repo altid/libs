@@ -1,7 +1,6 @@
 package files
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"log"
@@ -75,9 +74,10 @@ func (c *Files) CreateBuffer(name string) error {
 	switch e := c.store.Mkdir(name); e {
 	case nil:
 		c.debug(fileBuffer, name)
-		c.tablist[name] = nil
+		c.tablist[name] = struct{}{}
 		return c.writetab()
 	case store.ErrDirExists:
+		c.debug(fileErr, e)
 		return nil
 	default:
 		c.debug(fileErr, e)
@@ -210,28 +210,17 @@ func (c *Files) ImageWriter(buffer, resource string) (controller.WriteCloser, er
 }
 
 func (c *Files) writetab() error {
-	var size int
 	tabs, err := c.store.Open("/tabs")
 	if err != nil {
 		return err
 	}
 
 	defer tabs.Close()
-	tabs.Seek(0, io.SeekStart)
-	b := bufio.NewWriter(tabs)
-
+	tabs.Truncate(0)
 	for tab := range c.tablist {
-		n, err := b.WriteString(path.Base(tab) + "\n")
-		if err != nil {
-			return err
+		if _, e := fmt.Fprintf(tabs, "%s\n", path.Base(tab)); e != nil {
+			return e
 		}
-
-		size += n
-	}
-
-	b.Flush()
-	if e := tabs.Truncate(int64(size)); e != nil {
-		return e
 	}
 
 	return nil
