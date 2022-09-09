@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"sync"
 	"time"
 )
 
@@ -43,7 +42,6 @@ type Dir struct {
 	dirs  map[string]*Dir
 	files map[string]*File
 	debug func(storeMsg, ...interface{})
-	sync.RWMutex
 }
 
 type File struct {
@@ -80,9 +78,6 @@ func NewRoot(debug bool) *Dir {
 }
 
 func (d *Dir) Mkdir(name string) error {
-	d.Lock()
-	defer d.Unlock()
-
 	if _, ok := d.dirs[name]; ok {
 		return ErrDirExists
 	}
@@ -143,9 +138,6 @@ func (d *Dir) Root(buffer string) (*File, error) {
 
 // Open works by either returning a file/directory, or recursing if we are still rooted in a path
 func (d *Dir) Open(name string) (*File, error) {
-	d.Lock()
-	defer d.Unlock()
-
 	// TODO: cleanup
 	// Use strings split os.pathesparator
 	// switch on the len of that array
