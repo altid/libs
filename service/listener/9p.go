@@ -60,7 +60,6 @@ func (np Listen9p) Listen() error {
 	return np.session.Listen()
 }
 
-// TODO: This almost certainly changes, but we shall see
 func (np Listen9p) Register(filer store.Filer, commander commander.Commander, callback callback.Callback) error {
 	return np.session.Register(filer, commander, callback)
 }
