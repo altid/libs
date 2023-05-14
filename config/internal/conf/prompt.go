@@ -13,84 +13,28 @@ import (
 	"github.com/altid/libs/config/types"
 )
 
-// Monster function, clean up later
-func Create(debug func(string, ...interface{}), service string, have []*entry.Entry, want []*request.Request, configFile string) (*Conf, error) {
-	var entries []*entry.Entry
-
-	// Range through and fill each entry with either the config data
-	// or query the user for input
-	for _, item := range want {
-		// if an entry exists in the conf, don't create another
-		if entry, ok := entry.Find(item, have); ok && entry.Key != "auth" {
-			entries = append(entries, entry)
-			continue
-		}
-
-		// This is ugly, we'll have to make this a separate function once we have time
-		switch item.Defaults.(type) {
-		case types.Auth:
-			// Clean this up later if we can
-			item.Pick = []string{"password", "factotum", "none"}
-			if _, ok := entry.Find(item, have); !ok && item.Defaults.(types.Auth) == "password" {
-				// We have no entry, check the defaults and send if there's a password
-				i := &request.Request{
-					Key:      "password",
-					Prompt:   "Enter password:",
-					Defaults: "password",
-				}
-
-				pass, err := fillEntry(debug, i)
-				if err != nil {
-					return nil, err
-				}
-
-				entries = append(entries, pass)
-			} else {
-				// we have an entry, see if it was set to password in the config
-				en := entry.FixAuth(service, configFile)
-				if en.Value.(string) == "password" {
-					i := &request.Request{
-						Key:      "password",
-						Prompt:   "Enter password:",
-						Defaults: "password",
-					}
-
-					if d, ok := entry.Find(i, have); ok {
-						entries = append(entries, d)
-					} else {
-						pass, err := fillEntry(debug, i)
-						if err != nil {
-							return nil, err
-						}
-
-						entries = append(entries, pass)
-					}
-				}
-			}
-		}
-		entry, err := fillEntry(debug, item)
-		if err != nil {
-			return nil, err
-		}
-
-		entries = append(entries, entry)
-	}
-
-	c := &Conf{
-		name:    service,
-		entries: entries,
-	}
-
-	return c, nil
+type Prompter interface {
+	Query(*request.Request) (*entry.Entry, error)
 }
 
-func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry.Entry, error) {
+// Prompt just queries for things
+type Prompt struct {
+	debug func(string, ...any)
+}
+
+func NewPrompt(debug func(string, ...any)) *Prompt {
+	return &Prompt{
+		debug: debug,
+	}
+}
+
+func (p *Prompt) Query(req *request.Request) (*entry.Entry, error) {
 	key := strings.ToLower(req.Key)
 	entry := &entry.Entry{
 		Key: key,
 	}
 
-	debug("request key=\"%s\" default=\"%v\"", key, req.Defaults)
+	p.debug("request key=\"%s\" default=\"%v\"", key, req.Defaults)
 
 	switch {
 	case req.Defaults == nil:
@@ -117,7 +61,7 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 		// User pressed enter for default
 		if value == "" || value == "\n" {
 			entry.Value = req.Defaults
-			debug("response key=\"%s\" value=\"%v\"", entry.Key, entry.Value)
+			p.debug("response key=\"%s\" value=\"%v\"", entry.Key, entry.Value)
 			return entry, nil
 		}
 
@@ -136,18 +80,21 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 	switch req.Defaults.(type) {
 	case bool:
 		entry.Value, err = strconv.ParseBool(value)
-		debug("response key=\"%s\" value=\"%t\"", entry.Key, entry.Value)
+		if err != nil {
+			p.debug("error: %v\n", err)
+		}
+		p.debug("response key=\"%s\" value=\"%t\"", entry.Key, entry.Value)
 	case string:
 		entry.Value = value
-		debug("response key=\"%s\" value=\"%s\"", entry.Key, entry.Value)
+		p.debug("response key=\"%s\" value=\"%s\"", entry.Key, entry.Value)
 	case types.Auth:
-		debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
+		p.debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
 		entry.Value = types.Auth(value)
 	case types.Logdir:
-		debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
+		p.debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
 		entry.Value = types.Logdir(value)
 	case types.ListenAddress:
-		debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
+		p.debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
 		entry.Value = types.ListenAddress(value)
 	case float32:
 		v, err := strconv.ParseFloat(value, 32)
@@ -156,7 +103,7 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 		}
 
 		entry.Value = v
-		debug("response key=\"%s\" value=\"%f\"", v)
+		p.debug("response key=\"%s\" value=\"%f\"", v)
 	case float64:
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
@@ -164,7 +111,7 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 		}
 
 		entry.Value = v
-		debug("response key=\"%s\" value=\"%f\"", v)
+		p.debug("response key=\"%s\" value=\"%f\"", v)
 	default:
 		v, e := tryInt(req.Defaults, value)
 		if e != nil {
@@ -172,7 +119,7 @@ func fillEntry(debug func(string, ...interface{}), req *request.Request) (*entry
 		}
 
 		entry.Value = v
-		debug("response key=\"%s\" value=\"%d\"", entry.Key, entry.Value)
+		p.debug("response key=\"%s\" value=\"%d\"", entry.Key, entry.Value)
 	}
 
 	return entry, nil
