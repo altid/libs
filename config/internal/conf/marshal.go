@@ -44,7 +44,7 @@ func Marshal(debug func(string, ...any), requests any, have []*entry.Entry, p Pr
 				if err != nil {
 					return err
 				}
-				en.Value = pw.Value
+				en.Value = types.Auth(pw.Value.(string))
 			}
 		}
 		if e := push(requests, en); e != nil {
@@ -95,7 +95,7 @@ func push(requests interface{}, entry *entry.Entry) error {
 		case "string":
 			d.SetString(entry.Value.(string))
 		case "Auth":
-			d.SetString(entry.Value.(string))
+			d.Set(reflect.ValueOf(entry.Value.(types.Auth)))
 		case "Logdir":
 			d.Set(reflect.ValueOf(entry.Value.(types.Logdir)))
 		case "ListenAddress":
