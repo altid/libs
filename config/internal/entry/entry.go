@@ -15,7 +15,7 @@ const (
 	ErrBadConfigurator = "configurator nil or invalid, cannot continue"
 	ErrNoConfigure     = "unable to find or create config for this service. To create one, please run %s -conf"
 	ErrNoSuchKey       = "no such key"
-	ErrNoEntries       = "unable to find config entry for this service."
+	ErrNoEntries       = "unable to find config entry for this service"
 	ErrMultiEntries    = "config contains duplicate entries for this service. Please edit your altid/config file"
 )
 
