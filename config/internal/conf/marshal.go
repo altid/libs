@@ -46,6 +46,19 @@ func Marshal(debug func(string, ...any), requests any, have []*entry.Entry, p Pr
 				}
 				en.Value = types.Auth(pw.Value.(string))
 			}
+			// Try to request the token= entry
+			if string(en.Value.(types.Auth)) == "token" {
+				i := &request.Request{
+					Key:		"token",
+					Prompt:		"Enter token:",
+					Defaults:	"",
+				}
+				token, err := query(i, p, have)
+				if err != nil {
+					return err
+				}
+				en.Value = types.Auth(token.Value.(string))
+			}
 		}
 		if e := push(requests, en); e != nil {
 			return e
