@@ -25,7 +25,7 @@ type Entry struct {
 }
 
 func FromConfig(debug func(string, ...interface{}), service string, cf string) ([]*Entry, error) {
-	dir := util.GetConf(service)
+	dir := util.GetConf()
 
 	if cf != "" {
 		dir = cf
@@ -109,7 +109,7 @@ func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service str
 
 func FixAuth(name, config string) *Entry {
 	if config == "" {
-		config = util.GetConf("")
+		config = util.GetConf()
 	}
 	ndb, _ := ndb.Open(config)
 	val := ndb.Search("service", name).Search("auth")
