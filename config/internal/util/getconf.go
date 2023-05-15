@@ -7,7 +7,7 @@ import (
 	"github.com/altid/libs/service"
 )
 
-func GetConf(svc string) string {
+func GetConf() string {
 	confdir, err := service.UserConfDir()
 	if err != nil {
 		log.Fatal(err)

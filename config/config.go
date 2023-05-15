@@ -91,7 +91,7 @@ func Create(requests interface{}, svc, configFile string, debug bool) error {
 	case os.IsNotExist(err):
 		dir, _ := service.UserConfDir()
 		os.MkdirAll(path.Join(dir, "altid"), 0755)
-		os.Create(util.GetConf(""))
+		os.Create(util.GetConf())
 		debugLog("creating config file")
 	// If we have multiple entries, something has indeed gone wrong
 	// The user needs to manually clean this up
@@ -114,7 +114,7 @@ func Create(requests interface{}, svc, configFile string, debug bool) error {
 // GetListenAddress returns the listen_address of a server, or "" if none is found
 // If a port is set, e.g. listen_address = 192.168.0.4:8080 it will return 8080
 func GetListenAddress(service string) (string, string) {
-	conf, err := ndb.Open(util.GetConf(service))
+	conf, err := ndb.Open(util.GetConf())
 	if err != nil {
 		return "", "564"
 	}
@@ -134,7 +134,7 @@ func GetListenAddress(service string) (string, string) {
 // GetLogDir returns a canonical directory for a user log, searching first altid/config
 // If no entry is found or the file is missing, it will return "none"
 func GetLogDir(service string) string {
-	conf, err := ndb.Open(util.GetConf(service))
+	conf, err := ndb.Open(util.GetConf())
 	if err != nil {
 		return "none"
 	}
@@ -151,7 +151,7 @@ func GetLogDir(service string) string {
 func ListAll() ([]string, error) {
 	var configs []string
 
-	conf, err := ndb.Open(util.GetConf(""))
+	conf, err := ndb.Open(util.GetConf())
 	if err != nil {
 		return nil, err
 	}

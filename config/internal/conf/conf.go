@@ -47,7 +47,7 @@ func FixAuth(have []*entry.Entry, service, cfgfile string) {
 func WriteOut(service string, request any) error {
 	m := make(map[string]any)
 	m["service"] = service
-	m["altid_config_path"] = util.GetConf(service)
+	m["altid_config_path"] = util.GetConf()
 
 	switch runtime.GOOS {
 	case "plan9":
