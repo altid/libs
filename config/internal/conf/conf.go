@@ -8,9 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/altid/libs/config/internal/entry"
 	"github.com/altid/libs/config/internal/util"
-	"github.com/altid/libs/config/types"
 )
 
 const tmpl = `Configuration successful!
@@ -29,20 +27,6 @@ service={{.service}}{{range $key, $value := .}}{{if eq $key "service"}}{{else if
 {{end}}{{if .tlskey}}	tlskey={{.tlskey}}
 {{end}}{{if .tlscert}}	tlscert={{.tlscert}}
 {{end}}`
-
-// FixAuth is a helper func to correct the auth being set to the value of password in FromConfig
-func FixAuth(have []*entry.Entry, service, cfgfile string) {
-	for _, ent := range have {
-		if ent.Key != "auth" {
-			continue
-		}
-
-		value := entry.FixAuth(service, cfgfile)
-
-		// ndb lookup returns string
-		ent.Value = types.Auth(value.Value.(string))
-	}
-}
 
 func WriteOut(service string, request any) error {
 	m := make(map[string]any)
@@ -69,11 +53,8 @@ func WriteOut(service string, request any) error {
 			switch(d.String()) {
 			case "factotum":
 			case "none":
-			case "token":
-				m["token"] = d.String()
-				m["auth"] = "token"
-				continue
-			case "password":
+			// Anything but these two is our password
+			default:
 				m["password"] = d.String()
 				m["auth"] = "password"
 				continue

@@ -3,7 +3,6 @@ package types
 // Auth matches an auth= tuple in a config
 // If the value matches factotum, it will use the factotum to return a password
 // If the value matches password, it will return the value of a password= tuple
-// If the value matches token, it will return the value of a token= tupleq
 // If the value matches none, it will return an empty string
 // Any other value set for Auth will result in undefined behaviour, but should
 // result in an error for marshalling

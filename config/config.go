@@ -59,7 +59,7 @@ func Marshal(requested interface{}, service string, configFile string, debug boo
 //
 //	conf := struct {
 //		Address string     `altid:"address,prompt:IP address to dial"`
-//		Auth    types.Auth `altid:"auth,prompt:Auth mechanism to use"`
+//		Auth    types.Auth `altid:"auth,prompt:Auth mechanism to use,pick:password|factotum|none"`
 //		UseSSL  bool       `altid:"usessl,prompt:Use SSL?,pick:true|false"`
 //		Foo     string     // Will use default
 //	}{"127.0.0.1", "password", false, "bar"}
