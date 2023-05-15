@@ -55,7 +55,7 @@ func (s *Session) Listen(debug bool) error {
 	s.debug(sessionStart)
 	if s.Store == nil {
 		s.debug(sessionDefaultStore)
-		s.Store = store.NewRamStore(debug)
+		s.Store = store.NewRamstore(debug)
 	}
 
 	s.Control = files.New(s.Store, debug)
