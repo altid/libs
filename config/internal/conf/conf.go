@@ -64,9 +64,22 @@ func WriteOut(service string, request any) error {
 	for i := 0; i < t.NumField(); i++ {
 		k := t.FieldByIndex([]int{i})
 		d := reflect.Indirect(s).Field(i)
-		//if k.Name == "auth" && d.CanSet() {
-		//	// Set the auth=password if we have a password
-		//}
+		// Hand write out for the case of auth
+		if k.Name == "Auth" {
+			switch(d.String()) {
+			case "factotum":
+			case "none":
+			case "token":
+				m["token"] = d.String()
+				m["auth"] = "token"
+				continue
+			case "password":
+				m["password"] = d.String()
+				m["auth"] = "password"
+				continue
+			}
+		}
+
 		switch d.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			m[strings.ToLower(k.Name)] = fmt.Sprintf("%d", d.Int())
