@@ -1,7 +1,6 @@
 package conf
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -20,51 +19,51 @@ func Marshal(debug func(string, ...any), requests any, have []*entry.Entry, p Pr
 	}
 
 	for _, item := range want {
-		en, err := query(item, p, have)
+		var en *entry.Entry
+		if item.Key == "auth" {
+			en, err = queryAuth(item, p, have)
+		} else {
+			en, err = query(item, p, have)
+		}
 		if err != nil {
 			return err
-		}
-		if item.Key == "auth" {
-			// We handle password, factotum, and none types currently
-			for _, pick := range item.Pick {
-				switch pick {
-				case "password", "factotum", "none":
-				default:
-					return errors.New("unsupported auth mechanism selected")
-				}
-			}
-			// Try to request the password= entry
-			if string(en.Value.(types.Auth)) == "password" {
-				i := & request.Request{
-					Key:	  "password",
-					Prompt:	  "Enter password:",
-					Defaults: "password",
-				}
-				pw, err := query(i, p, have)
-				if err != nil {
-					return err
-				}
-				en.Value = types.Auth(pw.Value.(string))
-			}
-			// Try to request the token= entry
-			if string(en.Value.(types.Auth)) == "token" {
-				i := &request.Request{
-					Key:		"token",
-					Prompt:		"Enter token:",
-					Defaults:	"",
-				}
-				token, err := query(i, p, have)
-				if err != nil {
-					return err
-				}
-				en.Value = types.Auth(token.Value.(string))
-			}
 		}
 		if e := push(requests, en); e != nil {
 			return e
 		}
 	}
 	return nil
+}
+
+func queryAuth(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry, error) {
+	var en *entry.Entry
+	var err error
+	if(p != nil && item.Prompt != "no_prompt") {
+		en, err = p.Query(item)
+	} else if entry, ok := entry.Find(item, have); ok {
+		en = entry
+	} else if item.Defaults != nil {
+		en.Key = item.Key;
+		en.Value = item.Defaults;
+	}
+	// Error happened above, handle
+	if err != nil {
+		return nil, err
+	}
+	// Try to request the password= entry
+	if string(en.Value.(types.Auth)) == "password" {
+		i := & request.Request{
+			Key:	  "password",
+			Prompt:	  "Enter password:",
+			Defaults: "12345678",
+		}
+		pw, err := query(i, p, have)
+		if err != nil {
+			return nil, err
+		}
+		en.Value = types.Auth(pw.Value.(string))
+	}
+	return en, nil
 }
 
 func query(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry, error) {
