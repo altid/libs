@@ -98,7 +98,7 @@ func (f *File) Name() string {
 func (f *File) Stat() (fs.FileInfo, error) {
 	fi := FileInfo{
 		len:     int64(len(f.data.bytes)),
-		name:    f.path,
+		name:    f.name,
 		modtime: f.modTime,
 	}
 
