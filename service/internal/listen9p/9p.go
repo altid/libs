@@ -121,15 +121,20 @@ func (s *Session) Serve9P(x *styx.Session) {
 		name:    x.User,
 	}
 	// Somewhat obtuse method of discovering a valid buffername
-	// Walk through the list of files, and check if it as top level
-	// We could also check against our known list of files such as /ctrl
-	l := s.list.List()
-	for _, c := range l {
-		if path.Dir(c) != "/" && path.Dir(c) != "." {
+	// Walk through the list of files, and check if it not one of our top level files
+	for _, c := range s.list.List() {
+		switch(c) {
+		case ".":
+		case "ctrl":
+		case "tabs":
+		case "errors":
+		case "input":
+		default:
 			client.current = path.Dir(c)
-			break
+			goto OUT
 		}
 	}
+OUT:
 	s.debug(sessionInfo, "current", client.current)
 	if x.Access != "" {
 		client.current = x.Access
@@ -149,7 +154,7 @@ func (s *Session) Serve9P(x *styx.Session) {
 		case styx.Tstat:
 			t.Rstat(client.stat(req.Path()))
 		case styx.Topen:
-			if t.Path() == "/" {
+			if t.Path() == "/" || t.Path() == "." {
 				t.Ropen(client.s.open.Root(client.current))
 			} else {
 				// We should reopen here
@@ -162,7 +167,7 @@ func (s *Session) Serve9P(x *styx.Session) {
 		// When clients are done with a notification, they delete it. Allow this
 		case styx.Tremove:
 			switch t.Path() {
-			case "/notification", "/notify":
+			case "notification", "notify":
 				t.Rremove(s.delete.Delete(req.Path()))
 			default:
 				t.Rerror("%s", "permission denied")
@@ -180,7 +185,7 @@ type client struct {
 }
 
 func (c *client) stat(buffer string) (fs.FileInfo, error) {
-	if buffer == "/" {
+	if buffer == "/" || buffer == "." {
 		r, err := c.s.open.Root(buffer)
 		if err != nil {
 			return nil, err
@@ -246,22 +251,22 @@ func (c *client) ctrlData() []byte {
 func (c *client) getFile(in string) (store.File, error) {
 	switch in {
 	case "/errors":
-		return c.s.open.Open("/errors")
+		return c.s.open.Open("errors")
 	case "/tabs":
-		return c.s.open.Open("/tabs")
+		return c.s.open.Open("tabs")
 	case "/ctrl":
 		return files.Ctrl(c.ctrlWrite, c.ctrlData)
 	case "/input":
 		return files.Input(c.current, c.s.cb)
 	case "/feed":
-		fp := path.Join("/", c.current, in)
+		fp := path.Join(c.current, in)
 		f, err := c.s.open.Open(fp)
 		// We need to signal the store that we're done with the Reads on Feed
 		// Send a close when we change current buffer/open/link
 		c.closer = f.Close
 		return files.Feed(f, err)
 	default:
-		fp := path.Join("/", c.current, in)
+		fp := path.Join(c.current, in)
 		for _, item := range c.s.list.List() {
 			if item == fp {
 				return c.s.open.Open(fp)

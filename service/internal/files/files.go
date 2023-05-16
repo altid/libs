@@ -44,7 +44,7 @@ func (w WriteCloser) Close() error {
 }
 
 func New(store store.Filer, debug bool) *Files {
-	ew, _ := store.Open("/errors")
+	ew, _ := store.Open("errors")
 	f := &Files{
 		errors:  ew,
 		store:   store,
@@ -57,7 +57,7 @@ func New(store store.Filer, debug bool) *Files {
 		f.debug = fileLogger
 	}
 
-	cw, err := store.Open("/ctrl")
+	cw, err := store.Open("ctrl")
 	if err != nil {
 		f.debug(fileErr, err)
 		return nil
@@ -73,7 +73,6 @@ func (c *Files) Cleanup() {
 
 func (c *Files) CreateBuffer(name string) error {
 	// Make a store item
-	name = path.Join("/", name)
 	switch e := c.store.Mkdir(name); e {
 	case nil:
 		c.debug(fileBuffer, name)
@@ -81,7 +80,7 @@ func (c *Files) CreateBuffer(name string) error {
 		c.tablist[name] = struct{}{}
 		return c.writetab()
 	case store.ErrDirExists:
-		c.debug(fileErr, e)
+		// Inoccuous error, skip
 		return nil
 	default:
 		c.debug(fileErr, e)
@@ -90,7 +89,6 @@ func (c *Files) CreateBuffer(name string) error {
 }
 
 func (c *Files) DeleteBuffer(name string) error {
-	name = path.Join("/", name)
 	if e := c.store.Delete(name); e != nil {
 		c.debug(fileErr, e)
 		return e
@@ -106,7 +104,6 @@ func (c *Files) DeleteBuffer(name string) error {
 }
 
 func (c *Files) HasBuffer(name string) bool {
-	name = path.Join("/", name)
 	if _, ok := c.tablist[name]; ok {
 		return true
 	}
@@ -115,13 +112,13 @@ func (c *Files) HasBuffer(name string) bool {
 }
 
 func (c *Files) Remove(buffer, filename string) error {
-	doc := path.Join("/", buffer, filename)
+	doc := path.Join(buffer, filename)
 	c.debug(fileRemove, doc)
 	return c.store.Delete(doc)
 }
 
 func (c *Files) Notification(buff, from, msg string) error {
-	nfile := path.Join("/", buff, "notification")
+	nfile := path.Join(buff, "notification")
 	f, err := c.store.Open(nfile)
 	if err != nil {
 		c.debug(fileErr, err)
@@ -161,7 +158,7 @@ func (c *Files) TitleWriter(buffer string) (controller.WriteCloser, error) {
 }
 
 func (c *Files) appendWriter(buffer, target string) (controller.WriteCloser, error) {
-	ep := path.Join("/", buffer, target)
+	ep := path.Join(buffer, target)
 	mf, err := c.store.Open(ep)
 	if err != nil {
 		c.debug(fileErr, err)
@@ -178,7 +175,7 @@ func (c *Files) appendWriter(buffer, target string) (controller.WriteCloser, err
 }
 
 func (c *Files) fileWriter(buffer, target string) (controller.WriteCloser, error) {
-	ep := path.Join("/", buffer, target)
+	ep := path.Join(buffer, target)
 	mf, err := c.store.Open(ep)
 	if err != nil {
 		c.debug(fileErr, err)
@@ -194,7 +191,7 @@ func (c *Files) fileWriter(buffer, target string) (controller.WriteCloser, error
 }
 
 func (c *Files) ErrorWriter() (controller.WriteCloser, error) {
-	ew, err := c.store.Open("/errors")
+	ew, err := c.store.Open("errors")
 	if err != nil {
 		c.debug(fileErr, err)
 		return nil, err
@@ -202,19 +199,19 @@ func (c *Files) ErrorWriter() (controller.WriteCloser, error) {
 
 	wc := &WriteCloser{
 		store: ew,
-		path:  "/errors",
+		path:  "errors",
 	}
 
 	return wc, nil
 }
 
 func (c *Files) ImageWriter(buffer, resource string) (controller.WriteCloser, error) {
-	ep := path.Join("/", buffer, "images")
+	ep := path.Join(buffer, "images")
 	return c.fileWriter(ep, resource)
 }
 
 func (c *Files) writetab() error {
-	tabs, err := c.store.Open("/tabs")
+	tabs, err := c.store.Open("tabs")
 	if err != nil {
 		return err
 	}

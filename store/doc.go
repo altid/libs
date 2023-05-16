@@ -7,7 +7,7 @@ Ramstore presents an in-memory only data store. This does not persist across res
 
 Logstore
 
-Logstore presents an in-memory data store. Files ending with "/main" will be written to and read from real files which persist across restarts.
+Logstore presents an in-memory data store. Files ending with "main" will be written to and read from real files which persist across restarts.
 
 Special behaviour:
 
