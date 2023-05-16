@@ -95,7 +95,7 @@ type InputStat struct {
 }
 
 func (s *InputStat) Name() string       { return s.name }
-func (s *InputStat) Sys() interface{}   { return nil }
+func (s *InputStat) Sys() any           { return nil }
 func (s *InputStat) ModTime() time.Time { return s.modtime }
 func (s *InputStat) IsDir() bool        { return false }
 func (s *InputStat) Mode() os.FileMode  { return 0644 }

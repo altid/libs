@@ -100,7 +100,7 @@ type CtrlStat struct {
 }
 
 func (s *CtrlStat) Name() string       { return s.name }
-func (s *CtrlStat) Sys() interface{}   { return nil }
+func (s *CtrlStat) Sys() any           { return nil }
 func (s *CtrlStat) ModTime() time.Time { return s.modtime }
 func (s *CtrlStat) IsDir() bool        { return false }
 func (s *CtrlStat) Mode() os.FileMode  { return 0644 }

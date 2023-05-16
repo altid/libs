@@ -17,7 +17,7 @@ type UserPasswd struct {
 }
 
 // Getuserpasswd - get a password. params i.e. proto=pass service=ssh role=client server=%s user=%s
-func Getuserpasswd(params string, args ...interface{}) (*UserPasswd, error) {
+func Getuserpasswd(params string, args ...any) (*UserPasswd, error) {
 	var buf [4096]byte
 	f, e := openRPC()
 	if e != nil {

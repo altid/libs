@@ -27,7 +27,7 @@ const (
 // Listen9p implements a listener using the 9p protocol
 type Listen9p struct {
 	session *listen9p.Session
-	debug   func(listenMsg, ...interface{})
+	debug   func(listenMsg, ...any)
 }
 
 // NewListen9p returns a new listener
@@ -68,7 +68,7 @@ func (np Listen9p) Type() string {
 	return "9p"
 }
 
-func listenLogger(msg listenMsg, args ...interface{}) {
+func listenLogger(msg listenMsg, args ...any) {
 	switch msg {
 	case listenAuth:
 		//auth := args[0].(*auth.Protocol)

@@ -138,12 +138,12 @@ func (c *Cleaner) WriteStringEscaped(msg string) (n int, err error) {
 }
 
 // Writef is a variant of Write which accepts a format specifier
-func (c *Cleaner) Writef(format string, args ...interface{}) (n int, err error) {
+func (c *Cleaner) Writef(format string, args ...any) (n int, err error) {
 	return fmt.Fprintf(c.w, format, args...)
 }
 
 // WritefEscaped is a variant of WriteEscaped which accepts a format specifier
-func (c *Cleaner) WritefEscaped(format string, args ...interface{}) (n int, err error) {
+func (c *Cleaner) WritefEscaped(format string, args ...any) (n int, err error) {
 	return doWritef(c.w, format, args...)
 }
 
@@ -157,7 +157,7 @@ func (c *Cleaner) WriteList(depth int, msg []byte) (n int, err error) {
 }
 
 // WritefList is a variant of WriteList which accepts a format specifier
-func (c *Cleaner) WritefList(depth int, format string, args ...interface{}) (n int, err error) {
+func (c *Cleaner) WritefList(depth int, format string, args ...any) (n int, err error) {
 	spaces := strings.Repeat("	", depth)
 	if depth > 0 {
 		spaces += "- "
@@ -173,7 +173,7 @@ func (c *Cleaner) WriteHeader(degree int, msg []byte) (n int, err error) {
 }
 
 // WritefHeader is a variant of WriteHeader which accepts a format specifier
-func (c *Cleaner) WritefHeader(degree int, format string, args ...interface{}) (n int, err error) {
+func (c *Cleaner) WritefHeader(degree int, format string, args ...any) (n int, err error) {
 	hashes := strings.Repeat("#", degree)
 	return doWritef(c.w, hashes+format, args...)
 }
@@ -208,7 +208,7 @@ func (n *Notifier) Parse() (string, string, string) {
 	return n.buff, from, msg
 }
 
-func doWritef(w io.WriteCloser, format string, args ...interface{}) (n int, err error) {
+func doWritef(w io.WriteCloser, format string, args ...any) (n int, err error) {
 	for n := range args {
 		switch f := args[n].(type) {
 		case []byte:

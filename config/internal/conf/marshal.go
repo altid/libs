@@ -38,13 +38,13 @@ func Marshal(debug func(string, ...any), requests any, have []*entry.Entry, p Pr
 func queryAuth(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry, error) {
 	var en *entry.Entry
 	var err error
-	if(p != nil && item.Prompt != "no_prompt") {
+	if p != nil && item.Prompt != "no_prompt" {
 		en, err = p.Query(item)
 	} else if entry, ok := entry.Find(item, have); ok {
 		en = entry
 	} else if item.Defaults != nil {
-		en.Key = item.Key;
-		en.Value = item.Defaults;
+		en.Key = item.Key
+		en.Value = item.Defaults
 	}
 	// Error happened above, handle
 	if err != nil {
@@ -52,9 +52,9 @@ func queryAuth(item *request.Request, p Prompter, have []*entry.Entry) (*entry.E
 	}
 	// Try to request the password= entry
 	if string(en.Value.(types.Auth)) == "password" {
-		i := & request.Request{
-			Key:	  "password",
-			Prompt:	  "Enter password:",
+		i := &request.Request{
+			Key:      "password",
+			Prompt:   "Enter password:",
 			Defaults: "12345678",
 		}
 		pw, err := query(i, p, have)
@@ -67,7 +67,7 @@ func queryAuth(item *request.Request, p Prompter, have []*entry.Entry) (*entry.E
 }
 
 func query(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry, error) {
-	if(p != nil && item.Prompt != "no_prompt") {
+	if p != nil && item.Prompt != "no_prompt" {
 		return p.Query(item)
 	}
 	if en, ok := entry.Find(item, have); ok {
@@ -75,8 +75,8 @@ func query(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry
 	}
 	if item.Defaults != nil {
 		entry := &entry.Entry{
-			Key:	item.Key,
-			Value:	item.Defaults,
+			Key:   item.Key,
+			Value: item.Defaults,
 		}
 		return entry, nil
 	}
@@ -85,7 +85,7 @@ func query(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry
 
 // Add the actual value to the struct, being careful that
 // the strconv.Atoi from before is guarded against
-func push(requests interface{}, entry *entry.Entry) error {
+func push(requests any, entry *entry.Entry) error {
 	s := reflect.ValueOf(requests)
 	t := reflect.Indirect(s).Type()
 	for i := 0; i < t.NumField(); i++ {
