@@ -1,7 +1,6 @@
-package build
+package conf
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -10,7 +9,7 @@ import (
 	"github.com/altid/libs/config/types"
 )
 
-func Marshal(debug func(string, ...interface{}), requests interface{}, have []*entry.Entry) error {
+func Marshal(debug func(string, ...any), requests any, have []*entry.Entry, p Prompter) error {
 	// Loop through entries and attempt to fill the struct
 	// Make sure we turn any ints that are supposed to be strings,
 	// back into strings!
@@ -20,83 +19,89 @@ func Marshal(debug func(string, ...interface{}), requests interface{}, have []*e
 	}
 
 	for _, item := range want {
-		// We need special handling for Auth
-		// as the en.Value will be populated with a usable value
-		// either from the password field or factotum
+		var en *entry.Entry
 		if item.Key == "auth" {
-			for _, pick := range item.Pick {
-				switch pick {
-				case "password", "factotum", "none":
-					break
-				default:
-					return errors.New("unsupported auth mechanism selected")
-				}
-			}
-
-			if en, ok := entry.Find(item, have); ok {
-				if e := push(requests, en); e != nil {
-					return e
-				}
-
-				continue
-			}
+			en, err = queryAuth(item, p, have)
+		} else {
+			en, err = query(item, p, have)
 		}
-
-		// We have a good item
-		if en, ok := entry.Find(item, have); ok {
-			if e := pick(item, en); e != nil {
-				return e
-			}
-
-			if e := push(requests, en); e != nil {
-				return e
-			}
-
-			continue
+		if err != nil {
+			return err
 		}
-
-		if item.Defaults != nil {
-			entry := &entry.Entry{
-				Key:   item.Key,
-				Value: item.Defaults,
-			}
-
-			if e := push(requests, entry); e != nil {
-				return e
-			}
-
-			continue
+		if e := push(requests, en); e != nil {
+			return e
 		}
-
-		return fmt.Errorf("missing config entry for %s", item.Key)
 	}
 	return nil
 }
 
+func queryAuth(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry, error) {
+	var en *entry.Entry
+	var err error
+	if p != nil && item.Prompt != "no_prompt" {
+		en, err = p.Query(item)
+	} else if entry, ok := entry.Find(item, have); ok {
+		en = entry
+	} else if item.Defaults != nil {
+		en.Key = item.Key
+		en.Value = item.Defaults
+	}
+	// Error happened above, handle
+	if err != nil {
+		return nil, err
+	}
+	// Try to request the password= entry
+	if string(en.Value.(types.Auth)) == "password" {
+		i := &request.Request{
+			Key:      "password",
+			Prompt:   "Enter password:",
+			Defaults: "12345678",
+		}
+		pw, err := query(i, p, have)
+		if err != nil {
+			return nil, err
+		}
+		en.Value = types.Auth(pw.Value.(string))
+	}
+	return en, nil
+}
+
+func query(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry, error) {
+	if p != nil && item.Prompt != "no_prompt" {
+		return p.Query(item)
+	}
+	if en, ok := entry.Find(item, have); ok {
+		return en, pick(item, en)
+	}
+	if item.Defaults != nil {
+		entry := &entry.Entry{
+			Key:   item.Key,
+			Value: item.Defaults,
+		}
+		return entry, nil
+	}
+	return nil, fmt.Errorf("no config entry for %s", item.Key)
+}
+
 // Add the actual value to the struct, being careful that
 // the strconv.Atoi from before is guarded against
-func push(requests interface{}, entry *entry.Entry) error {
+func push(requests any, entry *entry.Entry) error {
 	s := reflect.ValueOf(requests)
 	t := reflect.Indirect(s).Type()
-
 	for i := 0; i < t.NumField(); i++ {
 		f := t.FieldByIndex([]int{i})
-
 		tag := f.Tag.Get("altid")
 		if tag == "" {
 			continue
 		}
-
 		// Use the tag, Luke
 		req, err := request.ParseTag(tag)
 		if err != nil {
 			continue
 		}
-
 		if req.Key != entry.Key {
 			continue
 		}
-
 		d := reflect.Indirect(s).Field(i)
 		switch f.Type.Name() {
 		case "string":
@@ -110,10 +115,8 @@ func push(requests interface{}, entry *entry.Entry) error {
 		default:
 			d.Set(reflect.ValueOf(entry.Value))
 		}
-
 		return nil
 	}
-
 	return fmt.Errorf("could not add %s entry to struct", entry.Key)
 }
 

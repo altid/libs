@@ -15,17 +15,17 @@ const (
 	ErrBadConfigurator = "configurator nil or invalid, cannot continue"
 	ErrNoConfigure     = "unable to find or create config for this service. To create one, please run %s -conf"
 	ErrNoSuchKey       = "no such key"
-	ErrNoEntries       = "unable to find config entry for this service."
+	ErrNoEntries       = "unable to find config entry for this service"
 	ErrMultiEntries    = "config contains duplicate entries for this service. Please edit your altid/config file"
 )
 
 type Entry struct {
 	Key   string
-	Value interface{}
+	Value any
 }
 
-func FromConfig(debug func(string, ...interface{}), service string, cf string) ([]*Entry, error) {
-	dir := util.GetConf(service)
+func FromConfig(debug func(string, ...any), service string, cf string) ([]*Entry, error) {
+	dir := util.GetConf()
 
 	if cf != "" {
 		dir = cf
@@ -66,7 +66,7 @@ func (item *Entry) String() string {
 }
 
 // This will error if auth=password has no complementary password=field
-func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service string) ([]*Entry, error) {
+func fromNdb(debug func(string, ...any), recs ndb.RecordSet, service string) ([]*Entry, error) {
 	var values []*Entry
 
 	for _, tup := range recs[0] {
@@ -105,17 +105,4 @@ func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service str
 	}
 
 	return values, nil
-}
-
-func FixAuth(name, config string) *Entry {
-	if config == "" {
-		config = util.GetConf("")
-	}
-	ndb, _ := ndb.Open(config)
-	val := ndb.Search("service", name).Search("auth")
-
-	return &Entry{
-		Key:   "auth",
-		Value: val,
-	}
 }

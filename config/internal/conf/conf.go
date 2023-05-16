@@ -1,13 +1,14 @@
 package conf
 
 import (
+	"fmt"
 	"os"
+	"reflect"
 	"runtime"
+	"strings"
 	"text/template"
 
-	"github.com/altid/libs/config/internal/entry"
 	"github.com/altid/libs/config/internal/util"
-	"github.com/altid/libs/config/types"
 )
 
 const tmpl = `Configuration successful!
@@ -27,33 +28,10 @@ service={{.service}}{{range $key, $value := .}}{{if eq $key "service"}}{{else if
 {{end}}{{if .tlscert}}	tlscert={{.tlscert}}
 {{end}}`
 
-type Conf struct {
-	name    string
-	entries []*entry.Entry
-}
-
-func FromConfig(debug func(string, ...interface{}), service string, confdir string) ([]*entry.Entry, error) {
-	return entry.FromConfig(debug, service, confdir)
-}
-
-// FixAuth is a helper func to correct the auth being set to the value of password in FromConfig
-func FixAuth(have []*entry.Entry, service, cfgfile string) {
-	for _, ent := range have {
-		if ent.Key != "auth" {
-			continue
-		}
-
-		value := entry.FixAuth(service, cfgfile)
-
-		// ndb lookup returns string
-		ent.Value = types.Auth(value.Value.(string))
-	}
-}
-
-func (c *Conf) WriteOut() error {
-	m := make(map[string]interface{})
-	m["service"] = c.name
-	m["altid_config_path"] = util.GetConf(c.name)
+func WriteOut(service string, request any) error {
+	m := make(map[string]any)
+	m["service"] = service
+	m["altid_config_path"] = util.GetConf()
 
 	switch runtime.GOOS {
 	case "plan9":
@@ -64,8 +42,31 @@ func (c *Conf) WriteOut() error {
 		m["listen_address_link"] = "https://altid.github.io/using-listen-address.html"
 	}
 
-	for _, entry := range c.entries {
-		m[entry.Key] = entry.String()
+	// Walk our marshalled object and fill out our form
+	s := reflect.ValueOf(request)
+	t := reflect.Indirect(s).Type()
+	for i := 0; i < t.NumField(); i++ {
+		k := t.FieldByIndex([]int{i})
+		d := reflect.Indirect(s).Field(i)
+		// Hand write out for the case of auth
+		if k.Name == "Auth" {
+			switch(d.String()) {
+			case "factotum":
+			case "none":
+			// Anything but these two is our password
+			default:
+				m["password"] = d.String()
+				m["auth"] = "password"
+				continue
+			}
+		}
+
+		switch d.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			m[strings.ToLower(k.Name)] = fmt.Sprintf("%d", d.Int())
+		case reflect.String:
+			m[strings.ToLower(k.Name)] = d.String()
+		}
 	}
 
 	tp := template.Must(template.New("entry").Parse(tmpl))

@@ -7,8 +7,8 @@ import (
 	"github.com/altid/libs/store"
 )
 
-func ExampleNewRamStore() {
-	rs := store.NewRamStore()
+func ExampleNewRamstore() {
+	rs := store.NewRamstore(false)
 	f, err := rs.Open("testfile")
 	if err != nil {
 		log.Fatal(err)
@@ -18,12 +18,12 @@ func ExampleNewRamStore() {
 	f.Write([]byte("Some data"))
 }
 
-func ExampleNewLogStore() {
+func ExampleNewLogstore() {
 	tmp, err := os.MkdirTemp("", "altid")
 	if err != nil {
 		log.Fatal(err)
 	}
-	rs := store.NewLogStore(tmp)
+	rs := store.NewLogstore(tmp, false)
 	f, err := rs.Open("test/main")
 	if err != nil {
 		log.Fatal(err)

@@ -14,11 +14,11 @@ type Request struct {
 	Field    string
 	Key      string
 	Prompt   string
-	Defaults interface{}
+	Defaults any
 	Pick     []string
 }
 
-func Build(req interface{}) ([]*Request, error) {
+func Build(req any) ([]*Request, error) {
 	var reqs []*Request
 
 	s := reflect.ValueOf(req)

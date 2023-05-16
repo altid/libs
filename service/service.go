@@ -42,14 +42,14 @@ type Service struct {
 	cmdlist []*commander.Command
 	name    string
 	address string
-	debug   func(serviceMsg, ...interface{})
+	debug   func(serviceMsg, ...any)
 }
 
 func New(name string, address string, debug bool) *Service {
 	s := &Service{
 		name:    name,
 		address: address,
-		debug:   func(serviceMsg, ...interface{}) {},
+		debug:   func(serviceMsg, ...any) {},
 	}
 
 	if debug {
@@ -111,7 +111,7 @@ func (s *Service) Listen() error {
 }
 
 // Very good logging is beneficial!
-func serviceLogger(msg serviceMsg, args ...interface{}) {
+func serviceLogger(msg serviceMsg, args ...any) {
 	switch msg {
 	case serviceError:
 		l.Printf("error: loc=\"%s\" err=\"%v\"", args[0], args[1])
