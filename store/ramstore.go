@@ -8,7 +8,6 @@ import (
 const (
 	ErrInvalidTrunc = ramstore.ErrInvalidTrunc
 	ErrShortSeek    = ramstore.ErrShortSeek
-	ErrActiveStream = ramstore.ErrActiveStream
 	ErrDirExists    = ramstore.ErrDirExists
 	ErrFileClosed   = ramstore.ErrFileClosed
 )
@@ -33,7 +32,7 @@ func (rs *Ramstore) List() []string {
 	return rs.Base.List()
 }
 
-func (rs *Ramstore) Root(name string) (File, error) {
+func (rs *Ramstore) Root(name string) (Dir, error) {
 	return rs.Base.Root(name)
 }
 

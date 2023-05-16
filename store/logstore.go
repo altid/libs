@@ -38,7 +38,7 @@ func (ls *Logstore) List() []string {
 	return list
 }
 
-func (ls *Logstore) Root(name string) (File, error) {
+func (ls *Logstore) Root(name string) (Dir, error) {
 	return ls.root.Root(name)
 }
 

@@ -18,13 +18,19 @@ type Lister interface {
 // buffer will be returned as top-level overlay, such as "/current/main" --> "/main"
 type Opener interface {
 	Open(string) (File, error)
-	Root(current string) (File, error)
+	Root(current string) (Dir, error)
 }
 
 // Deleter removes a single File item from the storage by name
 // If the file does not exist, has active Streams, or has not been correctly closed, an error is returned
 type Deleter interface {
 	Delete(string) error
+}
+
+type Dir interface {
+	// Readdir returns an array of fs.FileInfo types to create a direntry
+	Readdir(n int) ([]fs.FileInfo, error)
+	Info() (fs.FileInfo, error)
 }
 
 // Filer is an interface that is required for the Listeners to have access to data
