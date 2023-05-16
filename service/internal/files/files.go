@@ -26,8 +26,8 @@ const (
 type Files struct {
 	store   store.Filer
 	errors  store.File
-	tablist map[string]interface{}
-	debug   func(fileMsg, ...interface{})
+	tablist map[string]any
+	debug   func(fileMsg, ...any)
 }
 
 type WriteCloser struct {
@@ -48,17 +48,21 @@ func New(store store.Filer, debug bool) *Files {
 	f := &Files{
 		errors:  ew,
 		store:   store,
-		tablist: make(map[string]interface{}),
-		debug:   func(fileMsg, ...interface{}) {},
+		tablist: make(map[string]any),
+		debug:   func(fileMsg, ...any) {},
 	}
-
-	cw, _ := store.Open("/ctrl")
-	cw.Close()
 
 	if debug {
-		l = log.New(os.Stdout, "files ", 0)
+		l = log.New(os.Stdout, "service files: ", 0)
 		f.debug = fileLogger
 	}
+
+	cw, err := store.Open("/ctrl")
+	if err != nil {
+		f.debug(fileErr, err)
+		return nil
+	}
+	cw.Close()
 
 	return f
 }
@@ -70,10 +74,10 @@ func (c *Files) Cleanup() {
 func (c *Files) CreateBuffer(name string) error {
 	// Make a store item
 	name = path.Join("/", name)
-
 	switch e := c.store.Mkdir(name); e {
 	case nil:
 		c.debug(fileBuffer, name)
+		c.store.Open(path.Join(name, "input"))
 		c.tablist[name] = struct{}{}
 		return c.writetab()
 	case store.ErrDirExists:
@@ -226,7 +230,7 @@ func (c *Files) writetab() error {
 	return nil
 }
 
-func fileLogger(msg fileMsg, args ...interface{}) {
+func fileLogger(msg fileMsg, args ...any) {
 	switch msg {
 	case fileErr:
 		l.Printf("error: %s", args[0])

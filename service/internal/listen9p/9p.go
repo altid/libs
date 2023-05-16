@@ -31,6 +31,7 @@ const (
 	sessionClient
 	sessionBuffer
 	sessionOpen
+	sessionInfo
 	sessionErr
 )
 
@@ -44,7 +45,7 @@ type Session struct {
 	list    store.Lister
 	open    store.Opener
 	delete  store.Deleter
-	debug   func(sessionMsg, ...interface{})
+	debug   func(sessionMsg, ...any)
 }
 
 func NewSession(address string, key, cert string, debug bool) (*Session, error) {
@@ -53,7 +54,7 @@ func NewSession(address string, key, cert string, debug bool) (*Session, error) 
 		styx:    &styx.Session{},
 		key:     key,
 		cert:    cert,
-		debug:   func(sessionMsg, ...interface{}) {},
+		debug:   func(sessionMsg, ...any) {},
 	}
 
 	if debug {
@@ -118,9 +119,18 @@ func (s *Session) Serve9P(x *styx.Session) {
 		s:       s,
 		uuid:    uuid.New(),
 		name:    x.User,
-		current: path.Dir(s.list.List()[0]),
 	}
-
+	// Somewhat obtuse method of discovering a valid buffername
+	// Walk through the list of files, and check if it as top level
+	// We could also check against our known list of files such as /ctrl
+	l := s.list.List()
+	for _, c := range l {
+		if path.Dir(c) != "/" && path.Dir(c) != "." {
+			client.current = path.Dir(c)
+			break
+		}
+	}
+	s.debug(sessionInfo, "current", client.current)
 	if x.Access != "" {
 		client.current = x.Access
 	}
@@ -139,8 +149,12 @@ func (s *Session) Serve9P(x *styx.Session) {
 		case styx.Tstat:
 			t.Rstat(client.stat(req.Path()))
 		case styx.Topen:
-			// We should reopen here
-			t.Ropen(client.open(req.Path()))
+			if t.Path() == "/" {
+				t.Ropen(client.s.open.Root(client.current))
+			} else {
+				// We should reopen here
+				t.Ropen(client.open(req.Path()))
+			}
 		case styx.Tutimes:
 			t.Rutimes(nil)
 		case styx.Ttruncate:
@@ -166,6 +180,13 @@ type client struct {
 }
 
 func (c *client) stat(buffer string) (fs.FileInfo, error) {
+	if buffer == "/" {
+		r, err := c.s.open.Root(buffer)
+		if err != nil {
+			return nil, err
+		}
+		return r.Info()
+	}
 	f, err := c.getFile(buffer)
 	if err != nil {
 		return nil, err
@@ -224,8 +245,6 @@ func (c *client) ctrlData() []byte {
 // Build the files from the store, do not produce as-is since they'll be broken
 func (c *client) getFile(in string) (store.File, error) {
 	switch in {
-	case "/":
-		return c.s.open.Root(c.current)
 	case "/errors":
 		return c.s.open.Open("/errors")
 	case "/tabs":
@@ -244,7 +263,7 @@ func (c *client) getFile(in string) (store.File, error) {
 	default:
 		fp := path.Join("/", c.current, in)
 		for _, item := range c.s.list.List() {
-			if(item == fp) {
+			if item == fp {
 				return c.s.open.Open(fp)
 			}
 		}
@@ -252,10 +271,12 @@ func (c *client) getFile(in string) (store.File, error) {
 	return nil, Err9pFileNotFound
 }
 
-func sessionLogger(msg sessionMsg, args ...interface{}) {
+func sessionLogger(msg sessionMsg, args ...any) {
 	switch msg {
 	case sessionErr:
 		l.Printf("error: %e", args[0])
+	case sessionInfo:
+		l.Printf("info: %v", args)
 	case sessionStart:
 		l.Println("starting session")
 	case sessionOpen:

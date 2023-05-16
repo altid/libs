@@ -19,14 +19,13 @@ func Find(req *request.Request, entries []*Entry) (*Entry, bool) {
 	return nil, false
 }
 
-func findAuth(debug func(string, ...interface{}), service string, c ndb.RecordSet) (types.Auth, error) {
+func findAuth(debug func(string, ...any), service string, c ndb.RecordSet) (types.Auth, error) {
 	switch c.Search("auth") {
 	case "password":
 		pass := c.Search("password")
 		if pass == "" {
 			return "", errors.New("unable to find password")
 		}
-
 		return types.Auth(pass), nil
 	case "factotum":
 		debug("request key=\"factotum\"")
@@ -35,7 +34,6 @@ func findAuth(debug func(string, ...interface{}), service string, c ndb.RecordSe
 			debug("response key=\"password\" error=\"%v\"", err)
 			return "", err
 		}
-
 		debug("response key=\"factotum\" value=\"success\"")
 		return types.Auth(userPwd.Password), nil
 	// If we're here, either we have a "none" value, or auth isn't listed
@@ -44,7 +42,7 @@ func findAuth(debug func(string, ...interface{}), service string, c ndb.RecordSe
 	}
 }
 
-func findLogdir(debug func(string, ...interface{}), c ndb.RecordSet) types.Logdir {
+func findLogdir(debug func(string, ...any), c ndb.RecordSet) types.Logdir {
 	debug("request key=\"logdir\"")
 
 	dir := c.Search("logdir")
@@ -57,7 +55,7 @@ func findLogdir(debug func(string, ...interface{}), c ndb.RecordSet) types.Logdi
 	return types.Logdir(dir)
 }
 
-func findListen(debug func(string, ...interface{}), c ndb.RecordSet) types.ListenAddress {
+func findListen(debug func(string, ...any), c ndb.RecordSet) types.ListenAddress {
 	debug("request key=\"listen_address\"")
 	dir := c.Search("listen_address")
 	if dir == "" {

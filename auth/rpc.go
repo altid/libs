@@ -219,7 +219,7 @@ func OpenRPC() (io.ReadWriteCloser, error) {
 }
 
 // Proxy will proxy an RPC session through the local factotum
-func Proxy(rw io.ReadWriter, format string, a ...interface{}) (*Info, error) {
+func Proxy(rw io.ReadWriter, format string, a ...any) (*Info, error) {
 	f, err := openRPC()
 	if err != nil {
 		return nil, errors.New("openRPC: " + err.Error())
