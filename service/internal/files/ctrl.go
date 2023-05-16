@@ -82,10 +82,10 @@ func (c *CtrlFile) Close() error {
 	return nil
 }
 
-func (c *CtrlFile) Name() string { return "/ctrl" }
+func (c *CtrlFile) Name() string { return "ctrl" }
 func (c *CtrlFile) Stat() (fs.FileInfo, error) {
 	cs := &CtrlStat{
-		name:    "/ctrl",
+		name:    "ctrl",
 		size:    c.offset,
 		modtime: time.Now(),
 	}
