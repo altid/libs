@@ -150,7 +150,7 @@ func (s *Session) Serve9P(x *styx.Session) {
 			t.Rstat(client.stat(req.Path()))
 		case styx.Topen:
 			if t.Path() == "/" {
-				t.Ropen(client.s.open.Root(req.Path()))
+				t.Ropen(client.s.open.Root(client.current))
 			} else {
 				// We should reopen here
 				t.Ropen(client.open(req.Path()))

@@ -77,6 +77,7 @@ func (c *Files) CreateBuffer(name string) error {
 	switch e := c.store.Mkdir(name); e {
 	case nil:
 		c.debug(fileBuffer, name)
+		c.store.Open(path.Join(name, "input"))
 		c.tablist[name] = struct{}{}
 		return c.writetab()
 	case store.ErrDirExists:

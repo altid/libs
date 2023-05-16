@@ -17,7 +17,6 @@ const (
 	ErrInvalidDir   = errRamstore("invalid directory supplied")
 	ErrShortSeek    = errRamstore("attempted negative seek")
 	ErrSeekOver     = errRamstore("attempted seek past end of file")
-	ErrActiveStream = errRamstore("attempted to close a file with active streams")
 	ErrDirExists    = errRamstore("directory exists")
 	ErrFileClosed   = errRamstore("invalid action on closed file")
 )
@@ -28,11 +27,10 @@ type dirMsg int
 const (
 	dirErr dirMsg = iota
 	dirMkdir
-	dirStream
 	dirRoot
 	dirDir
 	dirData
-	dirReadStream
+	dirReaddir
 	dirOpen
 	dirInfo
 )
@@ -116,34 +114,24 @@ func (d *Dir) Mkdir(name string) error {
 }
 
 func (d *Dir) List() []string {
-	// TODO: Walk down our tree, creating a list of strings
 	var list []string
 	for _, a := range d.files {
 		switch v := a.(type) {
-		case Dir:
+		case *Dir:
+			l := v.List()
+			list = append(list, l...)
+		case *File:
 			list = append(list, v.path)
 		}
 	}
 	return list
 }
 
-func (d *Dir) Root(buffer string) (*File, error) {
-	// Clean the path
-	buffer = path.Join("/", buffer)
-
-	f := &File{
-		path:    buffer,
-		name:	 path.Base(buffer),
-		data:    &data{},
-		offset:  0,
-		closed:  false,
-		modTime: time.Now(),
-		//debug:   d.debug,
-	}
+func (d *Dir) Root(buffer string) (*Dir, error) {
 	d.readdir = make(chan fs.FileInfo)
-	go listRoot(d)
+	go listRoot(d, buffer)
 	d.debug(dirRoot, buffer)
-	return f, nil
+	return d, nil
 }
 
 // Open works by either returning a file/directory, or recursing if we are still rooted in a path
@@ -165,7 +153,7 @@ LOOP:
 		}
 		f := &File{
 			path:	name,
-			name:	path.Base(name),
+			name:	path.Join("/", path.Base(name)),
 			data:   &data{},
 			offset: 0,
 			closed: false,
@@ -174,11 +162,14 @@ LOOP:
 		v.files[path.Base(name)] = f
 		return f, nil
 	case *File:
+		v.closed = false
 		return v, nil
 	default:
 		return nil, ErrInvalidPath
 	}
 }
+
+func (d *Dir) Close() error { return nil }
 
 func (d *Dir) Delete(name string) error {
 	// TODO: Walk the dirs and delete the entry if found
@@ -186,6 +177,7 @@ func (d *Dir) Delete(name string) error {
 }
 
 func (d *Dir) Readdir(n int) ([]fs.FileInfo, error) {
+	d.debug(dirReaddir, d.path)
 	var err error
 	fi := make([]os.FileInfo, 0, 10)
 	for i := 0; i < n; i++ {
@@ -201,30 +193,32 @@ func (d *Dir) Readdir(n int) ([]fs.FileInfo, error) {
 
 }
 
-func listRoot(d *Dir) {
+func listRoot(d *Dir, buffer string) {
 	// List fileinfo for our complete root
 	var list []fs.FileInfo
-	for _, v := range d.files {
-		switch v.(type) {
-		case Dir:
-			dir := v.(*Dir)
-			fi := &FileInfo{
-				len:     0,
-				name:	 dir.name,
-				modtime: time.Now(),
+	for _, a := range d.files {
+		switch v := a.(type) {
+		case *Dir:
+
+			if v.path == buffer {
+				for _, b := range v.files {
+
+					if f, ok := b.(*File); ok {
+						// Stat won't fail as we're operating on our map of files
+						stat, _ := f.Stat()
+						list = append(list, stat)
+					}
+				}
 			}
-			list = append(list, fi)
-		case File:
-			file := v.(*File)
+		case *File:
 			fi := &FileInfo{
-				len:     int64(len(file.data.bytes)),
-				name:    file.path,
-				modtime: file.modTime,
+				len:     int64(len(v.data.bytes)),
+				name:    v.path,
+				modtime: v.modTime,
 			}
 	
 			list = append(list, fi)
 		}
-
 	}
 
 	go func([]os.FileInfo, *Dir) {
@@ -240,6 +234,13 @@ func listRoot(d *Dir) {
 	}(list, d)
 }
 
+func (d *Dir) Info() (fs.FileInfo, error) {
+	di := &DirInfo{
+		name: d.name,
+		modtime: time.Now(),
+	}
+	return di, nil
+}
 type DirInfo struct {
 	name    string
 	modtime time.Time
@@ -258,16 +259,14 @@ func dirLogger(msg dirMsg, args ...any) {
 		l.Printf("error: %s", args[0])
 	case dirMkdir:
 		l.Printf("mkdir: %s", args[0])
-	case dirStream:
-		l.Printf("stream: starting for %s", args[0])
 	case dirRoot:
 		l.Printf("root: created at %s", args[0])
+	case dirReaddir:
+		l.Printf("Readdir entered with %s", args[0])
 	case dirData:
 		l.Printf("incoming data: file=\"%s\" %s", args[0], args[1])
 	case dirDir:
 		l.Printf("opening dir: %s", args[0])
-	case dirReadStream:
-		l.Printf("stream: reading initial data for %s: %s", args[0], args[1])
 	case dirOpen:
 		if f, ok := args[0].(*File); ok {
 			l.Printf("open: name=\"%s\"", f.path)
