@@ -13,7 +13,8 @@ import (
 type errRamstore string
 const (
 	ErrInvalidTrunc = errRamstore("truncation invalid")
-	ErrInvalidPath  = errRamstore("invalid path supplied to Mkdir")
+	ErrInvalidPath  = errRamstore("invalid path supplied")
+	ErrInvalidDir   = errRamstore("invalid directory supplied")
 	ErrShortSeek    = errRamstore("attempted negative seek")
 	ErrSeekOver     = errRamstore("attempted seek past end of file")
 	ErrActiveStream = errRamstore("attempted to close a file with active streams")
@@ -33,6 +34,7 @@ const (
 	dirData
 	dirReadStream
 	dirOpen
+	dirInfo
 )
 
 type Dir struct {
@@ -46,10 +48,10 @@ type Dir struct {
 
 func RootDir(debug bool) *Dir {
 	d := &Dir{
-		name:  "/",
-		path:  "/",
-		files: make(map[string]any),
-		debug: func(dirMsg, ...any) {},
+		name:		"/",
+		path:		"/",
+		files:		make(map[string]any),
+		debug: 		func(dirMsg, ...any) {},
 	}
 
 	if debug {
@@ -61,17 +63,23 @@ func RootDir(debug bool) *Dir {
 }
 
 func (d *Dir) Walk(name string) (any, error) {
+	if name == "/" {
+		return d, nil
+	}
 	paths := strings.Split(name, string(os.PathSeparator))
 	for _, a := range d.files {
 		switch v := a.(type) {
 		case *Dir:
-			if v.name == paths[0] {
+			if v.name == paths[1] {
+				// We have "/" and "foo", any more and we recurse
+				if len(paths) > 2 {
+					paths[1] = "/"
+					return v.Walk(path.Join( paths[1:]...))
+				}
 				return a, nil
 			}
-			// Walk our nested directory, so we skip the first path entry and recurse
-			return v.Walk(path.Join(paths[1:]...))
 		case *File:
-			if v.Name() == paths[0] {
+			if v.Name() == paths[1] {
 				return a, nil
 			}
 		}
@@ -81,31 +89,30 @@ func (d *Dir) Walk(name string) (any, error) {
 }
 
 func (d *Dir) Mkdir(name string) error {
-	// TODO: Walk to the basename of name; such as /path/to/dir
-	// we walk to dir; then make the file at that node
+	d.debug(dirInfo, "mkdir", name)
 	v, err := d.Walk(path.Dir(name))
 	if err != nil {
 		return err
 	}
 	// check if file exists
-	if dir, ok := v.(Dir); ok {
+	if dir, ok := v.(*Dir); ok {
 		// Check if there's already something at that path
 		if _, ok := dir.files[name]; ok {
 			return ErrDirExists
 		}
 		// Good dir, make new file
 		l := &Dir{
-			name:  path.Base(name),
-			path:  name,
-			files: make(map[string]any),
-			debug: d.debug,
+			name:		path.Base(name),
+			path:		name,
+			files:		make(map[string]any),
+			debug:		d.debug,
 		}
 		d.debug(dirMkdir, name)
 		dir.files[name] = l
 		return nil
 	}
 
-	return ErrInvalidPath
+	return ErrInvalidDir
 }
 
 func (d *Dir) List() []string {
@@ -114,8 +121,6 @@ func (d *Dir) List() []string {
 	for _, a := range d.files {
 		switch v := a.(type) {
 		case Dir:
-			list = append(list, v.List()...)
-		case File:
 			list = append(list, v.path)
 		}
 	}
@@ -129,13 +134,13 @@ func (d *Dir) Root(buffer string) (*File, error) {
 	f := &File{
 		path:    buffer,
 		name:	 path.Base(buffer),
-		data:    nil,
+		data:    &data{},
 		offset:  0,
 		closed:  false,
 		modTime: time.Now(),
 		//debug:   d.debug,
 	}
-
+	d.readdir = make(chan fs.FileInfo)
 	go listRoot(d)
 	d.debug(dirRoot, buffer)
 	return f, nil
@@ -143,6 +148,7 @@ func (d *Dir) Root(buffer string) (*File, error) {
 
 // Open works by either returning a file/directory, or recursing if we are still rooted in a path
 func (d *Dir) Open(name string) (*File, error) {
+	d.debug(dirInfo, "opening file/dir", name)
 	a, err := d.Walk(path.Dir(name))
 	if err != nil {
 		return nil, ErrInvalidPath
@@ -152,6 +158,7 @@ LOOP:
 	switch v := a.(type) {
 	case *Dir:
 		// Look and see if we have a good file/dir
+		// This may be broken because path strips the leading path
 		if nv, ok := v.files[path.Base(name)]; ok {
 			a = nv
 			goto LOOP
@@ -159,7 +166,7 @@ LOOP:
 		f := &File{
 			path:	name,
 			name:	path.Base(name),
-			data:   nil,
+			data:   &data{},
 			offset: 0,
 			closed: false,
 			modTime: time.Now(),
@@ -207,7 +214,6 @@ func listRoot(d *Dir) {
 				modtime: time.Now(),
 			}
 			list = append(list, fi)
-			listRoot(dir)
 		case File:
 			file := v.(*File)
 			fi := &FileInfo{
@@ -251,7 +257,7 @@ func dirLogger(msg dirMsg, args ...any) {
 	case dirErr:
 		l.Printf("error: %s", args[0])
 	case dirMkdir:
-		l.Printf("Mkdir: %s", args[0])
+		l.Printf("mkdir: %s", args[0])
 	case dirStream:
 		l.Printf("stream: starting for %s", args[0])
 	case dirRoot:
@@ -266,5 +272,7 @@ func dirLogger(msg dirMsg, args ...any) {
 		if f, ok := args[0].(*File); ok {
 			l.Printf("open: name=\"%s\"", f.path)
 		}
+	case dirInfo:
+		l.Printf("info: %v", args)
 	}
 }

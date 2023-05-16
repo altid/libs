@@ -19,22 +19,21 @@ import (
 // Other fields include prompt/no_prompt:, and pick:
 // Pick will return an error if a value other than one listed exists in the config/defaults
 //
-//	conf := struct {
-//		Address string     `altid:"address,prompt:IP address to dial"`
-//		Auth    types.Auth `altid:"auth,prompt:Auth mechanism to use,pick:password|factotum|none"`
-//		UseSSL  bool       `altid:"usessl,prompt:Use SSL?,pick:true|false"`
-//		Foo     string     // Will use default
-//	}{"127.0.0.1", "password", false, "bar"}
+//		conf := struct {
+//			Address string     `altid:"address,prompt:IP address to dial"`
+//			Auth    types.Auth `altid:"auth,prompt:Auth mechanism to use,pick:password|factotum|none"`
+//			UseSSL  bool       `altid:"usessl,prompt:Use SSL?,pick:true|false"`
+//			Foo     string     // Will use default
+//		}{"127.0.0.1", "password", false, "bar"}
 //
-//	if e := config.Marshal(&conf, "zzyzx", "", false); e != nil {
-//		log.Fatal(e)
-//	}
-//  [...]
-//
-func Marshal(requested interface{}, service string, configFile string, debug bool) error {
-	debugLog := func(string, ...interface{}) {}
+//		if e := config.Marshal(&conf, "zzyzx", "", false); e != nil {
+//			log.Fatal(e)
+//		}
+//	 [...]
+func Marshal(requested any, service string, configFile string, debug bool) error {
+	debugLog := func(string, ...any) {}
 	if debug {
-		debugLog = func(format string, v ...interface{}) {
+		debugLog = func(format string, v ...any) {
 			l := log.New(os.Stdout, "config: ", 0)
 			l.Printf(format+"\n", v...)
 		}
@@ -57,27 +56,27 @@ func Marshal(requested interface{}, service string, configFile string, debug boo
 // Upon success, it will print the config and instructions to stdout
 // It is meant to be used with the -conf flag
 //
-//	conf := struct {
-//		Address string     `altid:"address,prompt:IP address to dial"`
-//		Auth    types.Auth `altid:"auth,prompt:Auth mechanism to use,pick:password|factotum|none"`
-//		UseSSL  bool       `altid:"usessl,prompt:Use SSL?,pick:true|false"`
-//		Foo     string     // Will use default
-//	}{"127.0.0.1", "password", false, "bar"}
+//		conf := struct {
+//			Address string     `altid:"address,prompt:IP address to dial"`
+//			Auth    types.Auth `altid:"auth,prompt:Auth mechanism to use,pick:password|factotum|none"`
+//			UseSSL  bool       `altid:"usessl,prompt:Use SSL?,pick:true|false"`
+//			Foo     string     // Will use default
+//		}{"127.0.0.1", "password", false, "bar"}
 //
-//	if e := config.Create(&conf, "zzyzx", "", false); e != nil {
-//		log.Fatal(e)
-//	}
+//		if e := config.Create(&conf, "zzyzx", "", false); e != nil {
+//			log.Fatal(e)
+//		}
 //
-//  os.Exit(0)
+//	 os.Exit(0)
 //
 // Notably, Create will parse entries for altid struct tags with the field "prompt". These will prompt a user
 // for the value on the command line, optionally with a whitelisted array of selections to pick from
 // Selection of an item not on a whitelist will return an error after 3 attempts
 // The `pick` option to a types.Auth will be ignored, and will always be one of `password|factotum|none`
-func Create(requests interface{}, svc, configFile string, debug bool) error {
-	debugLog := func(string, ...interface{}) {}
+func Create(requests any, svc, configFile string, debug bool) error {
+	debugLog := func(string, ...any) {}
 	if debug {
-		debugLog = func(format string, v ...interface{}) {
+		debugLog = func(format string, v ...any) {
 			l := log.New(os.Stdout, "config: ", 0)
 			l.Printf(format+"\n", v...)
 		}

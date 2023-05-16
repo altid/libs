@@ -43,7 +43,7 @@ type Session struct {
 
 	Name    string
 	Address string
-	debug   func(sessionMsg, ...interface{})
+	debug   func(sessionMsg, ...any)
 }
 
 func (s *Session) Listen(debug bool) error {
@@ -134,7 +134,7 @@ func (s *Session) ctrlData() (b []byte) {
 	return cw.Bytes()
 }
 
-func sessionLogger(msg sessionMsg, args ...interface{}) {
+func sessionLogger(msg sessionMsg, args ...any) {
 	switch msg {
 	case sessionError:
 		l.Printf("error: %v", args[0])

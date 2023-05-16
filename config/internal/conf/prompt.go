@@ -137,7 +137,7 @@ func readValue() (string, error) {
 	return value, nil
 }
 
-func tryInt(req interface{}, value string) (v interface{}, err error) {
+func tryInt(req any, value string) (v any, err error) {
 	switch req.(type) {
 	case int:
 		v, err = strconv.Atoi(value)

@@ -21,10 +21,10 @@ const (
 
 type Entry struct {
 	Key   string
-	Value interface{}
+	Value any
 }
 
-func FromConfig(debug func(string, ...interface{}), service string, cf string) ([]*Entry, error) {
+func FromConfig(debug func(string, ...any), service string, cf string) ([]*Entry, error) {
 	dir := util.GetConf()
 
 	if cf != "" {
@@ -66,7 +66,7 @@ func (item *Entry) String() string {
 }
 
 // This will error if auth=password has no complementary password=field
-func fromNdb(debug func(string, ...interface{}), recs ndb.RecordSet, service string) ([]*Entry, error) {
+func fromNdb(debug func(string, ...any), recs ndb.RecordSet, service string) ([]*Entry, error) {
 	var values []*Entry
 
 	for _, tup := range recs[0] {

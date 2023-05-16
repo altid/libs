@@ -44,7 +44,7 @@ type Session struct {
 	list    store.Lister
 	open    store.Opener
 	delete  store.Deleter
-	debug   func(sessionMsg, ...interface{})
+	debug   func(sessionMsg, ...any)
 }
 
 func NewSession(address string, key, cert string, debug bool) (*Session, error) {
@@ -53,7 +53,7 @@ func NewSession(address string, key, cert string, debug bool) (*Session, error) 
 		styx:    &styx.Session{},
 		key:     key,
 		cert:    cert,
-		debug:   func(sessionMsg, ...interface{}) {},
+		debug:   func(sessionMsg, ...any) {},
 	}
 
 	if debug {
@@ -118,7 +118,7 @@ func (s *Session) Serve9P(x *styx.Session) {
 		s:       s,
 		uuid:    uuid.New(),
 		name:    x.User,
-		current: path.Dir(s.list.List()[0]),
+		//current: path.Dir(s.list.List()[0]),
 	}
 
 	if x.Access != "" {
@@ -244,7 +244,7 @@ func (c *client) getFile(in string) (store.File, error) {
 	default:
 		fp := path.Join("/", c.current, in)
 		for _, item := range c.s.list.List() {
-			if(item == fp) {
+			if item == fp {
 				return c.s.open.Open(fp)
 			}
 		}
@@ -252,7 +252,7 @@ func (c *client) getFile(in string) (store.File, error) {
 	return nil, Err9pFileNotFound
 }
 
-func sessionLogger(msg sessionMsg, args ...interface{}) {
+func sessionLogger(msg sessionMsg, args ...any) {
 	switch msg {
 	case sessionErr:
 		l.Printf("error: %e", args[0])
