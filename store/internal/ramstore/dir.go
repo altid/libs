@@ -78,6 +78,8 @@ func (d *Dir) Walk(name string) (any, error) {
 			}
 		case *File:
 			if v.Name() == paths[0] {
+				v.closed = false
+				a = v
 				return a, nil
 			}
 		}
