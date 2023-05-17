@@ -60,7 +60,6 @@ func RootDir(debug bool) *Dir {
 	return d
 }
 
-// TODO: The walk still seems to be subtly wrong, no path is readable.
 func (d *Dir) Walk(name string) (any, error) {
 	if name == "/" || name == "." {
 		return d, nil
