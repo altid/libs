@@ -61,23 +61,24 @@ func RootDir(debug bool) *Dir {
 }
 
 func (d *Dir) Walk(name string) (any, error) {
-	if name == "/" {
+	if name == "/" || name == "." {
 		return d, nil
 	}
 	paths := strings.Split(name, string(os.PathSeparator))
 	for _, a := range d.files {
+		d.debug(dirInfo, paths)
 		switch v := a.(type) {
 		case *Dir:
-			if v.name == paths[1] {
-				// We have "/" and "foo", any more and we recurse
-				if len(paths) > 2 {
-					paths[1] = "/"
+			if v.name == paths[0] {
+				if len(paths) > 1 {
 					return v.Walk(path.Join( paths[1:]...))
 				}
 				return a, nil
 			}
 		case *File:
-			if v.Name() == paths[1] {
+			if v.Name() == paths[0] {
+				v.closed = false
+				a = v
 				return a, nil
 			}
 		}
@@ -153,7 +154,7 @@ LOOP:
 		}
 		f := &File{
 			path:	name,
-			name:	path.Join("/", path.Base(name)),
+			name:	path.Base(name),
 			data:   &data{},
 			offset: 0,
 			closed: false,

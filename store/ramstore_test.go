@@ -8,16 +8,16 @@ import (
 
 func TestRamstore(t *testing.T) {
 	rs := NewRamstore(true)
-	if e := rs.Mkdir("/chicken"); e != nil {
+	if e := rs.Mkdir("chicken"); e != nil {
 		t.Error(e)
 	}
-	f, err := rs.Open("/chicken/cluck")
+	f, err := rs.Open("chicken/cluck")
 	if err != nil {
 		t.Error(err)
 	}
 	f.Write([]byte("Test data"))
 	f.Close()
-	f, err = rs.Open("/chicken/cluck")
+	f, err = rs.Open("chicken/cluck")
 	if err != nil {
 		t.Error(err)
 	}
@@ -35,7 +35,7 @@ func TestRamstore(t *testing.T) {
 	if string(b) != "Test data Hello" {
 		t.Error("Strings do not match")
 	}
-	if f.Name() != "/chicken/cluck" {
+	if f.Name() != "chicken/cluck" {
 		t.Error("Expected file name different from actual")
 	}
 	f.Close()
@@ -43,22 +43,22 @@ func TestRamstore(t *testing.T) {
 
 func TestRamstoreList(t *testing.T) {
 	// Array to test against
-	n := []string{"/ptarmigan/leg", "/swan"}
+	n := []string{"ptarmigan/leg", "swan"}
 
 	rs := NewRamstore(true)
-	if e := rs.Mkdir("/chicken"); e != nil {
+	if e := rs.Mkdir("chicken"); e != nil {
 		t.Error(e)
 	}
-	if e := rs.Mkdir("/duck"); e != nil {
+	if e := rs.Mkdir("duck"); e != nil {
 		t.Error(e)
 	}
-	if e := rs.Mkdir("/ptarmigan"); e != nil {
+	if e := rs.Mkdir("ptarmigan"); e != nil {
 		t.Error(e)
 	}
-	if _, e := rs.Open("/ptarmigan/leg"); e != nil {
+	if _, e := rs.Open("ptarmigan/leg"); e != nil {
 		t.Error(e)
 	}
-	if _, e := rs.Open("/swan"); e != nil {
+	if _, e := rs.Open("swan"); e != nil {
 		t.Error(e)
 	}
 	l := rs.List()

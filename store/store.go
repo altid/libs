@@ -14,8 +14,8 @@ type Lister interface {
 // If the file does not exist, it is created and returned
 // Files returned by an Opener should be closed with Close() after
 // Root returns the root directory, which on read returns the filestats for files
-// in the root directory such as "/errors" and "/tabs", and anything in the "/current"
-// buffer will be returned as top-level overlay, such as "/current/main" --> "/main"
+// in the root directory such as "errors" and "tabs", and anything in the "current"
+// buffer will be returned as top-level overlay, such as "current/main" --> "main"
 type Opener interface {
 	Open(string) (File, error)
 	Root(current string) (Dir, error)

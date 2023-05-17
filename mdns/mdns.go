@@ -1,10 +1,13 @@
-//Package mdns is a convenience wrapper over github.com/grandcat/zeroconf for listing Altid services over mdns
+// Package mdns is a convenience wrapper over github.com/grandcat/zeroconf for listing Altid services over mdns
 //
-//		go get github.com/altid/server/mdns
-//
+//	go get github.com/altid/server/mdns
 package mdns
 
 import (
+	"fmt"
+	"net/url"
+	"strconv"
+
 	"github.com/grandcat/zeroconf"
 )
 
@@ -15,6 +18,26 @@ type Entry struct {
 	Txt     []string
 	Port    int
 	service *zeroconf.Server
+}
+
+func ParseURL(addr, svc string) (*Entry, error) {
+	u, err := url.Parse(addr)
+	if err != nil {
+		u, err = url.Parse(fmt.Sprintf("https://%s", addr))
+		if err != nil {
+			return nil, err
+		}
+	}
+	e := &Entry{
+		Addr: u.Hostname(),
+		Name: svc,
+		Port: 564,
+	}
+	fmt.Println(e.Addr)
+	if u.Port() != "" {
+		e.Port, err = strconv.Atoi(u.Port())
+	}
+	return e, err
 }
 
 // Register adds the service listing to the intranet registry
