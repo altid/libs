@@ -30,7 +30,7 @@ func Input(buffer string, handle callback.Handler) (*InputFile, error) {
 }
 
 func (i *InputFile) Read(b []byte) (n int, err error) {
-	return 0, errors.New("reads not supported on /input")
+	return 0, errors.New("reads not supported on input")
 }
 
 func (i *InputFile) Write(p []byte) (n int, err error) {
@@ -77,10 +77,10 @@ func (i *InputFile) Truncate(cap int64) error {
 	return nil
 }
 
-func (i *InputFile) Name() string { return "/input" }
+func (i *InputFile) Name() string { return "input" }
 func (i *InputFile) Stat() (fs.FileInfo, error) {
 	is := &InputStat{
-		name:    "/input",
+		name:    "input",
 		size:    0,
 		modtime: time.Now(),
 	}
