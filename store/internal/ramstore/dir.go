@@ -200,10 +200,8 @@ func listRoot(d *Dir, buffer string) {
 	for _, a := range d.files {
 		switch v := a.(type) {
 		case *Dir:
-
 			if v.path == buffer {
 				for _, b := range v.files {
-
 					if f, ok := b.(*File); ok {
 						// Stat won't fail as we're operating on our map of files
 						stat, _ := f.Stat()

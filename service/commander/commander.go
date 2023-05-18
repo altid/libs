@@ -21,13 +21,14 @@ const (
 )
 
 type Commander interface {
+	CtrlData() func() []byte
+	// Exec will issue the given Command, and return any errors encountered
+	Exec(*Command) error
 	FindCommands(b []byte) ([]*Command, error)
 	FromString(string) (*Command, error)
 	FromBytes([]byte) (*Command, error)
 	FindCommand(string, []*Command) (*Command, error)
 	WriteCommands([]*Command, io.Writer) error
-	RunCommand() func(*Command) error
-	CtrlData() func() []byte
 }
 
 // Allow sorting of our lists
