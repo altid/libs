@@ -222,7 +222,7 @@ func (c *client) ctrlWrite(ctrl []byte) error {
 		return nil
 	}
 
-	if cmd.Name == "buffer "{
+	if cmd.Name == "buffer" {
 		c.s.debug(sessionBuffer, cmd)
 		if c.closer != nil {
 			c.closer()
