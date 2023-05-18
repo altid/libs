@@ -222,24 +222,16 @@ func (c *client) ctrlWrite(ctrl []byte) error {
 		return nil
 	}
 
-	switch cmd.Name {
-	case "buffer":
+	if cmd.Name == "buffer "{
 		c.s.debug(sessionBuffer, cmd)
 		if c.closer != nil {
 			c.closer()
 		}
 		c.current = cmd.Args[0]
 		return nil
-	case "open", "link":
-		// If we have a feed going, close it here
-		if c.closer != nil {
-			c.closer()
-		}
 	}
 
-	// This doesn't seem right
-	r := c.s.cmd.RunCommand()
-	return r(cmd)
+	return c.s.cmd.Exec(cmd)
 }
 
 func (c *client) ctrlData() []byte {

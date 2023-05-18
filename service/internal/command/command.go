@@ -48,7 +48,9 @@ func (c *Command) FindCommands(b []byte) ([]*commander.Command, error) {
 	return cmdlist, nil
 }
 
-func (c *Command) RunCommand() func(*commander.Command) error { return c.SendCommand }
+func (c *Command) Exec(cmd *commander.Command) error {
+	return c.SendCommand(cmd)
+}
 func (c *Command) CtrlData() func() []byte                    { return c.CtrlDataCommand }
 func (c *Command) FromBytes(input []byte) (*commander.Command, error) {
 	return c.FromString(string(input))
