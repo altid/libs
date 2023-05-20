@@ -93,13 +93,11 @@ func (c *Files) DeleteBuffer(name string) error {
 		c.debug(fileErr, e)
 		return e
 	}
-
 	delete(c.tablist, name)
 	c.debug(fileDelete, name)
 	if e := c.writetab(); e != nil {
 		c.debug(fileErr, e)
 	}
-
 	return nil
 }
 
@@ -107,7 +105,6 @@ func (c *Files) HasBuffer(name string) bool {
 	if _, ok := c.tablist[name]; ok {
 		return true
 	}
-
 	return false
 }
 
@@ -215,7 +212,6 @@ func (c *Files) writetab() error {
 	if err != nil {
 		return err
 	}
-
 	defer tabs.Close()
 	tabs.Truncate(0)
 	for tab := range c.tablist {
@@ -223,7 +219,6 @@ func (c *Files) writetab() error {
 			return e
 		}
 	}
-
 	return nil
 }
 

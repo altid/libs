@@ -40,8 +40,9 @@ func (s *data) grow(off, n int) int {
 	if m == 0 {
 		s.bytes = s.bytes[:0]
 	}
-	if s.bytes == nil && n <= 256 {
-		s.bytes = make([]byte, n, 256)
+	// Make a larger initial array so allocations don't race
+	if s.bytes == nil && n <= 4096 {
+		s.bytes = make([]byte, n, 4096)
 		return 0
 	}
 	c := cap(s.bytes)

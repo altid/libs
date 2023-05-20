@@ -10,7 +10,7 @@ import (
 type File struct {
 	path    string
 	name	string
-	data    *data
+	data	*data
 	offset  int
 	closed  bool
 	modTime time.Time
@@ -83,7 +83,12 @@ func (f *File) Truncate(cap int64) error {
 		//f.debug(storeErr, ErrInvalidTrunc)
 		return ErrInvalidTrunc
 	}
-
+	// Make sure we make a fresh byte array on 0 truncation
+	if cap == 0 {
+		// Make a new buffer
+		f.data.bytes = make([]byte, cap, 4096)
+		return nil
+	}
 	// Just remake the data and set the cap
 	f.data.Lock()
 	defer f.data.Unlock()
