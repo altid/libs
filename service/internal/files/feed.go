@@ -28,8 +28,6 @@ func (f *FeedFile) Read(b []byte) (n int, err error) {
 		n, err = f.feed.Read(b)
 		f.offset += int64(n)
 		switch err {
-		case store.ErrFileClosed:
-			return n, err
 		case io.EOF:
 			time.Sleep(time.Second)
 			f.feed.Seek(f.offset, io.SeekStart)
@@ -40,7 +38,8 @@ func (f *FeedFile) Read(b []byte) (n int, err error) {
 		case nil:
 			return len(b), nil
 		default:
-			return n, err
+			// Just exit the loop cleanly, as this can be a number of different errors depending on the backing store
+			return n, io.EOF
 		}
 }
 
