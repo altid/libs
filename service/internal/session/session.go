@@ -58,7 +58,8 @@ func (s *Session) Listen(debug bool) error {
 		s.Store = store.NewRamstore(debug)
 	}
 
-	s.Control = files.New(s.Store, debug)
+	filer := files.New(s.Store, debug)
+	s.Control = filer
 
 	// Set up commander
 	s.commander = &command.Command{
@@ -77,15 +78,14 @@ func (s *Session) Listen(debug bool) error {
 		if err != nil {
 			return err
 		}
-
 		s.Listener = listener
 	}
-
 	if e := s.Listener.Register(s.Store, s.commander, s.Callback); e != nil {
 		s.debug(sessionError, e)
 		return e
 	}
 
+	s.Listener.SetActivity(filer.Activity)
 	// Make sure our services are started
 	if svc, ok := s.Runner.(runner.Listener); ok {
 		go svc.Listen(s.Control)

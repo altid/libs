@@ -15,6 +15,9 @@ type Listener interface {
 	Address() string
 	// Listen listens for client connections
 	Listen() error
+	// SetActivity is a callback used to notify when a client has read content from a particular buffer
+	// It shuold reset the unread count for that given buffer to zero
+	SetActivity(func(string))
 	// Register accepts a Storage, and associates a Filer datatset with the Listener session
 	// Additionally, a callback can be registered to allow on-connect/command information
 	Register(store.Filer, commander.Commander, callback.Callback) error
