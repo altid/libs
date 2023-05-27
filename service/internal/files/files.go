@@ -26,7 +26,7 @@ const (
 type Files struct {
 	store   store.Filer
 	errors  store.File
-	tablist map[string]any
+	tablist map[string]uint
 	debug   func(fileMsg, ...any)
 }
 
@@ -48,7 +48,7 @@ func New(store store.Filer, debug bool) *Files {
 	f := &Files{
 		errors:  ew,
 		store:   store,
-		tablist: make(map[string]any),
+		tablist: make(map[string]uint),
 		debug:   func(fileMsg, ...any) {},
 	}
 
@@ -73,11 +73,14 @@ func (c *Files) Cleanup() {
 
 func (c *Files) CreateBuffer(name string) error {
 	// Make a store item
+	if name == "" {
+		return fmt.Errorf("no name given for CreateBuffer")
+	}
 	switch e := c.store.Mkdir(name); e {
 	case nil:
 		c.debug(fileBuffer, name)
 		c.store.Open(path.Join(name, "input"))
-		c.tablist[name] = struct{}{}
+		c.tablist[name] = 0
 		return c.writetab()
 	case store.ErrDirExists:
 		// Inoccuous error, skip
@@ -168,6 +171,8 @@ func (c *Files) appendWriter(buffer, target string) (controller.WriteCloser, err
 		path:  ep,
 	}
 
+	c.tablist[buffer]++
+	c.writetab()
 	return wc, nil
 }
 
@@ -207,6 +212,13 @@ func (c *Files) ImageWriter(buffer, resource string) (controller.WriteCloser, er
 	return c.fileWriter(ep, resource)
 }
 
+func (c *Files) Activity(buffer string) {
+	if c.HasBuffer(buffer) {
+		c.tablist[buffer] = 0
+		c.writetab()
+	}
+}
+
 func (c *Files) writetab() error {
 	tabs, err := c.store.Open("tabs")
 	if err != nil {
@@ -214,8 +226,8 @@ func (c *Files) writetab() error {
 	}
 	defer tabs.Close()
 	tabs.Truncate(0)
-	for tab := range c.tablist {
-		if _, e := fmt.Fprintf(tabs, "%s\n", path.Base(tab)); e != nil {
+	for tab, value := range c.tablist {
+		if _, e := fmt.Fprintf(tabs, "%s [%d]\n", path.Base(tab), value); e != nil {
 			return e
 		}
 	}
