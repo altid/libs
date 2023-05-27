@@ -64,6 +64,10 @@ func (np Listen9p) Register(filer store.Filer, commander commander.Commander, ca
 	return np.session.Register(filer, commander, callback)
 }
 
+func (np Listen9p) SetActivity(act func(string)) {
+	np.session.SetActivity(act)
+}
+
 func (np Listen9p) Type() string {
 	return "9p"
 }

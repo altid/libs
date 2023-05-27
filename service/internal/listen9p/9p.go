@@ -45,6 +45,7 @@ type Session struct {
 	list    store.Lister
 	open    store.Opener
 	delete  store.Deleter
+	act		func(string)
 	debug   func(sessionMsg, ...any)
 }
 
@@ -78,6 +79,10 @@ func (s *Session) Address() string {
 	return s.address
 }
 
+func (s *Session) SetActivity(act func(string)) {
+	s.act = act
+}
+
 // Listen on configured network for clients
 func (s *Session) Listen() error {
 	if s.key == "none" || s.key == "" {
@@ -85,9 +90,7 @@ func (s *Session) Listen() error {
 			return styx.ListenAndServe(s.address, s)
 		}
 	}
-
 	return styx.ListenAndServeTLS(s.address, s.key, s.cert, s)
-
 }
 
 // Here we need a command channel as well to move it out of listen
@@ -167,7 +170,7 @@ OUT:
 		// When clients are done with a notification, they delete it. Allow this
 		case styx.Tremove:
 			switch t.Path() {
-			case "notification", "notify":
+			case "/notification", "/notify":
 				t.Rremove(s.delete.Delete(req.Path()))
 			default:
 				t.Rerror("%s", "permission denied")
@@ -256,7 +259,7 @@ func (c *client) getFile(in string) (store.File, error) {
 		// We need to signal the store that we're done with the Reads on Feed
 		// Send a close when we change current buffer/open/link
 		c.closer = f.Close
-		return files.Feed(f, err)
+		return files.Feed(f, c.s.act, c.current, err)
 	default:
 		fp := path.Join(c.current, in)
 		for _, item := range c.s.list.List() {
