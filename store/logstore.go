@@ -14,7 +14,7 @@ import (
 type Logstore struct {
 	base  string
 	root  *ramstore.Dir
-	mains map[string]fs.File
+	mains map[string]fs.FileInfo
 }
 
 func NewLogstore(base string, debug bool) *Logstore {
@@ -22,7 +22,7 @@ func NewLogstore(base string, debug bool) *Logstore {
 	return &Logstore{
 		base:  base,
 		root:  ramstore.RootDir(debug),
-		mains: make(map[string]fs.File),
+		mains: make(map[string]fs.FileInfo),
 	}
 
 }
@@ -30,14 +30,14 @@ func NewLogstore(base string, debug bool) *Logstore {
 func (ls *Logstore) List() []string {
 	list := ls.root.List()
 
-	for _, main := range ls.mains {
-		st, _ := main.Stat()
-		list = append(list, st.Name())
+	for dir, main := range ls.mains {
+		list = append(list, path.Join(dir, main.Name()))
 	}
 
 	return list
 }
 
+// TODO: Logdir's Root currently doesn't show our main/feed entry
 func (ls *Logstore) Root(name string) (Dir, error) {
 	return ls.root.Root(name)
 }
@@ -46,9 +46,15 @@ func (ls *Logstore) Open(name string) (File, error) {
 	// Check if our path ends with "/main"
 	if path.Base(name) == "main" || path.Base(name) == "feed" {
 		os.MkdirAll(path.Join(ls.base, path.Dir(name)), 0777)
-		return os.OpenFile(path.Join(ls.base, name), os.O_RDWR|os.O_CREATE, 0755)
+		f, err := os.OpenFile(path.Join(ls.base, name), os.O_RDWR|os.O_CREATE, 0755)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := ls.mains[path.Dir(name)]; !ok {
+			ls.mains[path.Dir(name)], err = f.Stat()
+		}
+		return f, err
 	}
-
 	return ls.root.Open(name)
 }
 
@@ -59,8 +65,7 @@ func (ls *Logstore) Delete(name string) error {
 			return fmt.Errorf("no file exists at path %s", name)
 		}
 
-		st, _ := f.Stat()
-		os.Remove(st.Name())
+		os.Remove(f.Name())
 		delete(ls.mains, name)
 		return nil
 	}

@@ -62,9 +62,8 @@ func TestRamstoreList(t *testing.T) {
 		t.Error(e)
 	}
 	l := rs.List()
-	if ! reflect.DeepEqual(l, n) {
+	if !reflect.DeepEqual(l, n) {
 		t.Error("string arrays do not match")
 	}
 	t.Log(l, n)
 }
-

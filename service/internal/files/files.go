@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"path"
 
 	"github.com/altid/libs/service/controller"
@@ -53,7 +52,6 @@ func New(store store.Filer, debug bool) *Files {
 	}
 
 	if debug {
-		l = log.New(os.Stdout, "service files: ", 0)
 		f.debug = fileLogger
 	}
 
