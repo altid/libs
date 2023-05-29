@@ -24,4 +24,3 @@ type Handler interface {
 type Sender interface {
 	SendCommand(string) error
 }
-

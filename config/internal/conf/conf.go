@@ -50,7 +50,7 @@ func WriteOut(service string, request any) error {
 		d := reflect.Indirect(s).Field(i)
 		// Hand write out for the case of auth
 		if k.Name == "Auth" {
-			switch(d.String()) {
+			switch d.String() {
 			case "factotum":
 			case "none":
 			// Anything but these two is our password

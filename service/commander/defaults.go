@@ -1,6 +1,6 @@
 package commander
 
-//TODO(halfiwt) i18n
+// TODO(halfiwt) i18n
 var DefaultCommands = []*Command{
 	{
 		Name:        "open",

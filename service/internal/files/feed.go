@@ -9,44 +9,44 @@ import (
 )
 
 type FeedFile struct {
-	act		func(string)
-	buffer	string
-	feed	store.File
-	offset	int64
+	act    func(string)
+	buffer string
+	feed   store.File
+	offset int64
 }
 
 func Feed(feed store.File, act func(string), buffer string, err error) (*FeedFile, error) {
 	feed.Seek(0, io.SeekStart)
 	f := &FeedFile{
-		feed:	feed,
+		feed:   feed,
 		buffer: buffer,
-		act:	act,
-		offset:	0,
+		act:    act,
+		offset: 0,
 	}
 	return f, err
 }
 
 // Attempt to do the right thing here with the reads
 func (f *FeedFile) Read(b []byte) (n int, err error) {
-	LOOP:
-		n, err = f.feed.Read(b)
-		f.offset += int64(n)
-		switch err {
-		case io.EOF:
-			time.Sleep(time.Second)
-			f.feed.Seek(f.offset, io.SeekStart)
-			if n > 0 {
-				f.act(f.buffer)
-				return len(b), nil
-			}
-			goto LOOP
-		case nil:
+LOOP:
+	n, err = f.feed.Read(b)
+	f.offset += int64(n)
+	switch err {
+	case io.EOF:
+		time.Sleep(time.Second)
+		f.feed.Seek(f.offset, io.SeekStart)
+		if n > 0 {
 			f.act(f.buffer)
 			return len(b), nil
-		default:
-			// Just exit the loop cleanly, as this can be a number of different errors depending on the backing store
-			return n, io.EOF
 		}
+		goto LOOP
+	case nil:
+		f.act(f.buffer)
+		return len(b), nil
+	default:
+		// Just exit the loop cleanly, as this can be a number of different errors depending on the backing store
+		return n, io.EOF
+	}
 }
 
 func (f *FeedFile) Write(p []byte) (n int, err error)            { return f.feed.Write(p) }
