@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"path"
 
 	"github.com/altid/libs/service/controller"
@@ -53,7 +52,6 @@ func New(store store.Filer, debug bool) *Files {
 	}
 
 	if debug {
-		l = log.New(os.Stdout, "service files: ", 0)
 		f.debug = fileLogger
 	}
 
@@ -78,7 +76,7 @@ func (c *Files) CreateBuffer(name string) error {
 	}
 	switch e := c.store.Mkdir(name); e {
 	case nil:
-		c.debug(fileBuffer, name)
+		//c.debug(fileBuffer, name)
 		c.store.Open(path.Join(name, "input"))
 		c.tablist[name] = 0
 		return c.writetab()
