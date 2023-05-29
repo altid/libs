@@ -11,6 +11,7 @@ import (
 )
 
 type errRamstore string
+
 const (
 	ErrInvalidTrunc = errRamstore("truncation invalid")
 	ErrInvalidPath  = errRamstore("invalid path supplied")
@@ -24,6 +25,7 @@ const (
 var l *log.Logger
 
 type dirMsg int
+
 const (
 	dirErr dirMsg = iota
 	dirMkdir
@@ -36,20 +38,20 @@ const (
 )
 
 type Dir struct {
-	name 	string
-	path	string
-	files	map[string]any
-	readdir	chan os.FileInfo
-	done	chan struct{}
-	debug	func(dirMsg, ...any)
+	name    string
+	path    string
+	files   map[string]any
+	readdir chan os.FileInfo
+	done    chan struct{}
+	debug   func(dirMsg, ...any)
 }
 
 func RootDir(debug bool) *Dir {
 	d := &Dir{
-		name:		"/",
-		path:		"/",
-		files:		make(map[string]any),
-		debug: 		func(dirMsg, ...any) {},
+		name:  "/",
+		path:  "/",
+		files: make(map[string]any),
+		debug: func(dirMsg, ...any) {},
 	}
 
 	if debug {
@@ -71,7 +73,7 @@ func (d *Dir) Walk(name string) (any, error) {
 		case *Dir:
 			if v.name == paths[0] {
 				if len(paths) > 1 {
-					return v.Walk(path.Join( paths[1:]...))
+					return v.Walk(path.Join(paths[1:]...))
 				}
 				return a, nil
 			}
@@ -101,10 +103,10 @@ func (d *Dir) Mkdir(name string) error {
 		}
 		// Good dir, make new file
 		l := &Dir{
-			name:		path.Base(name),
-			path:		name,
-			files:		make(map[string]any),
-			debug:		d.debug,
+			name:  path.Base(name),
+			path:  name,
+			files: make(map[string]any),
+			debug: d.debug,
 		}
 		d.debug(dirMkdir, name)
 		dir.files[name] = l
@@ -153,11 +155,11 @@ LOOP:
 			goto LOOP
 		}
 		f := &File{
-			path:	name,
-			name:	path.Base(name),
-			data:   &data{},
-			offset: 0,
-			closed: false,
+			path:    name,
+			name:    path.Base(name),
+			data:    &data{},
+			offset:  0,
+			closed:  false,
 			modTime: time.Now(),
 		}
 		v.files[path.Base(name)] = f
@@ -215,7 +217,7 @@ func listRoot(d *Dir, buffer string) {
 				name:    v.path,
 				modtime: v.modTime,
 			}
-	
+
 			list = append(list, fi)
 		}
 	}
@@ -235,11 +237,12 @@ func listRoot(d *Dir, buffer string) {
 
 func (d *Dir) Info() (fs.FileInfo, error) {
 	di := &DirInfo{
-		name: d.name,
+		name:    d.name,
 		modtime: time.Now(),
 	}
 	return di, nil
 }
+
 type DirInfo struct {
 	name    string
 	modtime time.Time
@@ -250,7 +253,7 @@ func (di DirInfo) Name() string       { return di.name }
 func (di DirInfo) IsDir() bool        { return true }
 func (di DirInfo) ModTime() time.Time { return di.modtime }
 func (di DirInfo) Mode() os.FileMode  { return os.ModeDir }
-func (di DirInfo) Sys() any			  { return nil }
+func (di DirInfo) Sys() any           { return nil }
 
 func dirLogger(msg dirMsg, args ...any) {
 	switch msg {

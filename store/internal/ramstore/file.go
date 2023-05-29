@@ -9,8 +9,8 @@ import (
 
 type File struct {
 	path    string
-	name	string
-	data	*data
+	name    string
+	data    *data
 	offset  int
 	closed  bool
 	modTime time.Time
@@ -121,6 +121,5 @@ func (fi FileInfo) Name() string       { return fi.name }
 func (fi FileInfo) IsDir() bool        { return false }
 func (fi FileInfo) ModTime() time.Time { return fi.modtime }
 func (fi FileInfo) Mode() os.FileMode  { return 0644 }
-func (fi FileInfo) Sys() any		   { return nil }
+func (fi FileInfo) Sys() any           { return nil }
 func (e errRamstore) Error() string    { return string(e) }
- 

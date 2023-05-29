@@ -1,10 +1,11 @@
-/*Package config allows Altid services to interact withe the ndb-formatted configuration files used by Altid
+/*
+Package config allows Altid services to interact withe the ndb-formatted configuration files used by Altid
 
 	go get github.com/altid/libs/config
 
 The ndb format is described in http://man.cat-v.org/plan_9/6/ndb
 
-Usage
+# Usage
 
 A service can marshall values to a struct through Marshall, as long as the entries follow these rules:
 - Nested structs will be ignored
@@ -57,6 +58,5 @@ Example:
 
 		// [...]
 	}
-
 */
 package config
