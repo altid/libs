@@ -45,7 +45,7 @@ type Session struct {
 	list    store.Lister
 	open    store.Opener
 	delete  store.Deleter
-	act		func(string)
+	act     func(string)
 	debug   func(sessionMsg, ...any)
 }
 
@@ -119,14 +119,14 @@ func (s *Session) Register(filer store.Filer, cmd commander.Commander, cb callba
 // Technically internal, this is used by Styx
 func (s *Session) Serve9P(x *styx.Session) {
 	client := &client{
-		s:       s,
-		uuid:    uuid.New(),
-		name:    x.User,
+		s:    s,
+		uuid: uuid.New(),
+		name: x.User,
 	}
 	// Somewhat obtuse method of discovering a valid buffername
 	// Walk through the list of files, and check if it not one of our top level files
 	for _, c := range s.list.List() {
-		switch(c) {
+		switch c {
 		case ".":
 		case "ctrl":
 		case "tabs":

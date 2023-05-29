@@ -4,7 +4,6 @@ import (
 	"sync"
 )
 
-
 // Internal data store
 type data struct {
 	bytes []byte
