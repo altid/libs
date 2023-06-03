@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"path"
 
 	"github.com/altid/libs/service/controller"
 	"github.com/altid/libs/store"
 )
-
-var l *log.Logger
 
 type fileMsg int
 
@@ -233,6 +232,7 @@ func (c *Files) writetab() error {
 }
 
 func fileLogger(msg fileMsg, args ...any) {
+	l := log.New(os.Stdout, "files ", 0)
 	switch msg {
 	case fileErr:
 		l.Printf("error: %s", args[0])
