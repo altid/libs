@@ -29,7 +29,7 @@ const (
 	EOF
 )
 
-var escapable = "\\!([])*_~`"
+var escapable = "\\!#([])*_~`"
 
 type stateFn func(*Lexer) stateFn
 
@@ -47,7 +47,7 @@ type Lexer struct {
 func NewLexer(src []byte) *Lexer {
 	return &Lexer{
 		src:   src,
-		items: make(chan Item, 2),
+		items: make(chan Item, 24),
 		state: lexText,
 	}
 }
@@ -56,7 +56,7 @@ func NewLexer(src []byte) *Lexer {
 func NewStringLexer(src string) *Lexer {
 	return &Lexer{
 		src:   []byte(src),
-		items: make(chan Item, 2),
+		items: make(chan Item, 24),
 		state: lexText,
 	}
 }
@@ -218,7 +218,6 @@ func lexEmphasis(l *Lexer) stateFn {
 // See if we're at ** or not
 func lexMaybeBold(l *Lexer) stateFn {
 	l.ignore()
-
 	switch l.nextChar() {
 	case EOF:
 		l.error("found no closing tag for '*'")
