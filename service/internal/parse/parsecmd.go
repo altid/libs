@@ -16,13 +16,11 @@ const (
 func ParseCmd(cmd string) (string, string, []string, error) {
 	var name, from string
 	var args []string
-
 	l := &lexer{
 		src:   []byte(cmd),
 		items: make(chan item, 2),
 		state: parseCmdName,
 	}
-
 	for {
 		i := l.next()
 		switch i.itemType {
@@ -40,7 +38,6 @@ func ParseCmd(cmd string) (string, string, []string, error) {
 				args = strings.Fields(from)
 				from = ""
 			}
-
 			return name, from, args, nil
 		}
 	}
@@ -49,17 +46,14 @@ func ParseCmd(cmd string) (string, string, []string, error) {
 func parseCmdName(l *lexer) stateFn {
 	for {
 		c := l.peek()
-
 		if strings.IndexByte(" \t", c) >= 0 {
 			if l.pos > l.start {
 				l.emit(cmdName)
 			}
 		}
-
 		if c == parserEOF {
 			l.emit(cmdName)
 		}
-
 		switch l.nextChar() {
 		case parserEOF:
 			l.emit(parserEOF)
@@ -74,14 +68,12 @@ func parseCmdName(l *lexer) stateFn {
 
 func parseCmdFrom(l *lexer) stateFn {
 	var inCompound bool
-
 	for {
 		switch inCompound {
 		case true:
 			if l.peek() == '"' {
 				l.emit(cmdFrom)
 			}
-
 			switch l.nextChar() {
 			case parserEOF:
 				l.emit(parserEOF)
@@ -101,12 +93,10 @@ func parseCmdFrom(l *lexer) stateFn {
 					l.emit(cmdFrom)
 				}
 			}
-
 			// Catch early EOF here
 			if c == parserEOF {
 				l.emit(cmdFrom)
 			}
-
 			switch l.nextChar() {
 			case parserEOF, '\n':
 				l.emit(parserEOF)
@@ -126,14 +116,12 @@ func parseCmdFrom(l *lexer) stateFn {
 
 func parseCmdArgs(l *lexer) stateFn {
 	var inCompound bool
-
 	for {
 		switch inCompound {
 		case true:
 			if l.peek() == '"' {
 				l.emit(cmdArgs)
 			}
-
 			switch l.nextChar() {
 			case parserEOF, '"':
 				l.emit(parserEOF)
@@ -143,7 +131,6 @@ func parseCmdArgs(l *lexer) stateFn {
 			if l.peek() == '\n' {
 				l.emit(cmdArgs)
 			}
-
 			// If we don't find an opening quotation, send the whole string
 			switch l.nextChar() {
 			case parserEOF, '\n':

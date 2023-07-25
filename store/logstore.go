@@ -24,22 +24,14 @@ func NewLogstore(base string, debug bool) *Logstore {
 		root:  ramstore.RootDir(debug),
 		mains: make(map[string]fs.FileInfo),
 	}
-
 }
 
 func (ls *Logstore) List() []string {
 	list := ls.root.List()
-
 	for dir, main := range ls.mains {
 		list = append(list, path.Join(dir, main.Name()))
 	}
-
 	return list
-}
-
-// TODO: Logdir's Root currently doesn't show our main/feed entry
-func (ls *Logstore) Root(name string) (Dir, error) {
-	return ls.root.Root(name)
 }
 
 func (ls *Logstore) Open(name string) (File, error) {
@@ -64,19 +56,13 @@ func (ls *Logstore) Delete(name string) error {
 		if !ok {
 			return fmt.Errorf("no file exists at path %s", name)
 		}
-
 		os.Remove(f.Name())
 		delete(ls.mains, name)
 		return nil
 	}
-
 	return ls.root.Delete(name)
 }
 
-func (ls *Logstore) Type() string {
-	return "log"
-}
-
-func (ls *Logstore) Mkdir(name string) error {
-	return ls.root.Mkdir(name)
-}
+func (ls *Logstore) Root(name string) (Dir, error) { return ls.root.Root(name) }
+func (ls *Logstore) Type() string                  { return "log" }
+func (ls *Logstore) Mkdir(name string) error       { return ls.root.Mkdir(name) }

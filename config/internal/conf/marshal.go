@@ -17,7 +17,6 @@ func Marshal(debug func(string, ...any), requests any, have []*entry.Entry, p Pr
 	if err != nil {
 		return err
 	}
-
 	for _, item := range want {
 		var en *entry.Entry
 		if item.Key == "auth" {
@@ -123,16 +122,13 @@ func push(requests any, entry *entry.Entry) error {
 // We want to make sure request.Pick matches the value of entry.Value
 func pick(req *request.Request, entry *entry.Entry) error {
 	v := entry.String()
-
 	if len(req.Pick) < 1 {
 		return nil
 	}
-
 	for _, pick := range req.Pick {
 		if pick == v {
 			return nil
 		}
 	}
-
 	return fmt.Errorf("invalid choice for %s", entry.Key)
 }

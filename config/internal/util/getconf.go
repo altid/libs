@@ -12,6 +12,5 @@ func GetConf() string {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	return path.Join(confdir, "altid", "config")
 }

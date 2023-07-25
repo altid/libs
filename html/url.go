@@ -8,6 +8,4 @@ type URL struct {
 	Msg  []byte
 }
 
-func (u *URL) String() string {
-	return fmt.Sprintf(" * [%s](%s)\n", u.Msg, u.Href)
-}
+func (u *URL) String() string { return fmt.Sprintf(" * [%s](%s)\n", u.Msg, u.Href) }

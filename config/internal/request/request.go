@@ -20,27 +20,21 @@ type Request struct {
 
 func Build(req any) ([]*Request, error) {
 	var reqs []*Request
-
 	s := reflect.ValueOf(req)
 	t := reflect.Indirect(s).Type()
-
 	for i := 0; i < t.NumField(); i++ {
 		f := t.FieldByIndex([]int{i})
-
 		// Not in an altid tag, skip
 		tag := f.Tag.Get("altid")
 		if tag == "" {
 			continue
 		}
-
 		req, err := ParseTag(tag)
 		if err != nil {
 			return nil, err
 		}
-
 		req.Field = f.Name
 		d := reflect.Indirect(s).Field(i)
-
 		switch f.Type.Name() {
 		case "string":
 			req.Defaults = d.String()
@@ -79,22 +73,18 @@ func Build(req any) ([]*Request, error) {
 		default:
 			return nil, fmt.Errorf("unknown type for config: %s", f.Type.Name())
 		}
-
 		reqs = append(reqs, req)
 	}
-
 	return reqs, nil
 }
 
 func ParseTag(tag string) (*Request, error) {
 	r := &Request{}
-
 	// key prompt pick
 	vals, err := csv.NewReader(strings.NewReader(tag)).Read()
 	if err != nil {
 		return nil, err
 	}
-
 	switch len(vals) {
 	case 0:
 		return nil, errors.New("tag contained no values")
@@ -102,11 +92,10 @@ func ParseTag(tag string) (*Request, error) {
 		r.Key = vals[0]
 		return r, nil
 	}
-
 	for _, val := range vals[1:] {
 		switch {
 		case val == "no_prompt":
-			break
+			continue
 		case strings.HasPrefix(val, "prompt:"):
 			r.Prompt = strings.TrimPrefix(val, "prompt:")
 		case strings.HasPrefix(val, "pick:"):
@@ -114,7 +103,6 @@ func ParseTag(tag string) (*Request, error) {
 			r.Pick = strings.Split(opts, "|")
 		}
 	}
-
 	r.Key = vals[0]
 	return r, nil
 }

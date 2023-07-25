@@ -48,12 +48,10 @@ func NewColor(code string, msg []byte) (*Color, error) {
 	if !validateColorCode(code) {
 		return nil, fmt.Errorf("invalid color code %s", code)
 	}
-
 	color := &Color{
 		code: code,
 		msg:  msg,
 	}
-
 	return color, nil
 }
 
@@ -76,23 +74,18 @@ func NewURL(link, msg []byte) (*URL, error) {
 	if len(link) == 0 {
 		return nil, fmt.Errorf("no link provided for %s", msg)
 	}
-
 	if len(msg) == 0 {
 		msg = link
 	}
-
 	url := &URL{
 		Link: link,
 		Msg:  msg,
 	}
-
 	return url, nil
 }
 
 // The form will be "[msg](link)"
-func (u *URL) String() string {
-	return fmt.Sprintf("[%s](%s)", u.Msg, u.Link)
-}
+func (u *URL) String() string { return fmt.Sprintf("[%s](%s)", u.Msg, u.Link) }
 
 // Image represents an image markdown element
 type Image struct {
@@ -100,9 +93,7 @@ type Image struct {
 	Alt string
 }
 
-func (i *Image) String() string {
-	return fmt.Sprintf("![%s](%s)", i.Alt, i.Src)
-}
+func (i *Image) String() string { return fmt.Sprintf("![%s](%s)", i.Alt, i.Src) }
 
 // Cleaner represents a WriteCloser used to escape any altid markdown elements from a reader
 type Cleaner struct {
@@ -162,7 +153,6 @@ func (c *Cleaner) WritefList(depth int, format string, args ...any) (n int, err 
 	if depth > 0 {
 		spaces += "- "
 	}
-
 	return doWritef(c.w, spaces+format, args...)
 }
 
@@ -204,7 +194,6 @@ func NewNotifier(path, from, msg string) *Notifier {
 func (n *Notifier) Parse() (string, string, string) {
 	from := "# " + EscapeString(n.from)
 	msg := EscapeString(n.msg)
-
 	return n.buff, from, msg
 }
 
@@ -222,7 +211,6 @@ func doWritef(w io.WriteCloser, format string, args ...any) (n int, err error) {
 
 func escape(msg []byte) []byte {
 	var b bytes.Buffer
-
 	for _, c := range msg {
 		switch c {
 		case '*', '#', '_', '-', '~', '\\', '/', '(', ')', '`', '[', ']', '!':
@@ -230,23 +218,19 @@ func escape(msg []byte) []byte {
 		}
 		b.WriteByte(c)
 	}
-
 	return b.Bytes()
 }
 
 // EscapeString returns a properly escaped Altid markup string
 func EscapeString(msg string) string {
 	var result strings.Builder
-
 	for _, c := range msg {
 		switch c {
 		case '*', '#', '_', '-', '~', '\\', '/', '(', ')', '`', '[', ']', '!':
 			result.WriteRune('\\')
 		}
-
 		result.WriteRune(c)
 	}
-
 	return result.String()
 }
 
@@ -259,6 +243,5 @@ func validateColorCode(s string) bool {
 	case hex6.MatchString(s):
 		return true
 	}
-
 	return false
 }
