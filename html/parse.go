@@ -47,7 +47,6 @@ func parse(c *Cleaner, r io.ReadCloser) error {
 				fmt.Fprintf(c.w, "[%s](%s)", url, msg)
 				continue
 			}
-
 			if t.DataAtom == atom.Nav {
 				if i, ok := c.p.(NavHandler); ok {
 					for n := range parseNav(z) {
@@ -56,7 +55,6 @@ func parse(c *Cleaner, r io.ReadCloser) error {
 				}
 				continue
 			}
-
 			if t.DataAtom == atom.Img {
 				if i, ok := c.p.(ImgHandler); ok {
 					n := parseImage(t)
@@ -64,7 +62,6 @@ func parse(c *Cleaner, r io.ReadCloser) error {
 				}
 				continue
 			}
-
 			tags[t.DataAtom] = true
 		case html.EndTagToken:
 			t := z.Token().DataAtom
@@ -75,7 +72,6 @@ func parse(c *Cleaner, r io.ReadCloser) error {
 			fmt.Fprintf(c.w, "%s", data)
 		case html.SelfClosingTagToken:
 			t := z.Token()
-
 			if t.DataAtom == atom.Img {
 				if i, ok := c.p.(ImgHandler); ok {
 					n := parseImage(t)
@@ -83,7 +79,6 @@ func parse(c *Cleaner, r io.ReadCloser) error {
 				}
 				continue
 			}
-
 			data := parseToken(t, tags)
 			fmt.Fprintf(c.w, "%s", data)
 			tags[t.DataAtom] = false
@@ -94,12 +89,10 @@ func parse(c *Cleaner, r io.ReadCloser) error {
 func parseToken(t html.Token, m map[atom.Atom]bool) string {
 	// NOTE(halfwit): This is rather messy right now, and will need a revisit
 	var dst bytes.Buffer
-
 	// Ignore JS, etc
 	if m[atom.Script] || m[atom.Head] {
 		return ""
 	}
-
 	switch {
 	case m[atom.H1]:
 		dst.WriteString("# ")
@@ -125,14 +118,11 @@ func parseToken(t html.Token, m map[atom.Atom]bool) string {
 	case m[atom.Li]:
 		dst.WriteString(" - ")
 	}
-
 	d := t.Data
-
 	// If all we had is whitespace, don't return anything
 	if strings.TrimSpace(d) == "" {
 		return ""
 	}
-
 	dst.WriteString(markup.EscapeString(d))
 	return dst.String()
 }
@@ -155,7 +145,7 @@ func parseURL(z *html.Tokenizer, t html.Token) (link, url string) {
 			//   <img src="assets/pressbooks-promo.png" alt="pressbooks.com"/>
 			// </a>
 			if z.Token().DataAtom == atom.Img {
-
+				// TODO
 			}
 		case html.SelfClosingTagToken:
 			link = string(z.Text())
@@ -179,7 +169,6 @@ func parseImage(t html.Token) *Image {
 			alt = attr.Val
 		}
 	}
-
 	return &Image{
 		Src: []byte(src),
 		Alt: []byte(alt),

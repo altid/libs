@@ -33,13 +33,8 @@ type WriteCloser struct {
 	path  string
 }
 
-func (w WriteCloser) Write(b []byte) (int, error) {
-	return w.store.Write(b)
-}
-
-func (w WriteCloser) Close() error {
-	return w.store.Close()
-}
+func (w WriteCloser) Write(b []byte) (int, error) { return w.store.Write(b) }
+func (w WriteCloser) Close() error                { return w.store.Close() }
 
 func New(store store.Filer, debug bool) *Files {
 	ew, _ := store.Open("errors")
@@ -49,25 +44,19 @@ func New(store store.Filer, debug bool) *Files {
 		tablist: make(map[string]uint),
 		debug:   func(fileMsg, ...any) {},
 	}
-
 	if debug {
 		f.debug = fileLogger
 	}
-
 	cw, err := store.Open("ctrl")
 	if err != nil {
 		f.debug(fileErr, err)
 		return nil
 	}
 	cw.Close()
-
 	return f
 }
 
-func (c *Files) Cleanup() {
-	c.errors.Close()
-}
-
+func (c *Files) Cleanup() { c.errors.Close() }
 func (c *Files) CreateBuffer(name string) error {
 	// Make a store item
 	if name == "" {
@@ -121,12 +110,10 @@ func (c *Files) Notification(buff, from, msg string) error {
 		c.debug(fileErr, err)
 		return err
 	}
-
 	defer f.Close()
 	f.Seek(0, io.SeekStart)
 	c.debug(fileNotify, buff, from, msg)
 	fmt.Fprintf(f, "%s\n%s\n", from, msg)
-
 	return nil
 }
 
@@ -161,13 +148,11 @@ func (c *Files) appendWriter(buffer, target string) (controller.WriteCloser, err
 		c.debug(fileErr, err)
 		return nil, err
 	}
-
 	mf.Seek(0, io.SeekEnd)
 	wc := &WriteCloser{
 		store: mf,
 		path:  ep,
 	}
-
 	c.tablist[buffer]++
 	c.writetab()
 	return wc, nil
@@ -180,12 +165,10 @@ func (c *Files) fileWriter(buffer, target string) (controller.WriteCloser, error
 		c.debug(fileErr, err)
 		return nil, err
 	}
-
 	wc := &WriteCloser{
 		store: mf,
 		path:  ep,
 	}
-
 	return wc, nil
 }
 
@@ -195,12 +178,10 @@ func (c *Files) ErrorWriter() (controller.WriteCloser, error) {
 		c.debug(fileErr, err)
 		return nil, err
 	}
-
 	wc := &WriteCloser{
 		store: ew,
 		path:  "errors",
 	}
-
 	return wc, nil
 }
 

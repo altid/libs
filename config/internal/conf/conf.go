@@ -32,7 +32,6 @@ func WriteOut(service string, request any) error {
 	m := make(map[string]any)
 	m["service"] = service
 	m["altid_config_path"] = util.GetConf()
-
 	switch runtime.GOOS {
 	case "plan9":
 		m["factotum_setup"] = "Set auth to factotum to avoid plaintext passwords"
@@ -41,7 +40,6 @@ func WriteOut(service string, request any) error {
 		m["factotum_setup"] = "To set up factotum using plan9port to avoid plaintext passwords\n\t# see https://9fans.github.io/plan9port/man/man4/factotum.html"
 		m["listen_address_link"] = "https://altid.github.io/using-listen-address.html"
 	}
-
 	// Walk our marshalled object and fill out our form
 	s := reflect.ValueOf(request)
 	t := reflect.Indirect(s).Type()
@@ -60,7 +58,6 @@ func WriteOut(service string, request any) error {
 				continue
 			}
 		}
-
 		switch d.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			m[strings.ToLower(k.Name)] = fmt.Sprintf("%d", d.Int())
@@ -68,8 +65,6 @@ func WriteOut(service string, request any) error {
 			m[strings.ToLower(k.Name)] = d.String()
 		}
 	}
-
 	tp := template.Must(template.New("entry").Parse(tmpl))
-
 	return tp.Execute(os.Stdout, m)
 }

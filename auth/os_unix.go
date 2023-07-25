@@ -16,12 +16,10 @@ func openRPC() (io.ReadWriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	fid, err := fsys.Open("rpc", plan9.ORDWR)
 	if err != nil {
 		return nil, err
 	}
-
 	return fid, nil
 }
 
@@ -30,12 +28,10 @@ func openCtl() (io.ReadWriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	fid, err := fsys.Open("ctl", plan9.ORDWR)
 	if err != nil {
 		return nil, err
 	}
-
 	return fid, nil
 }
 

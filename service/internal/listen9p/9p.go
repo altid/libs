@@ -57,30 +57,20 @@ func NewSession(address string, key, cert string, debug bool) (*Session, error) 
 		cert:    cert,
 		debug:   func(sessionMsg, ...any) {},
 	}
-
 	if debug {
 		s.debug = sessionLogger
 		l = log.New(os.Stdout, "listen9p ", 0)
 	}
-
 	return s, nil
 }
 
-func (e Err9p) Error() string {
-	return string(e)
-}
+func (e Err9p) Error() string                   { return string(e) }
+func (s *Session) Address() string              { return s.address }
+func (s *Session) SetActivity(act func(string)) { s.act = act }
 
 // Proxy the auth over the raw connection
 func (s *Session) Auth(ap *auth.Protocol) error {
 	return nil
-}
-
-func (s *Session) Address() string {
-	return s.address
-}
-
-func (s *Session) SetActivity(act func(string)) {
-	s.act = act
 }
 
 // Listen on configured network for clients
@@ -99,20 +89,16 @@ func (s *Session) Register(filer store.Filer, cmd commander.Commander, cb callba
 	if list, ok := filer.(store.Lister); ok {
 		s.list = list
 	}
-
 	open, ok := filer.(store.Opener)
 	if !ok {
 		return Err9pNoOpen
 	}
 	s.open = open
-
 	if delete, ok := filer.(store.Deleter); ok {
 		s.delete = delete
 	}
-
 	s.cmd = cmd
 	s.cb = cb
-
 	return nil
 }
 
@@ -142,12 +128,10 @@ OUT:
 	if x.Access != "" {
 		client.current = x.Access
 	}
-
 	if e := s.cb.Connect(x.User); e != nil {
 		s.debug(sessionErr, e)
 		return
 	}
-
 	s.debug(sessionClient, client)
 	for x.Next() {
 		req := x.Request()
@@ -199,21 +183,16 @@ func (c *client) stat(buffer string) (fs.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	defer f.Close()
 	return f.Stat()
 }
 
-func (c *client) walk(buffer string) (fs.FileInfo, error) {
-	return c.stat(buffer)
-}
-
+func (c *client) walk(buffer string) (fs.FileInfo, error) { return c.stat(buffer) }
 func (c *client) open(buffer string) (store.File, error) {
 	f, err := c.getFile(buffer)
 	if err != nil {
 		return nil, err
 	}
-
 	return f, nil
 }
 
@@ -224,7 +203,6 @@ func (c *client) ctrlWrite(ctrl []byte) error {
 	if err != nil {
 		return nil
 	}
-
 	if cmd.Name == "buffer" {
 		c.s.debug(sessionBuffer, cmd)
 		if c.closer != nil {
@@ -233,7 +211,6 @@ func (c *client) ctrlWrite(ctrl []byte) error {
 		c.current = cmd.Args[0]
 		return nil
 	}
-
 	return c.s.cmd.Exec(cmd)
 }
 

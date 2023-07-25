@@ -59,6 +59,4 @@ func (c *Command) String() string {
 }
 
 // Bytes - Return a byte representation of a command
-func (c *Command) Bytes() []byte {
-	return []byte(c.String())
-}
+func (c *Command) Bytes() []byte { return []byte(c.String()) }

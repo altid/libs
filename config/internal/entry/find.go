@@ -15,7 +15,6 @@ func Find(req *request.Request, entries []*Entry) (*Entry, bool) {
 			return entry, true
 		}
 	}
-
 	return nil, false
 }
 
@@ -44,13 +43,11 @@ func findAuth(debug func(string, ...any), service string, c ndb.RecordSet) (type
 
 func findLogdir(debug func(string, ...any), c ndb.RecordSet) types.Logdir {
 	debug("request key=\"logdir\"")
-
 	dir := c.Search("logdir")
 	if dir == "" {
 		debug("response key=\"logdir\" value=\"none\"")
 		return "none"
 	}
-
 	debug("response key=\"logdir\" value=\"%s\"", dir)
 	return types.Logdir(dir)
 }
@@ -62,7 +59,6 @@ func findListen(debug func(string, ...any), c ndb.RecordSet) types.ListenAddress
 		debug("response key=\"listen_address\" value=\"none\"")
 		return "none"
 	}
-
 	debug("response key=\"listen_address\" value=\"%s\"", dir)
 	return types.ListenAddress(dir)
 }

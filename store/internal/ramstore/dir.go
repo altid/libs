@@ -53,12 +53,10 @@ func RootDir(debug bool) *Dir {
 		files: make(map[string]any),
 		debug: func(dirMsg, ...any) {},
 	}
-
 	if debug {
 		d.debug = dirLogger
 		l = log.New(os.Stdout, "store: directory: ", 0)
 	}
-
 	return d
 }
 
@@ -85,7 +83,6 @@ func (d *Dir) Walk(name string) (any, error) {
 			}
 		}
 	}
-
 	return nil, ErrInvalidPath
 }
 
@@ -112,7 +109,6 @@ func (d *Dir) Mkdir(name string) error {
 		dir.files[name] = l
 		return nil
 	}
-
 	return ErrInvalidDir
 }
 
@@ -191,9 +187,7 @@ func (d *Dir) Readdir(n int) ([]fs.FileInfo, error) {
 		}
 		fi = append(fi, s)
 	}
-
 	return fi, err
-
 }
 
 func listRoot(d *Dir, buffer string) {
@@ -217,11 +211,9 @@ func listRoot(d *Dir, buffer string) {
 				name:    v.path,
 				modtime: v.modTime,
 			}
-
 			list = append(list, fi)
 		}
 	}
-
 	go func([]os.FileInfo, *Dir) {
 		for _, item := range list {
 			select {

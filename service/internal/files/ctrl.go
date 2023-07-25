@@ -23,7 +23,6 @@ func Ctrl(cb func([]byte) error, data func() []byte) (*CtrlFile, error) {
 		cb:   cb,
 		data: data(),
 	}
-
 	return cf, nil
 }
 
@@ -37,15 +36,12 @@ func (c *CtrlFile) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekEnd:
 		c.offset = 0 + offset
 	}
-
 	if c.offset < 0 {
 		return 0, fmt.Errorf("attempted to seek before start of file")
 	}
-
 	if c.offset > 0 {
 		return 0, io.EOF
 	}
-
 	return c.offset, nil
 }
 
@@ -54,7 +50,6 @@ func (c *CtrlFile) Read(b []byte) (n int, err error) {
 	if (c.offset) >= int64(len(c.data)) {
 		return 0, io.EOF
 	}
-
 	n = copy(b, c.data)
 	c.offset += int64(n)
 	return
@@ -64,7 +59,6 @@ func (c *CtrlFile) Write(p []byte) (n int, err error) {
 	n = len(p)
 	c.offset += int64(n)
 	err = c.cb(p)
-
 	return
 }
 
@@ -72,7 +66,6 @@ func (c *CtrlFile) Truncate(cap int64) error {
 	if cap > c.offset {
 		return errors.New("truncation on file requested was larger than file")
 	}
-
 	c.offset = cap
 	return nil
 }
@@ -89,7 +82,6 @@ func (c *CtrlFile) Stat() (fs.FileInfo, error) {
 		size:    c.offset,
 		modtime: time.Now(),
 	}
-
 	return cs, nil
 }
 
