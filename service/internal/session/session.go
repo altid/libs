@@ -30,20 +30,18 @@ const (
 )
 
 type Session struct {
-	Ctx      context.Context
-	Callback callback.Callback
-	Control  controller.Controller
-	Listener listener.Listener
-	Runner   runner.Runner
-	Store    store.Filer
-	Sender   callback.Sender
-
+	Ctx       context.Context
+	Callback  callback.Callback
+	Control   controller.Controller
+	Listeners []listener.Listener
+	Runner    runner.Runner
+	Store     store.Filer
+	Sender    callback.Sender
 	commander commander.Commander
 	cmdlist   []*commander.Command
-
-	Name    string
-	Address string
-	debug   func(sessionMsg, ...any)
+	Name      string
+	Address   string
+	debug     func(sessionMsg, ...any)
 }
 
 func (s *Session) Listen(debug bool) error {
@@ -51,67 +49,63 @@ func (s *Session) Listen(debug bool) error {
 		s.debug = sessionLogger
 		l = log.New(os.Stdout, "session ", 0)
 	}
-
 	s.debug(sessionStart)
 	if s.Store == nil {
 		s.debug(sessionDefaultStore)
 		s.Store = store.NewRamstore(debug)
 	}
-
 	filer := files.New(s.Store, debug)
 	s.Control = filer
-
-	// Set up commander
 	s.commander = &command.Command{
 		SendCommand:     s.sendCommand,
 		CtrlDataCommand: s.ctrlData,
 	}
-
 	s.cmdlist = commander.DefaultCommands
 	sort.Sort(commander.CmdList(s.cmdlist))
 	s.debug(sessionSetCommands, s.cmdlist)
-
-	// If we have no listener, set up a barebones TCP listener over 9p
+	// If we have no listeners, set up a barebones TCP listener over 9p
 	// Otherwise just set up like normal
-	if s.Listener == nil {
+	if len(s.Listeners) == 0 {
 		listener, err := listener.NewListen9p(s.Address, "", "", debug)
 		if err != nil {
 			return err
 		}
-		s.Listener = listener
+		s.Listeners = append(s.Listeners, listener)
 	}
-	if e := s.Listener.Register(s.Store, s.commander, s.Callback); e != nil {
-		s.debug(sessionError, e)
-		return e
-	}
-
-	s.Listener.SetActivity(filer.Activity)
-	// Make sure our services are started
-	if svc, ok := s.Runner.(runner.Listener); ok {
-		go svc.Listen(s.Control)
-	} else if svc, ok := s.Runner.(runner.Starter); ok {
-		if e := svc.Start(s.Control); e != nil {
-			s.debug(sessionError, e)
+	// Listen on all, send in the chans here
+	listening := false
+	echan := make(chan error)
+	for _, li := range s.Listeners {
+		if e := li.Register(s.Store, s.commander, s.Callback); e != nil {
 			return e
 		}
-		// If we have no types, return an error
-	} else {
-		err := errors.New("invalid/nil runner supplied")
-		s.debug(sessionError, err)
-		return err
+		li.SetActivity(filer.Activity)
+		// These are idempotent in that the service will start
+		// but offer some flexibility in the event loops
+		if svc, ok := s.Runner.(runner.Listener); ok {
+			go svc.Listen(s.Control)
+		} else if svc, ok := s.Runner.(runner.Starter); ok {
+			if e := svc.Start(s.Control); e != nil {
+				return e
+			}
+		} else {
+			err := errors.New("invalid/nil runner supplied")
+			return err
+		}
+		listening = true
+		go func(echan chan error, li listener.Listener) {
+			echan <- li.Listen()
+		}(echan, li)
 	}
-
-	// Finally run
-	echan := make(chan error)
-	go func(echan chan error) {
-		echan <- s.Listener.Listen()
-	}(echan)
-
+	if !listening {
+		return errors.New("unable to start valid listener")
+	}
+	// We could spin up an echan for each instance, or refcount and error only on absolute failure of all listeners
+	// but a listener failing will result in undesired behaviour regardless versus the configurations
 	select {
 	case <-s.Ctx.Done():
 		return nil
 	case err := <-echan:
-		s.debug(sessionError, err)
 		return err
 	}
 }
@@ -123,14 +117,12 @@ func (s *Session) sendCommand(cmd *commander.Command) error {
 	case "reload":
 	case "restart":
 	}
-
 	return s.Runner.Command(cmd)
 }
 
 func (s *Session) ctrlData() (b []byte) {
 	cw := bytes.NewBuffer(b)
 	s.commander.WriteCommands(s.cmdlist, cw)
-
 	return cw.Bytes()
 }
 
