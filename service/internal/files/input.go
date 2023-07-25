@@ -25,7 +25,6 @@ func Input(buffer string, handle callback.Handler) (*InputFile, error) {
 		buffer: buffer,
 		handle: handle,
 	}
-
 	return i, nil
 }
 
@@ -51,15 +50,12 @@ func (i *InputFile) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekEnd:
 		i.offset = 0 + offset
 	}
-
 	if i.offset < 0 {
 		return 0, fmt.Errorf("attempted to seek before start of file")
 	}
-
 	if i.offset > 0 {
 		return 0, io.EOF
 	}
-
 	return i.offset, nil
 }
 
@@ -72,7 +68,6 @@ func (i *InputFile) Truncate(cap int64) error {
 	if cap > i.offset {
 		return errors.New("truncation on file requested was larger than file")
 	}
-
 	i.offset = cap
 	return nil
 }
@@ -84,7 +79,6 @@ func (i *InputFile) Stat() (fs.FileInfo, error) {
 		size:    0,
 		modtime: time.Now(),
 	}
-
 	return is, nil
 }
 

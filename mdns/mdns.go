@@ -46,12 +46,9 @@ func Register(srv *Entry) error {
 	if err != nil {
 		return err
 	}
-
 	srv.service = entry
 	return nil
 }
 
 // Cleanup stops the broadcast
-func (e *Entry) Cleanup() {
-	e.service.Shutdown()
-}
+func (e *Entry) Cleanup() { e.service.Shutdown() }

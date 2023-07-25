@@ -38,17 +38,14 @@ func Marshal(requested any, service string, configFile string, debug bool) error
 			l.Printf(format+"\n", v...)
 		}
 	}
-
 	// list all existing config entries
 	have, err := entry.FromConfig(debugLog, service, configFile)
 	if err != nil {
 		return err
 	}
-
 	if e := conf.Marshal(debugLog, requested, have, nil); e != nil {
 		return e
 	}
-
 	return nil
 }
 
@@ -81,7 +78,6 @@ func Create(requests any, svc, configFile string, debug bool) error {
 			l.Printf(format+"\n", v...)
 		}
 	}
-
 	have, err := entry.FromConfig(debugLog, svc, configFile)
 	// Make sure we correct any errors we encounter
 	switch {
@@ -102,11 +98,9 @@ func Create(requests any, svc, configFile string, debug bool) error {
 	default:
 		debugLog("error: %v\n", err)
 	}
-
 	if e := conf.Marshal(debugLog, requests, have, conf.NewPrompt(debugLog)); e != nil {
 		return e
 	}
-
 	return conf.WriteOut(svc, requests)
 }
 
@@ -117,16 +111,13 @@ func GetListenAddress(service string) (string, string) {
 	if err != nil {
 		return "", "564"
 	}
-
 	listen := conf.Search("service", service).Search("listen_address")
 	if listen != "" {
 		if n := strings.Index(listen, ":"); n > 0 {
 			return listen[:n], listen[n+1:]
 		}
-
 		return listen, "564"
 	}
-
 	return "", "564"
 }
 
@@ -137,27 +128,22 @@ func GetLogDir(service string) string {
 	if err != nil {
 		return "none"
 	}
-
 	logdir := conf.Search("service", service).Search("log")
 	if logdir != "" {
 		return path.Join(logdir, service)
 	}
-
 	return "none"
 }
 
 // ListAll returns a list of available services
 func ListAll() ([]string, error) {
 	var configs []string
-
 	conf, err := ndb.Open(util.GetConf())
 	if err != nil {
 		return nil, err
 	}
-
 	for _, rec := range conf.Search("service", "") {
 		configs = append(configs, rec[0].Val)
 	}
-
 	return configs, nil
 }

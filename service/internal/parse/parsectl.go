@@ -29,14 +29,12 @@ const (
 // Parse returns any commands found within the byte array
 func ParseCtlFile(b []byte) ([]*commander.Command, error) {
 	var cmdlist []*commander.Command
-
 	l := &lexer{
 		src:     b,
 		items:   make(chan item, 2),
 		state:   parseHeading,
 		heading: 9001,
 	}
-
 	for {
 		c, err := parseCtlFile(l)
 		switch err {
@@ -44,13 +42,11 @@ func ParseCtlFile(b []byte) ([]*commander.Command, error) {
 			if c.Name != "" {
 				cmdlist = append(cmdlist, c)
 			}
-
 			return cmdlist, nil
 		case nil:
 			if c.Name != "" {
 				cmdlist = append(cmdlist, c)
 			}
-
 			continue
 		default:
 			return nil, err
@@ -60,10 +56,8 @@ func ParseCtlFile(b []byte) ([]*commander.Command, error) {
 
 func parseCtlFile(l *lexer) (*commander.Command, error) {
 	cmd := &commander.Command{}
-
 	for {
 		i := l.next()
-
 		switch i.itemType {
 		case parserEOF:
 			cmd.Heading = l.heading
@@ -75,7 +69,6 @@ func parseCtlFile(l *lexer) (*commander.Command, error) {
 			if err != nil {
 				return nil, err
 			}
-
 			l.heading = heading
 			return cmd, nil
 		case parserNewEntry:
@@ -98,20 +91,17 @@ func parseHeading(l *lexer) stateFn {
 		if l.peek() == ':' {
 			l.emit(parserHeading)
 		}
-
 		switch l.nextChar() {
 		case parserEOF:
 			l.src = []byte("found heading with no body")
 			l.start = 0
 			l.pos = len(l.src)
-
 			l.emit(parserError)
 			return nil
 		case '\n':
 			l.src = []byte("malformed header: no ending colon")
 			l.start = 0
 			l.pos = len(l.src)
-
 			l.emit(parserError)
 			return nil
 		case ':':
@@ -137,7 +127,6 @@ func parseMaybeHeading(l *lexer) stateFn {
 			l.backup()
 			return parseHeading
 		}
-
 	}
 }
 
@@ -170,7 +159,6 @@ func parseEntryAmbiguous(l *lexer) stateFn {
 		case ' ', '\t':
 			l.acceptRun(" \t")
 			l.ignore()
-
 		}
 	}
 }
@@ -183,20 +171,17 @@ func parseEntryName(l *lexer) stateFn {
 				l.emit(parserEntryName)
 			}
 		}
-
 		switch l.nextChar() {
 		case parserEOF:
 			if l.pos > l.start {
 				l.emit(parserEntryName)
 			}
-
 			l.emit(parserEOF)
 			return nil
 		case ' ', '\t':
 			l.acceptRun(" \t")
 			l.ignore()
 			return parseEntryAmbiguous
-
 		case '|':
 			l.accept("|")
 			l.ignore()
@@ -212,13 +197,11 @@ func parseEntryAlias(l *lexer) stateFn {
 				l.emit(parserEntryAlias)
 			}
 		}
-
 		switch l.nextChar() {
 		case parserEOF:
 			if l.pos > l.start {
 				l.emit(parserEntryAlias)
 			}
-
 			l.emit(parserEOF)
 			return nil
 		case '\n':
@@ -245,7 +228,6 @@ func parseEntryArg(l *lexer) stateFn {
 				l.emit(parserEntryArgs)
 			}
 		}
-
 		switch l.nextChar() {
 		case parserEOF:
 			l.emit(parserError)
@@ -268,7 +250,6 @@ func parseEntryDesc(l *lexer) stateFn {
 			if l.pos > l.start {
 				l.emit(parserEntryDesc)
 			}
-
 		}
 		switch l.nextChar() {
 		case parserEOF:
@@ -279,7 +260,6 @@ func parseEntryDesc(l *lexer) stateFn {
 			l.ignore()
 			return parseMaybeHeading
 		}
-
 	}
 }
 

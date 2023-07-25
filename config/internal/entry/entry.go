@@ -26,18 +26,14 @@ type Entry struct {
 
 func FromConfig(debug func(string, ...any), service string, cf string) ([]*Entry, error) {
 	dir := util.GetConf()
-
 	if cf != "" {
 		dir = cf
 	}
-
 	conf, err := ndb.Open(dir)
 	if err != nil {
 		return nil, err
 	}
-
 	recs := conf.Search("service", service)
-
 	switch len(recs) {
 	case 0:
 		return nil, errors.New(ErrNoEntries)
@@ -68,13 +64,11 @@ func (item *Entry) String() string {
 // This will error if auth=password has no complementary password=field
 func fromNdb(debug func(string, ...any), recs ndb.RecordSet, service string) ([]*Entry, error) {
 	var values []*Entry
-
 	for _, tup := range recs[0] {
 		v := &Entry{
 			Key:   tup.Attr,
 			Value: tup.Val,
 		}
-
 		switch tup.Attr {
 		case "auth":
 			pass, err := findAuth(debug, service, recs)
@@ -87,12 +81,10 @@ func fromNdb(debug func(string, ...any), recs ndb.RecordSet, service string) ([]
 		case "listen_address":
 			v.Value = findListen(debug, recs)
 		}
-
 		// Bool can't fail when it's true or false
 		if tup.Val == "true" || tup.Val == "false" {
 			v.Value, _ = strconv.ParseBool(tup.Val)
 		}
-
 		// Since we don't have access to the req type, make sure we
 		// cast back to string in the case where numerical strings exist
 		// so this is a benign, albeit expensive step to ensure we have
@@ -100,9 +92,7 @@ func fromNdb(debug func(string, ...any), recs ndb.RecordSet, service string) ([]
 		if num, err := strconv.ParseInt(tup.Val, 10, 0); err == nil {
 			v.Value = int(num)
 		}
-
 		values = append(values, v)
 	}
-
 	return values, nil
 }

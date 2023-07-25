@@ -41,7 +41,6 @@ func (f *File) Write(p []byte) (n int, err error) {
 	n = copy(f.data.bytes[m:], p)
 	f.offset += n
 	f.modTime = time.Now()
-
 	return
 }
 
@@ -57,16 +56,13 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekEnd:
 		f.offset = len(f.data.bytes) + int(offset)
 	}
-
 	if f.offset < 0 {
 		//f.debug(storeErr, ErrShortSeek)
 		return 0, ErrShortSeek
 	}
-
 	if f.offset > len(f.data.bytes) {
 		f.offset = len(f.data.bytes)
 	}
-
 	return int64(f.offset), nil
 }
 
@@ -96,17 +92,13 @@ func (f *File) Truncate(cap int64) error {
 	return nil
 }
 
-func (f *File) Name() string {
-	return f.path
-}
-
+func (f *File) Name() string { return f.path }
 func (f *File) Stat() (fs.FileInfo, error) {
 	fi := FileInfo{
 		len:     int64(len(f.data.bytes)),
 		name:    f.name,
 		modtime: f.modTime,
 	}
-
 	return fi, nil
 }
 
