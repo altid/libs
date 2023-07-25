@@ -32,17 +32,16 @@ const (
 )
 
 type Service struct {
-	ctx      context.Context
-	callback callback.Callback
-	control  controller.Controller
-	listener listener.Listener
-	runner   runner.Runner
-	store    store.Filer
-
-	cmdlist []*commander.Command
-	name    string
-	address string
-	debug   func(serviceMsg, ...any)
+	ctx       context.Context
+	callback  callback.Callback
+	control   controller.Controller
+	listeners []listener.Listener
+	runner    runner.Runner
+	store     store.Filer
+	cmdlist   []*commander.Command
+	name      string
+	address   string
+	debug     func(serviceMsg, ...any)
 }
 
 func New(name string, address string, debug bool) *Service {
@@ -51,12 +50,10 @@ func New(name string, address string, debug bool) *Service {
 		address: address,
 		debug:   func(serviceMsg, ...any) {},
 	}
-
 	if debug {
 		l = log.New(os.Stdout, "service ", 0)
 		s.debug = serviceLogger
 	}
-
 	return s
 }
 
@@ -69,9 +66,9 @@ func (s *Service) WithStore(st store.Filer) {
 	s.store = st
 }
 
-func (s *Service) WithListener(l listener.Listener) {
+func (s *Service) WithListeners(l []listener.Listener) {
 	s.debug(serviceListener, l)
-	s.listener = l
+	s.listeners = l
 }
 
 func (s *Service) WithCallbacks(cb callback.Callback) {
@@ -92,21 +89,18 @@ func (s *Service) SetCommands(cmds []*commander.Command) {
 
 func (s *Service) Listen() error {
 	session := &session.Session{
-		Ctx:      s.ctx,
-		Callback: s.callback,
-		Control:  s.control,
-		Listener: s.listener,
-		Runner:   s.runner,
-		Store:    s.store,
-
-		Name:    s.name,
-		Address: s.address,
+		Ctx:       s.ctx,
+		Callback:  s.callback,
+		Control:   s.control,
+		Listeners: s.listeners,
+		Runner:    s.runner,
+		Store:     s.store,
+		Name:      s.name,
+		Address:   s.address,
 	}
-
 	if s.debug == nil {
 		return session.Listen(false)
 	}
-
 	return session.Listen(true)
 }
 
@@ -126,8 +120,10 @@ func serviceLogger(msg serviceMsg, args ...any) {
 			}
 		}
 	case serviceListener:
-		if t, ok := args[0].(listener.Listener); ok {
-			l.Printf("listener: type=\"%s\"", t.Type())
+		for _, li := range args {
+			if t, ok := li.(listener.Listener); ok {
+				l.Printf("listener: type=\"%s\"", t.Type())
+			}
 		}
 	case serviceRunner:
 		if _, ok := args[0].(runner.Listener); ok {

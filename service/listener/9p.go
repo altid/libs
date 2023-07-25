@@ -13,17 +13,6 @@ import (
 	"github.com/altid/libs/store"
 )
 
-var l *log.Logger
-
-type listenMsg int
-
-const (
-	listenAuth listenMsg = iota
-	listenAddress
-	listenListen
-	listenRegister
-)
-
 // Listen9p implements a listener using the 9p protocol
 type Listen9p struct {
 	session *listen9p.Session
@@ -37,12 +26,10 @@ func NewListen9p(addr string, key, cert string, debug bool) (Listen9p, error) {
 	lp := Listen9p{
 		session: session,
 	}
-
 	if debug {
 		l = log.New(os.Stdout, "9p ", 0)
 		lp.debug = listenLogger
 	}
-
 	return lp, err
 }
 
@@ -56,33 +43,10 @@ func (np Listen9p) Address() string {
 	return np.session.Address()
 }
 
-func (np Listen9p) Listen() error {
-	return np.session.Listen()
+func (np Listen9p) Register(filer store.Filer, cmd commander.Commander, cb callback.Callback) error {
+	return np.session.Register(filer, cmd, cb)
 }
 
-func (np Listen9p) Register(filer store.Filer, commander commander.Commander, callback callback.Callback) error {
-	return np.session.Register(filer, commander, callback)
-}
-
-func (np Listen9p) SetActivity(act func(string)) {
-	np.session.SetActivity(act)
-}
-
-func (np Listen9p) Type() string {
-	return "9p"
-}
-
-func listenLogger(msg listenMsg, args ...any) {
-	switch msg {
-	case listenAuth:
-		//auth := args[0].(*auth.Protocol)
-		//l.Printf("auth: \"%s\"", auth.Info())
-		l.Printf("auth: %s", args[0])
-	case listenAddress:
-		l.Printf("address: \"%s\"", args[0])
-	case listenListen:
-		l.Println("starting")
-	case listenRegister:
-		l.Printf("register: filer=\"%s\" callbacks=\"%s\" cmd=\"%s\"", args[0], args[1], args[2])
-	}
-}
+func (np Listen9p) SetActivity(act func(string)) { np.session.SetActivity(act) }
+func (np Listen9p) Listen() error                { return np.session.Listen() }
+func (np Listen9p) Type() string                 { return "9p" }
