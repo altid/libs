@@ -80,18 +80,6 @@ func (s *Session) Listen(debug bool) error {
 			return e
 		}
 		li.SetActivity(filer.Activity)
-		// These are idempotent in that the service will start
-		// but offer some flexibility in the event loops
-		if svc, ok := s.Runner.(runner.Listener); ok {
-			go svc.Listen(s.Control)
-		} else if svc, ok := s.Runner.(runner.Starter); ok {
-			if e := svc.Start(s.Control); e != nil {
-				return e
-			}
-		} else {
-			err := errors.New("invalid/nil runner supplied")
-			return err
-		}
 		listening = true
 		go func(echan chan error, li listener.Listener) {
 			echan <- li.Listen()
@@ -99,6 +87,18 @@ func (s *Session) Listen(debug bool) error {
 	}
 	if !listening {
 		return errors.New("unable to start valid listener")
+	}
+	// These are idempotent in that the service will start
+	// but offer some flexibility in the event loops
+	if svc, ok := s.Runner.(runner.Listener); ok {
+		go svc.Listen(s.Control)
+	} else if svc, ok := s.Runner.(runner.Starter); ok {
+		if e := svc.Start(s.Control); e != nil {
+			return e
+		}
+	} else {
+		err := errors.New("invalid/nil runner supplied")
+		return err
 	}
 	// We could spin up an echan for each instance, or refcount and error only on absolute failure of all listeners
 	// but a listener failing will result in undesired behaviour regardless versus the configurations
