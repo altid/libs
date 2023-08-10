@@ -1,6 +1,7 @@
 package listen9p
 
 import (
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -75,9 +76,10 @@ func (s *Session) Auth(ap *auth.Protocol) error {
 
 // Listen on configured network for clients
 func (s *Session) Listen() error {
+	addr := fmt.Sprintf("%s:%d", s.address, 564)
 	if s.key == "none" || s.key == "" {
 		if s.cert == "none" || s.cert == "" {
-			return styx.ListenAndServe(s.address, s)
+			return styx.ListenAndServe(addr, s)
 		}
 	}
 	return styx.ListenAndServeTLS(s.address, s.key, s.cert, s)

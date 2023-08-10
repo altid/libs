@@ -21,8 +21,8 @@ type ListenSSH struct {
 // NewListenSSH returns a listener that will provide an interactive SSH endpoint
 // A client can dial in, such as `ssh myservice.net` to interact with an Altid service
 // Address is the address for the SSH server to bind to
-func NewListenSSH(addr, id_rsa, authkeys string, debug bool) (ListenSSH, error) {
-	session, err := listenssh.NewSession(addr, id_rsa, authkeys, debug)
+func NewListenSSH(addr, id_rsa string, debug bool) (ListenSSH, error) {
+	session, err := listenssh.NewSession(addr, id_rsa, debug)
 	ls := ListenSSH{
 		session: session,
 	}

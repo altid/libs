@@ -56,7 +56,6 @@ const (
 type Session struct {
 	address  string
 	id_rsa   string
-	authkeys string
 	cmd      commander.Commander
 	cb       callback.Callback
 	list     store.Lister
@@ -68,11 +67,10 @@ type Session struct {
 	*ssh.Server
 }
 
-func NewSession(address, id_rsa, authkeys string, debug bool) (*Session, error) {
+func NewSession(address, id_rsa string, debug bool) (*Session, error) {
 	s := &Session{
 		address:  address,
 		id_rsa:   id_rsa,
-		authkeys: authkeys,
 		debug:    func(sessionMsg, ...any) {},
 	}
 	if debug {
@@ -80,7 +78,7 @@ func NewSession(address, id_rsa, authkeys string, debug bool) (*Session, error) 
 		l = log.New(os.Stdout, "listenssh ", 0)
 	}
 	srv, err := wish.NewServer(
-		wish.WithAddress(fmt.Sprintf("%s:%d", address, 22)),
+		wish.WithAddress(fmt.Sprintf("%s:%d", address, 22222)),
 		wish.WithHostKeyPath(id_rsa),
 		wish.WithMiddleware(
 			bm.MiddlewareWithProgramHandler(s.ProgramHandler, termenv.ANSI256),
@@ -216,9 +214,7 @@ Type a message and press Enter to send.`)
 	}
 }
 
-func (m model) Init() tea.Cmd {
-	return textarea.Blink
-}
+func (m model) Init() tea.Cmd { return textarea.Blink }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
