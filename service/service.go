@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"io"
@@ -32,7 +32,7 @@ func Start(name string, handler Handler) (io.WriteCloser, error) {
 	return s.fd, nil
 }
 
-func (*s service) handleIncoming() {
+func (s service) handleIncoming() {
 	// TODO: Call the s.handler.Input or s.handler.Ctl appropriately
 	// Read in a loop, one line at a time 
 }
