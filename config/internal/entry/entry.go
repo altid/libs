@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/altid/libs/config/internal/util"
-	"github.com/altid/libs/config/types"
 	"github.com/mischief/ndb"
 )
 
@@ -54,8 +53,6 @@ func (item *Entry) String() string {
 		return fmt.Sprintf("%g", item.Value)
 	case bool:
 		return fmt.Sprintf("%t", item.Value)
-	case types.Auth:
-		return fmt.Sprintf("%s", item.Value)
 	default:
 		return fmt.Sprintf("%s", item.Value)
 	}
@@ -68,18 +65,6 @@ func fromNdb(debug func(string, ...any), recs ndb.RecordSet, service string) ([]
 		v := &Entry{
 			Key:   tup.Attr,
 			Value: tup.Val,
-		}
-		switch tup.Attr {
-		case "auth":
-			pass, err := findAuth(debug, service, recs)
-			if err != nil {
-				return nil, err
-			}
-			v.Value = pass
-		case "logdir":
-			v.Value = findLogdir(debug, recs)
-		case "listen_address":
-			v.Value = findListen(debug, recs)
 		}
 		// Bool can't fail when it's true or false
 		if tup.Val == "true" || tup.Val == "false" {

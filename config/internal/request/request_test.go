@@ -3,20 +3,15 @@ package request
 import (
 	"fmt"
 	"testing"
-
-	"github.com/altid/libs/config/types"
 )
 
 func TestRequest(t *testing.T) {
 	// Create and marshal a struct, make sure we're good here
 	test := &struct {
-		Auth   types.Auth          `altid:"auth,prompt:Authentication method,pick:password|factotum|none"`
-		Log    types.Logdir        `altid:"logdir,no_prompt"`
-		Listen types.ListenAddress `altid:"listen_address,no_prompt"`
 		Name   string              `altid:"username,prompt:Name to use for service"`
 		Port   int32               `altid:"port,prompt:Port to connect on"`
 		Debug  bool                `xml:"debug,omit_empty"`
-	}{"password", "none", "none", "halfwit", 1234, true}
+	}{"password", 1234, true}
 
 	reqs, err := Build(test)
 	if err != nil {

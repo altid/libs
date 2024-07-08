@@ -10,7 +10,6 @@ import (
 
 	"github.com/altid/libs/config/internal/entry"
 	"github.com/altid/libs/config/internal/request"
-	"github.com/altid/libs/config/types"
 )
 
 type Prompter interface {
@@ -78,15 +77,6 @@ func (p *Prompt) Query(req *request.Request) (*entry.Entry, error) {
 	case string:
 		entry.Value = value
 		p.debug("response key=\"%s\" value=\"%s\"", entry.Key, entry.Value)
-	case types.Auth:
-		p.debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
-		entry.Value = types.Auth(value)
-	case types.Logdir:
-		p.debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
-		entry.Value = types.Logdir(value)
-	case types.ListenAddress:
-		p.debug("response key=\"%s\" value=\"%s\"", entry.Key, value)
-		entry.Value = types.ListenAddress(value)
 	case float32:
 		v, err := strconv.ParseFloat(value, 32)
 		if err != nil {

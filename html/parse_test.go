@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -57,7 +56,7 @@ func testParse(t *testing.T, target string) {
 
 	defer rp.Close()
 
-	wp, err := ioutil.TempFile("", "test")
+	wp, err := os.CreateTemp("", "test")
 	if err != nil {
 		t.Errorf("fatal system error: %v", err)
 		return
@@ -78,13 +77,13 @@ func testParse(t *testing.T, target string) {
 		return
 	}
 
-	result, err := ioutil.ReadFile(wp.Name())
+	result, err := os.ReadFile(wp.Name())
 	if err != nil {
 		t.Errorf("system error: %v", err)
 		return
 	}
 
-	expected, err := ioutil.ReadFile(fmt.Sprintf("resources/test%s.md", target))
+	expected, err := os.ReadFile(fmt.Sprintf("resources/test%s.md", target))
 	if err != nil {
 		t.Errorf("system error: %v", err)
 	}

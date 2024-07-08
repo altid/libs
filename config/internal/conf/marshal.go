@@ -6,7 +6,6 @@ import (
 
 	"github.com/altid/libs/config/internal/entry"
 	"github.com/altid/libs/config/internal/request"
-	"github.com/altid/libs/config/types"
 )
 
 func Marshal(debug func(string, ...any), requests any, have []*entry.Entry, p Prompter) error {
@@ -19,11 +18,7 @@ func Marshal(debug func(string, ...any), requests any, have []*entry.Entry, p Pr
 	}
 	for _, item := range want {
 		var en *entry.Entry
-		if item.Key == "auth" {
-			en, err = queryAuth(item, p, have)
-		} else {
-			en, err = query(item, p, have)
-		}
+		en, err = query(item, p, have)
 		if err != nil {
 			return err
 		}
@@ -32,37 +27,6 @@ func Marshal(debug func(string, ...any), requests any, have []*entry.Entry, p Pr
 		}
 	}
 	return nil
-}
-
-func queryAuth(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry, error) {
-	var en *entry.Entry
-	var err error
-	if p != nil && item.Prompt != "no_prompt" {
-		en, err = p.Query(item)
-	} else if entry, ok := entry.Find(item, have); ok {
-		en = entry
-	} else if item.Defaults != nil {
-		en.Key = item.Key
-		en.Value = item.Defaults
-	}
-	// Error happened above, handle
-	if err != nil {
-		return nil, err
-	}
-	// Try to request the password= entry
-	if string(en.Value.(types.Auth)) == "password" {
-		i := &request.Request{
-			Key:      "password",
-			Prompt:   "Enter password:",
-			Defaults: "12345678",
-		}
-		pw, err := query(i, p, have)
-		if err != nil {
-			return nil, err
-		}
-		en.Value = types.Auth(pw.Value.(string))
-	}
-	return en, nil
 }
 
 func query(item *request.Request, p Prompter, have []*entry.Entry) (*entry.Entry, error) {
@@ -105,12 +69,6 @@ func push(requests any, entry *entry.Entry) error {
 		switch f.Type.Name() {
 		case "string":
 			d.SetString(entry.Value.(string))
-		case "Auth":
-			d.Set(reflect.ValueOf(entry.Value.(types.Auth)))
-		case "Logdir":
-			d.Set(reflect.ValueOf(entry.Value.(types.Logdir)))
-		case "ListenAddress":
-			d.Set(reflect.ValueOf(entry.Value.(types.ListenAddress)))
 		default:
 			d.Set(reflect.ValueOf(entry.Value))
 		}

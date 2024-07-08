@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-
-	"github.com/altid/libs/config/types"
 )
 
 type Request struct {
@@ -38,12 +36,6 @@ func Build(req any) ([]*Request, error) {
 		switch f.Type.Name() {
 		case "string":
 			req.Defaults = d.String()
-		case "Auth":
-			req.Defaults = d.Interface().(types.Auth)
-		case "Logdir":
-			req.Defaults = d.Interface().(types.Logdir)
-		case "ListenAddress":
-			req.Defaults = d.Interface().(types.ListenAddress)
 		case "int":
 			req.Defaults = d.Interface().(int)
 		case "uint":
