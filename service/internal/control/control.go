@@ -1,10 +1,12 @@
 package control
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 
 	"github.com/altid/libs/service/commander"
+	"github.com/altid/libs/service/controller"
 )
 
 type Control struct {
@@ -12,7 +14,12 @@ type Control struct {
 }
 
 func (c *Control) Listen(input func([]byte), ctl func(*commander.Command)) {
-	//read on ctl, call the appropriate function
+	scanner := bufio.NewScanner(c.ctl)
+	for scanner.Scan() {
+		// TODO: Check on our format on the fs for how these come in exactly
+		// it may be that we need multiple scan lines at once to handle this correctly
+		fmt.Printf("New command: %s\n", scanner.Bytes())
+	}
 }
 
 func (c *Control) CreateBuffer(name string) error {
@@ -23,47 +30,46 @@ func (c *Control) DeleteBuffer(name string) error {
 	return cmd(c, "delete " + name)
 }
 
-// TODO: Was this ever used?
+// TODO: Research usage
 func (c *Control) Remove(string, string) error {
 	return nil
 }
 
+// TODO: Research usage
 func (c *Control) Notification(string, string, string) error {
-	//return cmd(c, fmt.Sprintf("notify %s\n%s", buffer, data))
 	return nil
 }
 
-func (c *Control) WriteError(data string) error {
-	return cmd(c, fmt.Sprintf("error %s\n", data))
+func (c *Control) ErrorWriter() (controller.WriteCloser, error) {
+	return newPrefix(c, errorFmt)
 }
 
-func (c *Control) WriteStatus(buffer string, data string) error {
-	return cmd(c, fmt.Sprintf("status %s\n%s", buffer, data))
+func (c *Control) StatusWriter(buffer string) (controller.WriteCloser, error) {
+	return newPrefix(c, statusFmt, buffer)
 }
 
-func (c *Control) WriteAside(buffer string, data string) error {
-	return cmd(c, fmt.Sprintf("aside %s\n%s", buffer, data))
+func (c *Control) SideWriter(buffer string) (controller.WriteCloser, error) {
+	return newPrefix(c, sideFmt, buffer)
 }
 
-func (c *Control) WriteNav(buffer string, data string) error {
-	return cmd(c, fmt.Sprintf("navi %s\n%s", buffer, data))
+func (c *Control) NavWriter(buffer string) (controller.WriteCloser, error) {
+	return newPrefix(c, navFmt, buffer)
 }
 
-func (c *Control) WriteTitle(buffer string, data string) error {
-	return cmd(c, fmt.Sprintf("title %s\n%s", buffer, data))
+func (c *Control) TitleWriter(buffer string) (controller.WriteCloser, error) {
+	return newPrefix(c, titleFmt, buffer)
 }
 
-// TODO: Implement images
-func (c *Control) WriteImage(string, string, io.ReadCloser) error {
-	return nil
+func (c *Control) ImageWriter (buffer string, name string) (controller.WriteCloser, error) {
+	return newPrefix(c, imageFmt, buffer, name)
 }
 
-func (c *Control) WriteMain(buffer string, data io.ReadCloser) error {
-	return cmd(c, fmt.Sprintf("main %s\n%s", buffer, data))
+func (c *Control) MainWriter(buffer string) (controller.WriteCloser, error) {
+	return newPrefix(c, mainFmt, buffer)
 }
 
-func (c *Control) WriteFeed(buffer string, data io.ReadCloser) error {
-	return cmd(c, fmt.Sprintf("feed %s\n%s", buffer, data))
+func (c *Control) FeedWriter(buffer string) (controller.WriteCloser, error) {
+	return newPrefix(c, feedFmt, buffer)
 }
 
 // TODO: We don't really need this anymore
