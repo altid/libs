@@ -2,24 +2,43 @@ package control
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 
+	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/controller"
 )
 
 type Control struct {
 	ctl io.ReadWriteCloser
+	cb callback.Callback
+	ctx context.Context
 }
 
-func (c *Control) Listen(input func([]byte), ctl func(*commander.Command)) {
+func (c *Control) Listen(ctl func(*commander.Command)) error {
+	// TODO: We should select on both our context, and the scanner
 	scanner := bufio.NewScanner(c.ctl)
 	for scanner.Scan() {
 		// TODO: Check on our format on the fs for how these come in exactly
 		// it may be that we need multiple scan lines at once to handle this correctly
 		fmt.Printf("New command: %s\n", scanner.Bytes())
+		//c.cb.Handle for input
 	}
+
+	if err:= scanner.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Control) WithCallbacks(cb callback.Callback) {
+	c.cb = cb
+}
+
+func (c *Control) WithContext(ctx context.Context) {
+	c.ctx = ctx
 }
 
 func (c *Control) CreateBuffer(name string) error {
