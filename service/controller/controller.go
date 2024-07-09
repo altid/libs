@@ -1,20 +1,18 @@
 package controller
 
-import "io"
-
 type Controller interface {
 	CreateBuffer(string) error
 	DeleteBuffer(string) error
 	Remove(string, string) error
 	Notification(string, string, string) error
-	WriteError(string) error
-	WriteStatus(string, string) error
-	WriteAside(string, string) error
-	WriteNav(string, string) error
-	WriteTitle(string, string) error
-	WriteImage(string, string, io.ReadCloser) error
-	WriteMain(string, io.ReadCloser) error
-	WriteFeed(string, io.ReadCloser) error
+	ErrorWriter() (WriteCloser, error)
+	StatusWriter(string) (WriteCloser, error)
+	SideWriter(string) (WriteCloser, error)
+	NavWriter(string) (WriteCloser, error)
+	TitleWriter(string) (WriteCloser, error)
+	ImageWriter(string, string) (WriteCloser, error)
+	MainWriter(string) (WriteCloser, error)
+	FeedWriter(string) (WriteCloser, error)
 	HasBuffer(string) bool
 }
 
