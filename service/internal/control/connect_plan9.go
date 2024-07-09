@@ -1,11 +1,10 @@
-package service
+package control
 
 import (
-	"io"
 	"os"
 )
 
-func connectService(name string) (io.ReadWriteCloser, error) {
+func ConnectService(name string) (*Control, error) {
 	fd, err := os.OpenFile("/mnt/alt/clone", os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
@@ -14,5 +13,8 @@ func connectService(name string) (io.ReadWriteCloser, error) {
 	if _, err := fd.Write([]byte(name)); err != nil {
 		return nil, err
 	}
-	return fd, nil
+
+	return &Control{
+		ctl: fd,
+	}, nil
 }

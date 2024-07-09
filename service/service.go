@@ -1,9 +1,9 @@
 package service
 
 import (
-	"bufio"
-	"io"
-	"log"
+	"github.com/altid/libs/service/commander"
+	"github.com/altid/libs/service/controller"
+	"github.com/altid/libs/service/internal/control"
 )
 
 // We may have to do config rework, but html and markup should be fine.
@@ -11,38 +11,17 @@ import (
 // Just export a function to get that dir --> fd, then pass an fd with handlers for ctl and input messages
 // From there, we could convenience wrap our append/create/write/etc
 
-type service struct {
-	fd io.ReadWriteCloser
-	handler Handler
-}
-
 type Handler interface {
-	Input([]byte) // add Markup, etc
-	Ctl([]byte)   // commender comes in here
+	Input([]byte) // add Markup, from buffer
+	Ctl(*commander.Command)   // change to command
 }
 
-func Start(name string, handler Handler) (io.WriteCloser, error) {
-	fd, err := connectService(name) // from _plan9.go, for example
+func Start(name string, handler Handler) (controller.Controller, error) {
+	ctl, err := control.ConnectService(name)
 	if err != nil {
 		return nil, err
 	}
 
-	s := &service{
-		fd: fd,
-		handler: handler,
-	}
-
-	go s.handleIncoming()
-	return s.fd, nil
-}
-
-func (s service) handleIncoming() {
-	scanner := bufio.NewScanner(s.fd)
-	for scanner.Scan() {
-		log.Print(scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-        log.Fatal(err)
-    }
+	go ctl.Listen(handler.Input, handler.Ctl)
+	return ctl, nil
 }
