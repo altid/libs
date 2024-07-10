@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/commander"
