@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"fmt"
 	"os"
 )
 
@@ -11,7 +12,8 @@ func ConnectService(ctx context.Context, name string) (*Control, error) {
 		return nil, err
 	}
 	// This creates /srv/$name, and returns our ctl file handle
-	if _, err := fd.Write([]byte(name)); err != nil {
+	fmt.Fprint(fd, name)
+	if _, err := fmt.Fprint(fd, name); err != nil {
 		return nil, err
 	}
 

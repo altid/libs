@@ -29,7 +29,8 @@ func (c *Control) Listen() error {
 		CtrlDataCommand: c.ctrlData,
 	}
 
-	// TODO: We should select on both our context, and the scanner
+	// TODO: We should select on our context, scanner, and any err back from start
+	go c.cb.Start(c)
 	scanner := bufio.NewScanner(c.ctl)
 	for scanner.Scan() {
 		// TODO: Check on our format on the fs for how these come in exactly

@@ -2,6 +2,7 @@ package callback
 
 import (
 	"github.com/altid/libs/markup"
+	"github.com/altid/libs/service/controller"
 )
 
 type Connecter interface {
@@ -11,6 +12,7 @@ type Connecter interface {
 type Callback interface {
 	Connecter
 	Handler
+	Starter
 }
 
 // Handler is called when data is written to an `input` file
@@ -23,4 +25,9 @@ type Handler interface {
 // SendCommand can be intercepted, but finally should call your service.SendCommand from your controller with the payload
 type Sender interface {
 	SendCommand(string) error
+}
+
+// Starter is called to start the main loop of the client
+type Starter interface {
+	Start(controller.Controller) error
 }
