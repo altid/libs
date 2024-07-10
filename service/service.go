@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/commander"
@@ -28,7 +29,7 @@ func (s *Service) SetCommands(cmds []*commander.Command) {
 }
 
 func (s *Service) SetCallbacks(cb callback.Callback) {
-	s.ctl.WithCallbacks(cb)
+	s.ctl.SetCallbacks(cb)
 }
 
 func (s *Service) Listen() error {
