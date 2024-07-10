@@ -1,10 +1,11 @@
 package control
 
 import (
+	"context"
 	"os"
 )
 
-func ConnectService(name string) (*Control, error) {
+func ConnectService(ctx context.Context, name string) (*Control, error) {
 	fd, err := os.OpenFile("/mnt/alt/clone", os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
@@ -15,6 +16,7 @@ func ConnectService(name string) (*Control, error) {
 	}
 
 	return &Control{
+		ctx: ctx,
 		ctl: fd,
 	}, nil
 }

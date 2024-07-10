@@ -2,22 +2,33 @@ package control
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/controller"
+	"github.com/altid/libs/service/internal/command"
 )
 
 type Control struct {
 	ctl io.ReadWriteCloser
 	cb callback.Callback
 	ctx context.Context
+	cmds commander.Commander
+	cmdlist []*commander.Command
 }
 
-func (c *Control) Listen(ctl func(*commander.Command)) error {
+
+func (c *Control) Listen() error {
+	c.cmds = &command.Command{
+		SendCommand: c.sendCommand,
+		CtrlDataCommand: c.ctrlData,
+	}
+
 	// TODO: We should select on both our context, and the scanner
 	scanner := bufio.NewScanner(c.ctl)
 	for scanner.Scan() {
@@ -37,8 +48,9 @@ func (c *Control) WithCallbacks(cb callback.Callback) {
 	c.cb = cb
 }
 
-func (c *Control) WithContext(ctx context.Context) {
-	c.ctx = ctx
+func (c *Control) SetCommands(cmds []*commander.Command) {
+	c.cmdlist = append(c.cmdlist, cmds...)
+	sort.Sort(commander.CmdList(c.cmdlist))
 }
 
 func (c *Control) CreateBuffer(name string) error {
@@ -94,6 +106,26 @@ func (c *Control) FeedWriter(buffer string) (controller.WriteCloser, error) {
 // TODO: We don't really need this anymore
 func (c *Control) HasBuffer(string) bool {
 	return false
+}
+
+func (c *Control) sendCommand(cmd *commander.Command) error {
+	switch cmd.Name {
+	case "shutdown":
+		c.ctx.Done()
+		return nil
+	case "reload":
+	case "restart":
+		return nil
+	}
+
+	return c.cmds.Exec(cmd)
+}
+
+func (c *Control) ctrlData() (b []byte) {
+	cw := bytes.NewBuffer(b)
+	c.cmds.WriteCommands(c.cmdlist, cw)
+
+	return cw.Bytes()
 }
 
 func cmd(c *Control, cmd string) error {

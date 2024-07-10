@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/altid/libs/service/callback"
 )
 
 // ComGroup is a logical grouping of commands
@@ -47,7 +45,6 @@ type Command struct {
 	Args        []string
 	Alias       []string
 	From        string
-	Sender      callback.Sender
 }
 
 func (c *Command) String() string {

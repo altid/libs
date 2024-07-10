@@ -3,6 +3,10 @@
 
 package control
 
-func ConnectService(name string) (*Control, error) {
+import (
+	"context"
+)
+
+func ConnectService(ctx context.Context, name string) (*Control, error) {
 	return nil, nil
 }
