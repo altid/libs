@@ -44,7 +44,7 @@ func (c *Control) Listen() error {
 	return nil
 }
 
-func (c *Control) WithCallbacks(cb callback.Callback) {
+func (c *Control) SetCallbacks(cb callback.Callback) {
 	c.cb = cb
 }
 
