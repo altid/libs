@@ -7,7 +7,7 @@ import (
 )
 
 func ConnectService(ctx context.Context, name string) (*Control, error) {
-	b := make([]byte, 0)
+	b := make([]byte, 3)	// 256
 	ctl, err := os.Open("/mnt/alt/clone")
 	if err != nil {
 		return nil, err
