@@ -23,8 +23,7 @@ func ConnectService(ctx context.Context, name string) (*Control, error) {
 	}
 
 	// This creates /srv/$name, and returns our ctl file handle
-	fmt.Fprint(fd, name)
-	if _, err := fmt.Fprint(fd, name); err != nil {
+	if _, err := fmt.Fprintf(fd, "%s\n", name); err != nil {
 		return nil, err
 	}
 
