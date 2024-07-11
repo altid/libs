@@ -7,16 +7,18 @@ import (
 )
 
 func ConnectService(ctx context.Context, name string) (*Control, error) {
-	b := make([]byte, 3)	// 256
+	b := make([]byte, 0)
 	ctl, err := os.Open("/mnt/alt/clone")
 	if err != nil {
 		return nil, err
 	}
-	if _, e := ctl.Read(b); e != nil {
-		return nil, e
+	
+	n, err := ctl.Read(b)
+	if err != nil {
+		return nil, err
 	}
 
-	path :=	fmt.Sprintf("/mnt/alt/%s", b)
+	path :=	fmt.Sprintf("/mnt/alt/%c", b[:n-1])
 	fd, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
