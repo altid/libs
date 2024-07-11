@@ -18,7 +18,7 @@ func ConnectService(ctx context.Context, name string) (*Control, error) {
 		return nil, err
 	}
 
-	path :=	fmt.Sprintf("/mnt/alt/%c", b[:n-1])
+	path :=	fmt.Sprintf("/mnt/alt/%s", b[:n-1])
 	fd, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
