@@ -50,9 +50,14 @@ type Command struct {
 func (c *Command) String() string {
 	args := strings.Join(c.Args, " ")
 	if c.From != "" {
-		return fmt.Sprintf("%s \"%s\" \"%s\"\n", c.Name, c.From, args)
+		return fmt.Sprintf("%s %s\n\t%s\n", c.Name, c.From, args)
 	}
-	return fmt.Sprintf("%s \"%s\"\n", c.Name, args)
+	return fmt.Sprintf("%s %s\n", c.Name, args)
+}
+
+func (c *Command) ArgBytes() []byte {
+	args := strings.Join(c.Args, " ")
+	return []byte(args)
 }
 
 // Bytes - Return a byte representation of a command

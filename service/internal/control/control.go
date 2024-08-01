@@ -1,13 +1,14 @@
 package control
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
-	"io"
+	"os"
 	"sort"
+	"sync"
 
+	"github.com/altid/libs/markup"
 	"github.com/altid/libs/service/callback"
 	"github.com/altid/libs/service/commander"
 	"github.com/altid/libs/service/controller"
@@ -15,32 +16,47 @@ import (
 )
 
 type Control struct {
-	ctl io.ReadWriteCloser
+	l sync.Mutex
+	done chan bool
+	errs chan error
+	cmds chan *commander.Command
+	ctl *os.File
 	cb callback.Callback
 	ctx context.Context
-	cmds commander.Commander
+	commander commander.Commander
 	cmdlist []*commander.Command
 }
 
-
 func (c *Control) Listen() error {
-	c.cmds = &command.Command{
+	defer c.ctl.Close()
+
+	c.commander = &command.Command{
 		SendCommand: c.sendCommand,
 		CtrlDataCommand: c.ctrlData,
 	}
 
-	// TODO: We should select on our context, scanner, and any err back from start
-	go c.cb.Start(c)
-	scanner := bufio.NewScanner(c.ctl)
-	for scanner.Scan() {
-		// TODO: Check on our format on the fs for how these come in exactly
-		// it may be that we need multiple scan lines at once to handle this correctly
-		fmt.Printf("New command: %s\n", scanner.Bytes())
-		//c.cb.Handle for input
-	}
+	go c.ReadCommands()
+	go func(c *Control) {
+		c.cb.Start(c)
+		c.done <- true
+	}(c)
 
-	if err:= scanner.Err(); err != nil {
-		return err
+	go func(c *Control) {
+		for cmd := range c.cmds {
+			if cmd.Name == "input" {
+				l := markup.NewLexer(cmd.ArgBytes())
+				c.cb.Handle(cmd.From, l)
+			} else {
+				fmt.Printf("Incoming command: %s, %v\n", cmd.Name, cmd.Args)
+			}
+		}
+	}(c)
+
+	select {
+	case e := <-c.errs:
+		return e
+	case <- c.done:
+		return nil
 	}
 	return nil
 }
@@ -119,20 +135,21 @@ func (c *Control) sendCommand(cmd *commander.Command) error {
 		return nil
 	}
 
-	return c.cmds.Exec(cmd)
+	return c.commander.Exec(cmd)
 }
 
 func (c *Control) ctrlData() (b []byte) {
+	c.l.Lock()
+	defer c.l.Unlock()
 	cw := bytes.NewBuffer(b)
-	c.cmds.WriteCommands(c.cmdlist, cw)
+	c.commander.WriteCommands(c.cmdlist, cw)
 
 	return cw.Bytes()
 }
 
 func cmd(c *Control, cmd string) error {
-	n, err := fmt.Fprint(c.ctl, cmd)
-	if n < len(cmd) {
-		return fmt.Errorf("short write on ctl: %s", cmd)
-	}
+	c.l.Lock()
+	defer c.l.Unlock()
+	_, err := fmt.Fprintf(c.ctl, "%s\x00", cmd)
 	return err
 }

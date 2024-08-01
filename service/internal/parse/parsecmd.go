@@ -46,7 +46,7 @@ func ParseCmd(cmd string) (string, string, []string, error) {
 func parseCmdName(l *lexer) stateFn {
 	for {
 		c := l.peek()
-		if strings.IndexByte(" \t", c) >= 0 {
+		if strings.IndexByte(" ", c) >= 0 {
 			if l.pos > l.start {
 				l.emit(cmdName)
 			}
@@ -58,8 +58,8 @@ func parseCmdName(l *lexer) stateFn {
 		case parserEOF:
 			l.emit(parserEOF)
 			return nil
-		case ' ', '\t':
-			l.acceptRun("\t ")
+		case ' ':
+			l.accept(" ")
 			l.ignore()
 			return parseCmdFrom
 		}
@@ -67,80 +67,28 @@ func parseCmdName(l *lexer) stateFn {
 }
 
 func parseCmdFrom(l *lexer) stateFn {
-	var inCompound bool
 	for {
-		switch inCompound {
-		case true:
-			if l.peek() == '"' {
-				l.emit(cmdFrom)
-			}
-			switch l.nextChar() {
-			case parserEOF:
-				l.emit(parserEOF)
-				return nil
-			case '"':
-				// Careful we don't eat the next tag
-				l.accept("\"")
-				l.accept(" ")
-				l.ignore()
-				return parseCmdArgs
-			}
-		case false:
-			c := l.peek()
-
-			if strings.IndexByte(" \t\n", c) >= 0 {
-				if l.pos > l.start {
-					l.emit(cmdFrom)
-				}
-			}
-			// Catch early EOF here
-			if c == parserEOF {
-				l.emit(cmdFrom)
-			}
-			switch l.nextChar() {
-			case parserEOF, '\n':
-				l.emit(parserEOF)
-				return nil
-			case '"':
-				l.accept("\"")
-				l.ignore()
-				inCompound = true
-			case ' ', '\t':
-				l.acceptRun("\t ")
-				l.ignore()
-				return parseCmdArgs
-			}
+		if l.peek() == '\n' {
+			l.emit(cmdFrom)
+		}
+		switch l.nextChar() {
+		case parserEOF:
+			l.emit(parserEOF)
+			return nil
+		case '\n':
+			// Careful we don't eat the next tag
+			l.accept("\n")
+			l.ignore()
+			return parseCmdArgs
 		}
 	}
 }
 
 func parseCmdArgs(l *lexer) stateFn {
-	var inCompound bool
 	for {
-		switch inCompound {
-		case true:
-			if l.peek() == '"' {
-				l.emit(cmdArgs)
-			}
-			switch l.nextChar() {
-			case parserEOF, '"':
-				l.emit(parserEOF)
-				return nil
-			}
-		case false:
-			if l.peek() == '\n' {
-				l.emit(cmdArgs)
-			}
-			// If we don't find an opening quotation, send the whole string
-			switch l.nextChar() {
-			case parserEOF, '\n':
-				l.emit(parserEOF)
-				return nil
-			case '"':
-				l.accept("\"")
-				l.ignore()
-				inCompound = true
-			}
+		if l.nextChar() == parserEOF {
+			l.emit(cmdArgs)
+			return nil
 		}
 	}
 }
