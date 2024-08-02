@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"sync"
@@ -35,7 +36,6 @@ func (c *Control) Listen() error {
 		CtrlDataCommand: c.ctrlData,
 	}
 
-	go c.ReadCommands()
 	go func(c *Control) {
 		c.cb.Start(c)
 		c.done <- true
@@ -47,7 +47,10 @@ func (c *Control) Listen() error {
 				l := markup.NewLexer(cmd.ArgBytes())
 				c.cb.Handle(cmd.From, l)
 			} else {
-				fmt.Printf("Incoming command: %s, %v\n", cmd.Name, cmd.Args)
+				if e := c.commander.Exec(cmd); e != nil {
+					// return this to our errors
+					log.Print(e)
+				}
 			}
 		}
 	}(c)
@@ -58,7 +61,7 @@ func (c *Control) Listen() error {
 	case <- c.done:
 		return nil
 	}
-	return nil
+
 }
 
 func (c *Control) SetCallbacks(cb callback.Callback) {
@@ -134,7 +137,7 @@ func (c *Control) sendCommand(cmd *commander.Command) error {
 	case "restart":
 		return nil
 	}
-
+log.Println("Probably a loop here")
 	return c.commander.Exec(cmd)
 }
 
