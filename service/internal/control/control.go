@@ -43,6 +43,7 @@ func (c *Control) Listen() error {
 
 	go func(c *Control) {
 		for cmd := range c.cmds {
+			log.Print(cmd.String())
 			if cmd.Name == "input" {
 				l := markup.NewLexer(cmd.ArgBytes())
 				c.cb.Handle(cmd.From, l)
@@ -137,8 +138,9 @@ func (c *Control) sendCommand(cmd *commander.Command) error {
 	case "restart":
 		return nil
 	}
-log.Println("Probably a loop here")
-	return c.commander.Exec(cmd)
+
+	_, err := c.ctl.Write(cmd.Bytes())
+	return err
 }
 
 func (c *Control) ctrlData() (b []byte) {

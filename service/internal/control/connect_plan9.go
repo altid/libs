@@ -3,6 +3,7 @@ package control
 import (
 	"context"
 	"fmt"
+"log"
 	"io"
 	"os"
 	"path"
@@ -68,6 +69,7 @@ func (c *Control) ReadCommands() {
 		if n > 0 {
 			// We really want to return this error in the future
 			cmd, _ := c.commander.FromString(string(buf))
+			log.Println("Sending command", buf)
 			c.cmds <- cmd
 		}
 	}

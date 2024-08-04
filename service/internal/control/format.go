@@ -1,59 +1,66 @@
 package control
 
 import (
-	"bytes"
 	"fmt"
+	"os"
 )
 
 const (
-	errorFmt = "error\n%s"
-	statusFmt = "status %s\n%s"
-	sideFmt = "aside %s\n%s"
-	navFmt = "navi\n%s"
-	titleFmt = "title %s\n%s"
-	feedFmt = "feed %s\n%s"
-	mainFmt = "main %s\n%s"
-	imageFmt = "image %s/%s\n%s"
+	errorFmt = iota
+	statusFmt
+	sideFmt
+	navFmt
+	titleFmt
+	feedFmt
+	mainFmt
+	imageFmt
 	//notifyFmt
 )
 
 type prefix struct {
 	c *Control
-	fmt string
+	fmt int
+	nfd *os.File
 	args []string
-	data *bytes.Buffer
 }
 
-func newPrefix(c *Control, fmt string, args ...string) (*prefix, error) {
+func newPrefix(c *Control, fmt int, args ...string) (*prefix, error) {
 	// Do some sanity checking here and return error if we ever need to
-	var b bytes.Buffer
+	nfd, err := os.OpenFile(c.ctl.Name(), os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
 	return &prefix{
+		nfd: nfd,
 		c: c,
 		fmt: fmt,
 		args: args,
-		data: &b,
 	}, nil
 }
 
-// We don't put bytes to the ctl until the very end (close) as all implementations add one or two lines at a time
 func (p *prefix) Write(b []byte) (int, error) {
 	p.c.l.Lock()
 	defer p.c.l.Unlock()
-	if len(p.args) > 0 {
-		return fmt.Fprintf(p.data, p.fmt + "\n", p.args, b)
-	} 
-	return fmt.Fprintf(p.data, p.fmt + "\n", b)
+	switch p.fmt {
+	case errorFmt: 
+		return fmt.Fprintf(p.nfd, "error\n%s", b)
+	case statusFmt:
+		return fmt.Fprintf(p.nfd, "status %s\n\t%s", p.args[0], b)
+	case navFmt:
+		return fmt.Fprintf(p.nfd, "navi\n%s", b)
+	case titleFmt:
+		return fmt.Fprintf(p.nfd, "title %s\n\t%s", p.args[0], b)
+	case feedFmt:
+		return fmt.Fprintf(p.nfd, "feed %s\n\t%s", p.args[0], b)
+	case imageFmt:
+		return fmt.Fprintf(p.nfd, "image %s/%s\n\t%s", p.args[0], p.args[1], b)
+	default:
+		return 0, fmt.Errorf("unknown format specifier supplied\n")
+	}
 }
 
 func (p *prefix) Close() error {
 	p.c.l.Lock()
 	defer p.c.l.Unlock()
-	if p.data.Len() == 0 {
-		return nil
-	}
-
-	if _, e := p.c.ctl.Write(p.data.Bytes()); e != nil {
-		return e
-	}
-	return p.c.ctl.Close()
+	return p.nfd.Close()
 }
